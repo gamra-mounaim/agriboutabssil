@@ -245,7 +245,6 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   const fileName = `Facture_${data.saleId.slice(0, 8)}.pdf`;
@@ -361,7 +360,6 @@ export const generateStatementPDF = (data: ReportData, language: string = 'en', 
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   const filename = `${partyRole}_Releve_${data.entityName.replace(/\s+/g, '_')}.pdf`;
