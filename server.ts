@@ -1094,9 +1094,7 @@ async function startServer() {
     if (!data) return res.status(400).json({ status: "error", message: "No data provided" });
 
     const transaction = async () => {
-      // Disable FKs during import to avoid constraint violations during intermediate steps
-      await db.prepare('PRAGMA foreign_keys = OFF').run();
-
+      // Deleting in order to avoid FK issues
       const tables = [
         'sale_items', 
         'stock_movements', 
@@ -1130,11 +1128,9 @@ async function startServer() {
         
         for (const row of rows) {
           const values = columns.map(col => row[col]);
-          stmt.run(...values);
+          await stmt.run(...values);
         }
       }
-
-      db.prepare('PRAGMA foreign_keys = ON').run();
     };
 
     try {
