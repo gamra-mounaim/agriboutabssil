@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+*.sqlite
+shop.db
+backups
+.git
+.firebase
