@@ -266,7 +266,9 @@ export async function initDb() {
       adminPerms
     );
   } else {
-    await db.prepare('UPDATE users SET username = $1, permissions = $2 WHERE id = $3').run('admin', adminPerms, admin.id || 'admin');
+    // Force reset admin password to 1234 for debugging
+    await db.prepare('UPDATE users SET password = $1, permissions = $2 WHERE id = $3').run(adminHash, adminPerms, admin.id);
+    console.log("Admin password has been reset to 1234");
   }
 
   await seedData();
@@ -287,7 +289,7 @@ async function seedData() {
     { id: 'p-paint-5', name: 'Enduit de finition', price: 80, cost: 60, cat: 'cat-peinture' },
     { id: 'p-tool-1', name: 'Rouleau peinture', price: 35, cost: 20, cat: 'cat-peinture' },
     { id: 'p-tool-2', name: 'Pinceaux', price: 15, cost: 8, cat: 'cat-peinture' },
-    { id: 'p-tool-3', name: 'Ruban adhésif peinture', price: 10, cost: 5, cat: 'cat-peinture' },
+    { id: 'p-tool-3', name: 'Rubان adhésif peinture', price: 10, cost: 5, cat: 'cat-peinture' },
     { id: 'p-tool-4', name: 'Bac peinture', price: 25, cost: 15, cat: 'cat-peinture' },
     { id: 'p-tool-5', name: 'Papier de verre', price: 5, cost: 2, cat: 'cat-peinture' },
     { id: 'p-pvc-1', name: 'PVC 20mm', price: 12, cost: 8, cat: 'cat-pvc' },
