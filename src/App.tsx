@@ -430,12 +430,21 @@ export default function App() {
 
   useEffect(() => {
     const autoLogin = async () => {
-      const stored = localStorage.getItem('pos_user');
-      if (stored) {
-        const u = JSON.parse(stored);
-        setUser(u);
-        setCurrentUserRole(u.role);
-        setProfileReady(true);
+      try {
+        const stored = localStorage.getItem('pos_user');
+        if (stored && stored !== 'undefined') {
+          const u = JSON.parse(stored);
+          if (u && u.id) {
+            setUser(u);
+            setCurrentUserRole(u.role || 'staff');
+            setProfileReady(true);
+          } else {
+            localStorage.removeItem('pos_user');
+          }
+        }
+      } catch (e) {
+        console.error("Auto-login failed:", e);
+        localStorage.removeItem('pos_user');
       }
       setLoading(false);
     };

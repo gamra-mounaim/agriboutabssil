@@ -5,7 +5,7 @@ import { api } from '../services/apiService';
 import { useSettings } from '../hooks/useSettings';
 
 interface AuthProps {
-  onSuccess: () => void;
+  onSuccess: (user: any) => void;
 }
 
 export default function Auth({ onSuccess }: AuthProps) {
@@ -30,9 +30,9 @@ export default function Auth({ onSuccess }: AuthProps) {
       if (mode === 'login') {
         const response = await api.login(email, password);
         if (response.status === 'success') {
-          // Store user in local storage or state
-          localStorage.setItem('user', JSON.stringify(response.user));
-          onSuccess();
+          // Store user in local storage using the key App.tsx expects
+          localStorage.setItem('pos_user', JSON.stringify(response.user));
+          onSuccess(response.user);
         } else {
           setError(response.message || 'Login failed');
         }
