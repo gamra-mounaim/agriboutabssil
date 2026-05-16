@@ -1101,7 +1101,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
 
   const trendData = last7Days.map(date => {
     const total = sales
-      .filter(s => s.date.startsWith(date))
+      .filter(s => s.date && typeof s.date === 'string' && s.date.startsWith(date))
       .reduce((sum, s) => sum + s.total, 0);
     return {
       date: date.split('-').reverse().slice(0, 2).reverse().join('/'),
