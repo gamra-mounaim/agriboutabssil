@@ -1,0 +1,12 @@
+{
+  "name": "AGRI BOUTABSSIL",
+  "description": "Système de Gestion Agricole & Industrielle - POS & Inventaire",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
