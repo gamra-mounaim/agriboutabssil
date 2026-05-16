@@ -1,6 +1,12 @@
 import { Pool } from 'pg';
 import 'dotenv/config';
 
+if (!process.env.DATABASE_URL) {
+  console.warn("WARNING: DATABASE_URL is not set. Defaulting to local PostgreSQL defaults.");
+} else {
+  console.log("DATABASE_URL found. Length:", process.env.DATABASE_URL.length);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {

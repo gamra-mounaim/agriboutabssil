@@ -21,9 +21,15 @@ const hashPassword = (password: string) => {
 async function startServer() {
   console.log("Starting server process...");
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
+
+  // Listen early to pass Render health check
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
 
   try {
+    console.log("Initializing DB...");
     await initDb();
     console.log("PostgreSQL Database initialized.");
   } catch (dbError) {
@@ -1135,10 +1141,6 @@ async function startServer() {
     app.use(express.static(distPath));
     app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
 
   // Global error handler
   app.use((err: any, req: any, res: any, next: any) => {
