@@ -105,22 +105,44 @@ async function startServer() {
     const ADMIN_HASH = '03ac674216f3e15c1d7b18221dd69da636011406d9345c20c85023902146452f';
     const isHardcodedAdmin = (usernameLower === 'admin') && (hashedPassword === ADMIN_HASH || rawPassword.trim() === '1234');
 
-    const user = (await db.prepare('SELECT * FROM users WHERE username = ? OR lower(username) = ?').get(username, usernameLower)) as any;
+    try {
+      const user = (await db.prepare('SELECT * FROM users WHERE username = $1 OR lower(username) = $2').get(username, usernameLower)) as any;
 
-    if (user && (user.password === hashedPassword || user.password === rawPassword.trim())) {
-      const { password: _p, ...userWithoutPassword } = user;
-      logActivity('STAFF', 'login', `User logged in: ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
-      res.json({ status: "success", user: userWithoutPassword });
-    } else if (isHardcodedAdmin) {
+      if (user) {
+        // Parse permissions if they are stored as a string
+        if (typeof user.permissions === 'string') {
+          try {
+            user.permissions = JSON.parse(user.permissions);
+          } catch (e) {
+            console.error("Failed to parse user permissions:", e);
+            user.permissions = {};
+          }
+        }
+
+        if (user.password === hashedPassword || user.password === rawPassword.trim()) {
+          const { password: _p, ...userWithoutPassword } = user;
+          logActivity('STAFF', 'login', `User logged in: ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
+          return res.json({ status: "success", user: userWithoutPassword });
+        }
+      }
+
+      if (isHardcodedAdmin) {
         logActivity('STAFF', 'login', `Admin login: admin`, 'admin', 'admin');
-        res.json({ status: "success", user: { 
-          id: 'admin', 
-          username: 'admin', 
-          role: 'admin', 
-          permissions: { stock: true, customers: true, history: true, profits: true, editStock: true } 
-        } });
-    } else {
+        return res.json({ 
+          status: "success", 
+          user: { 
+            id: 'admin', 
+            username: 'admin', 
+            role: 'admin', 
+            permissions: { stock: true, customers: true, history: true, profits: true, editStock: true } 
+          } 
+        });
+      }
+
       res.status(401).json({ status: "error", message: "Invalid username or password" });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      res.status(500).json({ status: "error", message: "Database error: " + error.message });
     }
   });
 
