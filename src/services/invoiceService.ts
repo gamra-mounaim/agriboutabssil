@@ -125,15 +125,16 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     console.error('Error adding logo to PDF:', e);
   }
 
+  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.setFontSize(20);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text('AGRI BOUTABSSIL', margin + 22, 22);
+  doc.text(shopName, margin + 22, 22);
   
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text('Solutions Agricoles & Industrielles', margin + 22, 28);
+  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 22, 28);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
@@ -244,7 +245,8 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text('AGRI BOUTABSSIL - SOLUTIONS AGRICOLES & INDUSTRIELLES', pageWidth / 2, pageHeight - 15, { align: 'center' });
+  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   const fileName = `Facture_${data.saleId.slice(0, 8)}.pdf`;
   doc.save(fileName);
@@ -292,14 +294,20 @@ export const generateStatementPDF = (data: ReportData, language: string = 'en', 
     console.error('Error adding logo to PDF:', e);
   }
 
+  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.setFontSize(20);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text('AGRI BOUTABSSIL', margin + 22, 22);
+  doc.text(shopName, margin + 22, 22);
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
   doc.text('RELEVÉ DE COMPTE', margin + 22, 28);
+
+  // Shop Info (Right)
+  doc.setFontSize(9);
+  doc.text(settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', pageWidth - margin, 15, { align: 'right' });
+  doc.text(`Tél: ${settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, pageWidth - margin, 20, { align: 'right' });
 
   // Date & Time
   const now = new Date();
@@ -353,7 +361,8 @@ export const generateStatementPDF = (data: ReportData, language: string = 'en', 
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
-  doc.text('AGRI BOUTABSSIL - SOLUTIONS AGRICOLES & INDUSTRIELLES', pageWidth / 2, pageHeight - 15, { align: 'center' });
+  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
   const filename = `${partyRole}_Releve_${data.entityName.replace(/\s+/g, '_')}.pdf`;
   doc.save(filename);

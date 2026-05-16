@@ -255,7 +255,7 @@ async function startServer() {
       const backupContent = JSON.stringify(data, null, 2);
       fs.writeFileSync(`./backups/${filename}`, backupContent);
       
-      await db.prepare('INSERT OR REPLACE INTO backup_history (id, filename) VALUES (?, ?)').run('latest', filename);
+      await db.prepare('INSERT INTO backup_history (id, filename) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET filename = EXCLUDED.filename').run('latest', filename);
       console.log(`Auto-backup completed: ${filename}`);
 
       // Try to send email backup if SMTP is configured
