@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
-import { auth, db } from '../firebase';
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  updateProfile
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { LogIn, ShieldCheck, Mail, Lock, User as UserIcon, AlertCircle, ArrowRight, Chrome } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { api } from '../services/apiService';
 import { useSettings } from '../hooks/useSettings';
 
 interface AuthProps {
@@ -25,70 +17,39 @@ export default function Auth({ onSuccess }: AuthProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    if (!auth) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      await createProfileIfNew(result.user.uid, result.user.email!, result.user.displayName || '');
-      onSuccess();
-    } catch (err: any) {
-      console.error("Google login failed:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    setError("Google Login is only available in development or with OAuth configuration.");
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
     setLoading(true);
     setError(null);
 
     try {
       if (mode === 'login') {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await createProfileIfNew(result.user.uid, result.user.email!, result.user.displayName || '');
+        const response = await api.login(email, password);
+        if (response.status === 'success') {
+          // Store user in local storage or state
+          localStorage.setItem('user', JSON.stringify(response.user));
+          onSuccess();
+        } else {
+          setError(response.message || 'Login failed');
+        }
       } else {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(result.user, { displayName });
-        await createProfileIfNew(result.user.uid, email, displayName, true);
+        const response = await api.register(displayName, password, 'staff', { stock: true });
+        if (response.status === 'success') {
+          setMode('login');
+          setError('Account created. Please login.');
+        } else {
+          setError(response.message || 'Registration failed');
+        }
       }
-      onSuccess();
     } catch (err: any) {
-      console.error("Email auth failed:", err);
-      setError(err.message);
+      console.error("Auth failed:", err);
+      setError(err.message || 'Connection error to server');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const createProfileIfNew = async (uid: string, email: string, name: string, isNew: boolean = false) => {
-    if (!db) return;
-    const userDocRef = doc(db, 'users', uid);
-    
-    if (isNew) {
-      const isPrimaryAdmin = email === 'gamragb@gmail.com';
-      await setDoc(userDocRef, {
-        email,
-        displayName: name,
-        role: isPrimaryAdmin ? 'admin' : 'user',
-        createdAt: new Date().toISOString()
-      });
-    } else {
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        const isPrimaryAdmin = email === 'gamragb@gmail.com';
-        await setDoc(userDocRef, {
-          email,
-          displayName: name,
-          role: isPrimaryAdmin ? 'admin' : 'user',
-          createdAt: new Date().toISOString()
-        });
-      }
     }
   };
 
@@ -137,13 +98,15 @@ export default function Auth({ onSuccess }: AuthProps) {
             </AnimatePresence>
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest text-slate-500 font-mono font-bold px-2">{t('email')}</label>
+              <label className="text-[10px] uppercase tracking-widest text-slate-500 font-mono font-bold px-2">
+                {mode === 'login' ? 'Username / Nom d\'utilisateur' : t('email')}
+              </label>
               <div className="relative">
                 <Mail className="absolute top-1/2 left-4 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="admin@elecpro.com"
+                  placeholder="admin"
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
