@@ -9,8 +9,9 @@ RUN npm install
 
 COPY . .
 
-# Set memory limit for Node during build
+# Set environment variables
 ENV NODE_OPTIONS=--max-old-space-size=450
+ENV NODE_ENV=production
 
 RUN npm run build
 
