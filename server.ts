@@ -21,7 +21,7 @@ const hashPassword = (password: string) => {
 async function startServer() {
   console.log("Starting server process...");
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
   // Listen early to pass Render health check
   app.listen(PORT, "0.0.0.0", () => {
