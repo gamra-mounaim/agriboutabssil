@@ -643,6 +643,58 @@ async function startServer() {
     }
   });
 
+  app.post("/api/customers/:id/return", async (req, res) => {
+    const { id } = req.params;
+    const { productId, qty, price, action, description } = req.body;
+    const returnId = uuidv4();
+    const movementId = uuidv4();
+    
+    const transaction = async () => {
+      const customer = (await db.prepare('SELECT name FROM customers WHERE id = ?').get(id)) as any;
+      if (!customer) throw new Error("Customer not found");
+      
+      const product = (await db.prepare('SELECT name FROM products WHERE id = ?').get(productId)) as any;
+      if (!product) throw new Error("Product not found");
+
+      const totalValue = qty * price;
+
+      // 1. Put products back into stock
+      await db.prepare('UPDATE products SET qty = qty + ? WHERE id = ?').run(qty, productId);
+
+      // 2. Log stock movement
+      await db.prepare(`
+        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor)
+        VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, 'System')
+      `).run(movementId, productId, product.name, qty, `Customer Return: ${customer.name}`);
+
+      // 3. Update Customer Debt if action is 'debt'
+      if (action === 'debt') {
+        await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(totalValue, id);
+        
+        // Log in customer history as a reduction of debt (type PAYMENT)
+        await db.prepare(`
+          INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
+          VALUES (?, ?, 'PAYMENT', ?, ?, 'CASH')
+        `).run(returnId, id, totalValue, `Retour: ${qty} x ${product.name} (${description || 'Non spécifié'})`);
+      } else {
+        // If cash refund, debt remains the same, log with 0 value to show record of transaction
+        await db.prepare(`
+          INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
+          VALUES (?, ?, 'PAYMENT', 0, ?, 'CASH')
+        `).run(returnId, id, `Retour Cash: ${qty} x ${product.name} (Remboursé ${totalValue} DH)`);
+      }
+
+      logActivity('RETURN', 'create', `Return of ${qty}x ${product.name} from ${customer.name} (Value: ${totalValue})`, 'system', 'System');
+    };
+
+    try {
+      await transaction();
+      res.json({ status: "success" });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
   app.get("/api/customers/:id/history", async (req, res) => {
     const { id } = req.params;
     try {

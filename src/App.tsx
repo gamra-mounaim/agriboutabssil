@@ -775,7 +775,7 @@ export default function App() {
                 <>
                   {view === 'inventory' && <Inventory products={products} categories={categories} suppliers={suppliers} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
                   {view === 'pos' && <POS products={products} categories={categories} customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
-                  {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} />}
+                  {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} products={products} />}
                   {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
                   {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} />}
                   {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} />}
@@ -2761,8 +2761,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
   );
 }
 
-// --- View: Customer List ---
-function CustomerList({ customers, user, settings, setMessage, language, onRefresh, payments, sales }: { customers: Customer[], user: any, settings: any, setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void, payments: any[], sales: Sale[] }) {
+function CustomerList({ customers, user, settings, setMessage, language, onRefresh, payments, sales, products }: { customers: Customer[], user: any, settings: any, setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void, payments: any[], sales: Sale[], products: Product[] }) {
   const t = translations[language];
   const [activeTab, setActiveTab] = useState<'list' | 'checks'>('list');
   const [name, setName] = useState('');
@@ -2780,6 +2779,15 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
   const [checkNum, setCheckNum] = useState('');
   const [checkOwnerModal, setCheckOwnerModal] = useState('');
   const [dueDateModal, setDueDateModal] = useState('');
+  
+  // Product Return States
+  const [returnModal, setReturnModal] = useState<{ customer: Customer } | null>(null);
+  const [returnProductId, setReturnProductId] = useState('');
+  const [returnQty, setReturnQty] = useState('');
+  const [returnPrice, setReturnPrice] = useState('');
+  const [returnAction, setReturnAction] = useState<'debt' | 'cash'>('debt');
+  const [returnDescription, setReturnDescription] = useState('');
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', due_date: '' });
   const [selectedSaleToShow, setSelectedSaleToShow] = useState<Sale | null>(null);
@@ -2840,6 +2848,49 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
       }
     } catch (err) {
       setMessage({ text: language === 'ar' ? "فشلت العملية." : "Operation failed.", type: 'error' });
+    }
+  };
+
+  const handleReturnSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!returnModal || !returnProductId || !returnQty || !returnPrice) return;
+    const qtyVal = parseInt(returnQty);
+    const priceVal = parseFloat(returnPrice);
+    if (isNaN(qtyVal) || qtyVal <= 0 || isNaN(priceVal) || priceVal < 0) return;
+
+    try {
+      await api.returnProduct(returnModal.customer.id, {
+        productId: returnProductId,
+        qty: qtyVal,
+        price: priceVal,
+        action: returnAction,
+        description: returnDescription.trim()
+      });
+      
+      setMessage({ text: t.returnSuccess || "Return recorded successfully.", type: 'success' });
+      setReturnModal(null);
+      setReturnProductId('');
+      setReturnQty('');
+      setReturnPrice('');
+      setReturnAction('debt');
+      setReturnDescription('');
+      
+      onRefresh();
+      
+      // Refresh current customer history and profile so UI stays in sync
+      if (selectedCustomer?.id === returnModal.customer.id) {
+        const totalVal = qtyVal * priceVal;
+        if (returnAction === 'debt') {
+          setSelectedCustomer({
+            ...selectedCustomer,
+            debt: Math.max(0, selectedCustomer.debt - totalVal)
+          });
+        }
+        loadHistory(selectedCustomer.id);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ text: language === 'ar' ? "فشلت عملية الإرجاع." : "Failed to record return.", type: 'error' });
     }
   };
 
@@ -3240,11 +3291,14 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
               </div>
 
               <div className="p-6 bg-[#fafafa] border-t border-border-subtle flex flex-col gap-4">
-                <div className="flex gap-4">
-                  <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: customerHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
-                    <Download className="w-4 h-4 text-accent" /> {t.generateStatement}
+                <div className="flex gap-3">
+                  <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: customerHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
+                    <Download className="w-3.5 h-3.5 text-accent" /> {t.generateStatement}
                   </button>
-                  <button onClick={() => setAdjustModal({ type: 'pay', customer: selectedCustomer })} className="flex-1 bg-success text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                  <button onClick={() => setReturnModal({ customer: selectedCustomer })} className="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> {t.returnProduct}
+                  </button>
+                  <button onClick={() => setAdjustModal({ type: 'pay', customer: selectedCustomer })} className="flex-1 bg-success text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
                     {t.payDebt}
                   </button>
                 </div>
@@ -3358,6 +3412,136 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                 )}
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={() => setAdjustModal(null)} className="flex-1 py-4 bg-bg-base text-text-secondary font-black rounded-2xl hover:bg-border-subtle transition-all text-[10px] uppercase tracking-widest">{t.cancel || 'Cancel'}</button>
+                  <button type="submit" className="flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest">{t.confirm}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Product Return Modal */}
+      <AnimatePresence>
+        {returnModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-text-main/40 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-card w-full max-w-md rounded-[2rem] shadow-2xl border border-border-subtle p-8 max-h-[90vh] overflow-y-auto">
+              <div className="text-center mb-6">
+                <div className="inline-flex p-4 rounded-full bg-accent/5 text-accent mb-4">
+                  <ArrowRightLeft className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black tracking-tight text-text-main uppercase">{t.returnProduct}</h3>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-1">{returnModal.customer.name}</p>
+              </div>
+
+              <form onSubmit={handleReturnSubmit} className="space-y-4">
+                {/* Product Selector */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.selectProduct}</label>
+                  <select 
+                    required
+                    className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all"
+                    value={returnProductId} 
+                    onChange={e => {
+                      const pId = e.target.value;
+                      setReturnProductId(pId);
+                      const found = products.find(p => p.id === pId);
+                      if (found) {
+                        setReturnPrice(found.price.toString());
+                      } else {
+                        setReturnPrice('');
+                      }
+                    }}
+                  >
+                    <option value="">-- {t.selectProduct} --</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.price} {t.currency})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Quantity */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.returnQty || 'Quantity'}</label>
+                    <input 
+                      required 
+                      type="number" 
+                      min="1"
+                      className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all"
+                      value={returnQty} 
+                      onChange={e => setReturnQty(e.target.value)} 
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.returnPrice || 'Unit Price'}</label>
+                    <input 
+                      required 
+                      type="number" 
+                      step="0.01" 
+                      min="0"
+                      className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all"
+                      value={returnPrice} 
+                      onChange={e => setReturnPrice(e.target.value)} 
+                    />
+                  </div>
+                </div>
+
+                {/* Return Action / Settlement */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.returnAction || 'Settlement'}</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      type="button" 
+                      onClick={() => setReturnAction('debt')} 
+                      className={cn("py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all", returnAction === 'debt' ? "bg-accent text-white border-accent" : "bg-white text-text-secondary border-border-subtle")}
+                    >
+                      {t.deductFromDebt}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setReturnAction('cash')} 
+                      className={cn("py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all", returnAction === 'cash' ? "bg-accent text-white border-accent" : "bg-white text-text-secondary border-border-subtle")}
+                    >
+                      {t.refundInCash}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Description / Custom Note */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.note}</label>
+                  <textarea 
+                    rows={2}
+                    className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all resize-none"
+                    placeholder="Ex: PVC pipe return..."
+                    value={returnDescription} 
+                    onChange={e => setReturnDescription(e.target.value)} 
+                  />
+                </div>
+
+                {/* Total Preview */}
+                {returnQty && returnPrice && (
+                  <div className="bg-bg-base p-4 rounded-2xl border border-border-subtle flex justify-between items-center animate-in fade-in slide-in-from-top-1">
+                    <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">{t.total}:</span>
+                    <span className="text-lg font-black text-accent">
+                      {(parseInt(returnQty) * parseFloat(returnPrice)).toFixed(2)} {t.currency}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={() => {
+                    setReturnModal(null);
+                    setReturnProductId('');
+                    setReturnQty('');
+                    setReturnPrice('');
+                    setReturnAction('debt');
+                    setReturnDescription('');
+                  }} className="flex-1 py-4 bg-bg-base text-text-secondary font-black rounded-2xl hover:bg-border-subtle transition-all text-[10px] uppercase tracking-widest">{t.cancel}</button>
                   <button type="submit" className="flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest">{t.confirm}</button>
                 </div>
               </form>

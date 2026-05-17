@@ -63,6 +63,7 @@ export const api = {
   addPayment: async (customerId, paymentData) => post(`${API_URL}/customers/${customerId}/payment`, paymentData),
   addCharge: async (customerId, amount, description) => post(`${API_URL}/customers/${customerId}/charge`, { amount, description }),
   getCustomerHistory: async (customerId) => handleResponse(await fetch(`${API_URL}/customers/${customerId}/history`)),
+  returnProduct: async (customerId, returnData) => post(`${API_URL}/customers/${customerId}/return`, returnData),
   
   // Suppliers
   getSuppliers: async () => handleResponse(await fetch(`${API_URL}/suppliers`)),
