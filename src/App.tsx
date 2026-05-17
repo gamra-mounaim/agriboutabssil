@@ -155,6 +155,10 @@ interface UserProfile {
     editStock?: boolean;
     supplierDebt?: boolean;
     financials?: boolean;
+    financialsSales?: boolean;
+    financialsDebts?: boolean;
+    financialsProfits?: boolean;
+    financialsInventory?: boolean;
   };
   createdAt: any;
 }
