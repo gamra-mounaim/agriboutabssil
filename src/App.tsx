@@ -245,8 +245,8 @@ export default function App() {
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
   const userPermissions = profile?.role === 'admin' 
-    ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true }
-    : (profile?.permissions || { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false });
+    ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true }
+    : (profile?.permissions || { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
 
   useEffect(() => {
     if (profile?.role === 'admin' && view === 'pos') {
@@ -778,7 +778,7 @@ export default function App() {
                   {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} products={products} />}
                   {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
                   {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} />}
-                  {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} />}
+                  {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} permissions={userPermissions} />}
                   {view === 'checks' && <CheckListView checks={checks} language={language} settings={settings} />}
                   {view === 'settings' && (
                     <SettingsManagement 
@@ -1067,7 +1067,7 @@ function StatCard({ label, value, sub, highlights, danger }: { label: string, va
 
 // --- View: Inventory ---
 // --- View: Financial Dashboard ---
-function FinancialDashboardView({ stats, sales, payments, customers, suppliers, language, currency, products, settings }: { stats: any, sales: any[], payments: any[], customers: any[], suppliers: any[], language: Language, currency: string, products: any[], settings: any }) {
+function FinancialDashboardView({ stats, sales, payments, customers, suppliers, language, currency, products, settings, permissions }: { stats: any, sales: any[], payments: any[], customers: any[], suppliers: any[], language: Language, currency: string, products: any[], settings: any, permissions: any }) {
   const t = translations[language];
   const isAr = language === 'ar';
 
@@ -1109,7 +1109,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     };
   });
 
-  const StatCard = ({ title, value, subtext, icon: Icon, color = "text-text-main", bg = "bg-card" }: any) => (
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card" }: any) => (
     <div className={`${bg} p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]`}>
       <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
       <div className="flex flex-col items-center">
@@ -1120,9 +1120,36 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     </div>
   );
 
+  // Check if no dashboard elements are permitted
+  if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt) {
+    return (
+      <div className="h-[400px] flex flex-col items-center justify-center space-y-4 opacity-75">
+        <ShieldCheck className="w-16 h-16 text-text-secondary animate-pulse" />
+        <p className="text-sm font-bold text-text-secondary uppercase tracking-widest text-center">
+          {isAr ? "لا تملك صلاحيات لعرض عناصر لوحة القيادة المالية." : "You do not have permissions to view any financial dashboard widgets."}
+        </p>
+      </div>
+    );
+  }
+
+  // Count visible stats cards to dynamically calculate responsive layout columns
+  const visibleCardsCount = [
+    permissions.financialsDebts, // Pending Debts
+    permissions.financialsDebts, // Debtor Customers
+    permissions.financialsProfits, // Expected Profit
+    permissions.financialsInventory, // Inventory Value
+    permissions.financialsSales // Total Revenue (Black Card)
+  ].filter(Boolean).length;
+
+  const gridColsClass = 
+    visibleCardsCount === 5 ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-5" :
+    visibleCardsCount === 4 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" :
+    visibleCardsCount === 3 ? "grid-cols-1 md:grid-cols-3" :
+    visibleCardsCount === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1";
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {upcomingDebts.length > 0 && (
+      {permissions.financialsDebts && upcomingDebts.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1143,140 +1170,161 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
       )}
 
       {/* Top Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatCard 
-          title={isAr ? 'الديون المعلقة' : 'Pending Debts'} 
-          value={totalCustomerDebt.toLocaleString()} 
-          subtext={isAr ? 'محفظة الديون' : 'Debt Wallet'}
-        />
-        <StatCard 
-          title={isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'} 
-          value={customers.filter(c => c.debt > 0).length} 
-          subtext={isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with Balance'}
-          color="text-text-main"
-        />
-        <StatCard 
-          title={isAr ? 'الربح المتوقع' : 'Expected Profit'} 
-          value={netProfit.toLocaleString()} 
-          subtext={isAr ? 'الأرباح المتوقعة' : 'Expected Profits'}
-        />
-        <StatCard 
-          title={isAr ? 'قيمة المخزون' : 'Inventory Value'} 
-          value={inventoryAssetValue.toLocaleString()} 
-          subtext={isAr ? 'قيمة المخزون الإجمالية' : 'Total Inventory Value'}
-        />
-        
-        {/* Black Card */}
-        <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
-          <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
-          <div className="flex flex-col items-center">
-             <Logo className="w-12 h-12 mb-2 p-1" />
-            <div className="text-3xl font-black text-white">{totalRevenue.toLocaleString()}</div>
-            <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
-          </div>
-          <div className="text-[10px] text-white/50 font-medium mt-4">{isAr ? 'إجمالي المبيعات' : 'Total Revenue'}</div>
+      {visibleCardsCount > 0 && (
+        <div className={`grid ${gridColsClass} gap-6`}>
+          {permissions.financialsDebts && (
+            <>
+              <StatCard 
+                title={isAr ? 'الديون المعلقة' : 'Pending Debts'} 
+                value={totalCustomerDebt.toLocaleString()} 
+                subtext={isAr ? 'محفظة الديون' : 'Debt Wallet'}
+              />
+              <StatCard 
+                title={isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'} 
+                value={customers.filter(c => c.debt > 0).length} 
+                subtext={isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with Balance'}
+                color="text-text-main"
+              />
+            </>
+          )}
+          {permissions.financialsProfits && (
+            <StatCard 
+              title={isAr ? 'الربح المتوقع' : 'Expected Profit'} 
+              value={netProfit.toLocaleString()} 
+              subtext={isAr ? 'الأرباح المتوقعة' : 'Expected Profits'}
+            />
+          )}
+          {permissions.financialsInventory && (
+            <StatCard 
+              title={isAr ? 'قيمة المخزون' : 'Inventory Value'} 
+              value={inventoryAssetValue.toLocaleString()} 
+              subtext={isAr ? 'قيمة المخزون الإجمالية' : 'Total Inventory Value'}
+            />
+          )}
+          {permissions.financialsSales && (
+            /* Black Card */
+            <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
+              <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
+              <div className="flex flex-col items-center">
+                 <Logo className="w-12 h-12 mb-2 p-1" />
+                <div className="text-3xl font-black text-white">{totalRevenue.toLocaleString()}</div>
+                <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
+              </div>
+              <div className="text-[10px] text-white/50 font-medium mt-4">{isAr ? 'إجمالي المبيعات' : 'Total Revenue'}</div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Content Area */}
-        <div className="lg:col-span-3 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* Critical Stock Alerts */}
-             <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'تنبيهات المخزون الحرجة' : 'CRITICAL STOCK ALERTS'}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
-                    <button className="p-2 hover:bg-bg-base rounded-full transition-colors"><Download className="w-4 h-4 text-text-secondary" /></button>
-                  </div>
-                </div>
-
-                <div className="space-y-4 min-h-[250px] flex flex-col">
-                  {lowStock.length > 0 ? (
-                    lowStock.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-accent/10 transition-all">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-accent">
-                            <Package className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-text-main">{p.name}</div>
-                            <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-black text-danger">{p.qty}</div>
-                          <div className="text-[9px] font-bold text-text-secondary uppercase">{isAr ? 'في المخزن' : 'In Stock'}</div>
-                        </div>
+        <div className={cn(permissions.supplierDebt ? "lg:col-span-3" : "lg:col-span-4", "space-y-6")}>
+          {(permissions.financialsInventory || permissions.financialsSales) && (
+            <div className={cn("grid grid-cols-1 gap-6", 
+              permissions.financialsInventory && permissions.financialsSales ? "md:grid-cols-2" : "grid-cols-1"
+            )}>
+               {/* Critical Stock Alerts */}
+               {permissions.financialsInventory && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'تنبيهات المخزون الحرجة' : 'CRITICAL STOCK ALERTS'}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
+                        <button className="p-2 hover:bg-bg-base rounded-full transition-colors"><Download className="w-4 h-4 text-text-secondary" /></button>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                      <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
-                        <CheckCircle className="w-8 h-8 text-success" />
-                      </div>
-                      <p className="text-sm font-bold text-text-secondary">{isAr ? 'جميع المنتجات متوفرة بشكل جيد.' : 'All products in good stock.'}</p>
                     </div>
-                  )}
-                </div>
-             </div>
 
-             {/* Sales Trend Chart */}
-             <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}</h3>
-                </div>
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trendData}>
-                      <defs>
-                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
-                        dy={10}
-                      />
-                      <YAxis hide />
-                      <ReChartsTooltip 
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="amount" 
-                        stroke="#6366f1" 
-                        strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorSales)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-             </div>
-          </div>
+                    <div className="space-y-4 min-h-[250px] flex flex-col">
+                      {lowStock.length > 0 ? (
+                        lowStock.map(p => (
+                          <div key={p.id} className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-accent/10 transition-all">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-accent">
+                                <Package className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-text-main">{p.name}</div>
+                                <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-black text-danger">{p.qty}</div>
+                              <div className="text-[9px] font-bold text-text-secondary uppercase">{isAr ? 'في المخزن' : 'In Stock'}</div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                          <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
+                            <CheckCircle className="w-8 h-8 text-success" />
+                          </div>
+                          <p className="text-sm font-bold text-text-secondary">{isAr ? 'جميع المنتجات متوفرة بشكل جيد.' : 'All products in good stock.'}</p>
+                        </div>
+                      )}
+                    </div>
+                 </div>
+               )}
+
+               {/* Sales Trend Chart */}
+               {permissions.financialsSales && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}</h3>
+                    </div>
+                    <div className="h-[250px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trendData}>
+                          <defs>
+                            <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="date" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
+                            dy={10}
+                          />
+                          <YAxis hide />
+                          <ReChartsTooltip 
+                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="amount" 
+                            stroke="#6366f1" 
+                            strokeWidth={3}
+                            fillOpacity={1} 
+                            fill="url(#colorSales)" 
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                 </div>
+               )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar Space */}
-        <div className="lg:col-span-1 space-y-6">
-           {/* Supplier Debt Card */}
-           <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[300px]">
-              <div className="text-center">
-                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{isAr ? 'إجمالي ديون الموردين' : 'Supplier Payables'}</div>
-                <div className="text-5xl font-black text-text-main my-8">{totalSupplierDebt.toLocaleString()}</div>
-                <div className="text-2xl font-black text-text-main">{isAr ? 'درهم' : currency}</div>
-                <div className="mt-8 pt-8 border-t border-border-subtle">
-                  <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{isAr ? 'المبلغ الذي تدينه للمورد' : 'Amount Owed to Suppliers'}</div>
+        {permissions.supplierDebt && (
+          <div className="lg:col-span-1 space-y-6">
+             {/* Supplier Debt Card */}
+             <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[300px]">
+                <div className="text-center">
+                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{isAr ? 'إجمالي ديون الموردين' : 'Supplier Payables'}</div>
+                  <div className="text-5xl font-black text-text-main my-8">{totalSupplierDebt.toLocaleString()}</div>
+                  <div className="text-2xl font-black text-text-main">{isAr ? 'درهم' : currency}</div>
+                  <div className="mt-8 pt-8 border-t border-border-subtle">
+                    <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{isAr ? 'المبلغ الذي تدينه للمورد' : 'Amount Owed to Suppliers'}</div>
+                  </div>
                 </div>
-              </div>
-           </div>
-        </div>
+             </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4488,7 +4536,7 @@ function StaffManagement({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'staff'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false });
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -4501,13 +4549,13 @@ function StaffManagement({
     setIsSubmitting(true);
     try {
       const usernameLower = newUsername.toLowerCase().trim();
-      const result = await api.register(usernameLower, newPassword, newRole, newRole === 'admin' ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true } : newPerms);
+      const result = await api.register(usernameLower, newPassword, newRole, newRole === 'admin' ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
-        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false });
+        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
         onRefresh();
       } else {
         setMessage({ text: result.message || "Registration failed", type: 'error' });
@@ -4591,7 +4639,7 @@ function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -4688,6 +4736,22 @@ function StaffManagement({
                   <input type="checkbox" checked={newPerms.financials} onChange={e => setNewPerms({...newPerms, financials: e.target.checked})} className="w-4 h-4 accent-accent" />
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancials}</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsSales} onChange={e => setNewPerms({...newPerms, financialsSales: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsSales}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsDebts} onChange={e => setNewPerms({...newPerms, financialsDebts: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsDebts}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsProfits} onChange={e => setNewPerms({...newPerms, financialsProfits: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsProfits}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsInventory} onChange={e => setNewPerms({...newPerms, financialsInventory: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsInventory}</span>
+                </label>
               </div>
             </div>
           )}
@@ -4754,6 +4818,10 @@ function StaffManagement({
                        <PermissionBadge label={t.canEditStock} active={u.permissions?.editStock} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
                        <PermissionBadge label={(t as any).permSupplierDebt} active={u.permissions?.supplierDebt} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
                        <PermissionBadge label={(t as any).permFinancials} active={u.permissions?.financials} onClick={() => togglePermission(u.id, 'financials')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsSales} active={u.permissions?.financialsSales} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsDebts} active={u.permissions?.financialsDebts} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsProfits} active={u.permissions?.financialsProfits} onClick={() => togglePermission(u.id, 'financialsProfits')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsInventory} active={u.permissions?.financialsInventory} onClick={() => togglePermission(u.id, 'financialsInventory')} language={language} />
                     </div>
                   )}
                   {u.role === 'admin' && (
