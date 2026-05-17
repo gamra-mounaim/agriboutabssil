@@ -57,6 +57,7 @@ export const api = {
   getUsers: async () => handleResponse(await fetch(`${API_URL}/users`)),
   register: async (username, password, role, permissions) => post(`${API_URL}/auth/register`, { username, password, role, permissions }),
   updateUser: async (id, data) => put(`${API_URL}/users/${id}`, data),
+  deleteUser: async (id) => del(`${API_URL}/users/${id}`),
 
   // Debt/Payments
   getPayments: async () => handleResponse(await fetch(`${API_URL}/payments`)),

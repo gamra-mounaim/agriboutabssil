@@ -181,13 +181,33 @@ async function startServer() {
 
   app.put("/api/users/:id", async (req, res) => {
     const { id } = req.params;
-    const { role, permissions } = req.body;
+    const { role, permissions, password } = req.body;
     try {
-      await db.prepare(`
-        UPDATE users 
-        SET role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(role, JSON.stringify(permissions), id);
+      if (password && password.trim()) {
+        const hashedPassword = hashPassword(password.trim());
+        await db.prepare(`
+          UPDATE users 
+          SET role = ?, permissions = ?, password = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(role, JSON.stringify(permissions), hashedPassword, id);
+      } else {
+        await db.prepare(`
+          UPDATE users 
+          SET role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(role, JSON.stringify(permissions), id);
+      }
+      res.json({ status: "success" });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      await db.prepare('DELETE FROM users WHERE id = ?').run(id);
+      logActivity('STAFF', 'delete', `Deleted user account: ${id}`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });

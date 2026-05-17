@@ -47,7 +47,8 @@ import {
   TrendingUp,
   Wallet,
   MapPin,
-  Cloud
+  Cloud,
+  Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './components/Logo';
@@ -4539,6 +4540,68 @@ function StaffManagement({
   const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
+  const [newPasswordVal, setNewPasswordVal] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!changingPasswordUser || !newPasswordVal.trim()) return;
+
+    setUpdatingPassword(true);
+    try {
+      await api.updateUser(changingPasswordUser.id, {
+        role: changingPasswordUser.role,
+        permissions: changingPasswordUser.permissions,
+        password: newPasswordVal.trim()
+      });
+      setMessage({ 
+        text: language === 'ar' ? "تم تغيير كلمة المرور بنجاح." : "Password changed successfully.", 
+        type: 'success' 
+      });
+      setChangingPasswordUser(null);
+      setNewPasswordVal('');
+      onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ 
+        text: language === 'ar' ? "فشل تغيير كلمة المرور." : "Failed to change password.", 
+        type: 'error' 
+      });
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (userId === currentUser?.id || userId === currentUser?.uid) {
+      setMessage({ 
+        text: language === 'ar' ? "لا يمكنك حذف حسابك الشخصي." : "Cannot delete your own account.", 
+        type: 'error' 
+      });
+      return;
+    }
+
+    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذا الموظف نهائياً؟" : "Are you sure you want to permanently delete this staff member?")) {
+      return;
+    }
+
+    try {
+      await api.deleteUser(userId);
+      setMessage({ 
+        text: language === 'ar' ? "تم حذف حساب الموظف نهائياً." : "Staff member account permanently deleted.", 
+        type: 'success' 
+      });
+      onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ 
+        text: language === 'ar' ? "فشل حذف حساب الموظف." : "Failed to delete staff member.", 
+        type: 'error' 
+      });
+    }
+  };
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPassword) {
@@ -4828,17 +4891,40 @@ function StaffManagement({
                     <div className="text-center text-[10px] font-bold text-accent/40 italic uppercase">{language === 'ar' ? "صلاحيات كاملة" : "ALL ACCESS"}</div>
                   )}
                 </td>
-                <td className={cn("p-4", language === 'ar' ? "text-left" : "text-right")}>
-                  <button 
-                    disabled={u.id === currentUser.uid}
-                    onClick={() => toggleRole(u.id, u.role)}
-                    className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-3 py-1.5 transition-all disabled:opacity-0"
-                  >
-                    {u.role === 'admin' 
-                      ? (language === 'ar' ? 'تخفيض' : 'DEMOTE') 
-                      : (language === 'ar' ? 'ترقية' : 'PROMOTE')
-                    }
-                  </button>
+                <td className="p-4">
+                  <div className={cn("flex items-center gap-3 justify-end", language === 'ar' && "flex-row-reverse justify-start")}>
+                    {/* Promote/Demote */}
+                    <button 
+                      disabled={u.id === currentUser.uid}
+                      onClick={() => toggleRole(u.id, u.role)}
+                      className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      title={u.role === 'admin' ? (language === 'ar' ? 'تخفيض الرتبة' : 'DEMOTE') : (language === 'ar' ? 'ترقية الرتبة' : 'PROMOTE')}
+                    >
+                      {u.role === 'admin' 
+                        ? (language === 'ar' ? 'تخفيض' : 'DEMOTE') 
+                        : (language === 'ar' ? 'ترقية' : 'PROMOTE')
+                      }
+                    </button>
+
+                    {/* Change Password */}
+                    <button 
+                      onClick={() => setChangingPasswordUser(u)}
+                      className="p-1.5 hover:bg-accent/10 hover:text-accent text-text-secondary border border-border-subtle rounded transition-all"
+                      title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                    >
+                      <Key className="w-4 h-4" />
+                    </button>
+
+                    {/* Delete */}
+                    <button 
+                      disabled={u.id === currentUser.uid}
+                      onClick={() => handleDeleteUser(u.id)}
+                      className="p-1.5 hover:bg-danger/10 hover:text-danger text-text-secondary border border-border-subtle rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -4976,6 +5062,82 @@ function StaffManagement({
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <AnimatePresence>
+        {changingPasswordUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-md p-6 rounded-3xl border border-border-subtle shadow-2xl relative"
+            >
+              <button 
+                onClick={() => {
+                  setChangingPasswordUser(null);
+                  setNewPasswordVal('');
+                }}
+                className="absolute top-4 right-4 p-2 hover:bg-bg-base rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-text-secondary" />
+              </button>
+
+              <div className={cn("space-y-4", language === 'ar' && "text-right")}>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-accent/15 text-accent">
+                    <Key className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-text-main">
+                      {language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                    </h3>
+                    <p className="text-xs text-text-secondary font-mono uppercase tracking-wider">
+                      {changingPasswordUser.username || changingPasswordUser.email}
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSavePassword} className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-2">
+                      {language === 'ar' ? 'كلمة المرور الجديدة' : 'NEW PASSWORD'}
+                    </label>
+                    <input 
+                      type="password"
+                      required
+                      value={newPasswordVal}
+                      onChange={e => setNewPasswordVal(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-bg-base border border-border-subtle rounded-xl p-3 focus:ring-2 focus:ring-accent outline-none font-medium text-text-main"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setChangingPasswordUser(null);
+                        setNewPasswordVal('');
+                      }}
+                      className="bg-bg-base hover:bg-border-subtle/50 text-text-main px-6 py-3 rounded-xl font-bold text-sm transition-all"
+                    >
+                      {language === 'ar' ? 'إلغاء' : 'CANCEL'}
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={updatingPassword}
+                      className="bg-accent text-white px-8 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50"
+                    >
+                      {updatingPassword ? '...' : (language === 'ar' ? 'حفظ' : 'SAVE')}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
