@@ -264,10 +264,14 @@ async function startServer() {
       const backupEmail = process.env.BACKUP_EMAIL || "gamragb@gmail.com";
 
       if (smtpUser && smtpPass && backupEmail) {
-        console.log(`Attempting to send backup to email: ${backupEmail}`);
         const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: smtpUser, pass: smtpPass }
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: { user: smtpUser, pass: smtpPass },
+          tls: {
+            rejectUnauthorized: false
+          }
         });
 
         const mailOptions = {
