@@ -305,6 +305,76 @@ async function startServer() {
     }
   };
 
+  // --- Google Drive Auto-backup logic (Every 5 hours) ---
+  const performDriveAutoBackup = async () => {
+    try {
+      const authData = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
+      if (!authData) {
+        console.log("Auto-backup to Google Drive skipped: Google account not linked.");
+        return;
+      }
+
+      console.log("Attempting automatic Google Drive backup...");
+      const tokens = JSON.parse(authData.tokens);
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        `${process.env.APP_URL}/api/auth/google/callback`
+      );
+      oauth2Client.setCredentials(tokens);
+
+      // Refresh token if needed and save it
+      oauth2Client.on('tokens', async (newTokens) => {
+        try {
+          const row = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
+          if (row) {
+            const currentTokens = JSON.parse(row.tokens);
+            const merged = { ...currentTokens, ...newTokens };
+            await db.prepare('UPDATE google_auth SET tokens = ? WHERE id = ?').run(JSON.stringify(merged), 'main');
+            console.log("Google Drive access token refreshed and saved during auto-backup.");
+          }
+        } catch (tokenErr) {
+          console.error("Failed to save refreshed Google tokens during auto-backup:", tokenErr);
+        }
+      });
+
+      const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+      const tables = [
+        'users', 'categories', 'products', 'customers', 
+        'sales', 'sale_items', 'payments', 'stock_movements', 
+        'customer_history', 'activity_log', 'suppliers', 'supplier_history',
+        'settings'
+      ];
+      const data: any = {};
+      for (const table of tables) {
+        data[table] = await db.prepare(`SELECT * FROM ${table}`).all();
+      }
+      const backupContent = JSON.stringify({ data, timestamp: new Date().toISOString() }, null, 2);
+      const fileName = `POS_AutoBackup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+
+      const fileMetadata = {
+        name: fileName,
+        parents: [],
+      };
+      
+      const media = {
+        mimeType: 'application/json',
+        body: backupContent,
+      };
+
+      await drive.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id',
+      });
+
+      console.log(`Auto-backup to Google Drive completed successfully: ${fileName}`);
+    } catch (e: any) {
+      console.error("Auto-backup to Google Drive failed:", e);
+    }
+  };
+
   // Run on startup (with delay) and every 12 hours
   setTimeout(async () => {
     console.log("Running initial auto-backup...");
@@ -315,6 +385,12 @@ async function startServer() {
     }
   }, 5000); // Wait 5 seconds after startup to avoid blocking initial requests
 
+  // Run initial Google Drive backup 15 seconds after startup if connected
+  setTimeout(async () => {
+    await performDriveAutoBackup();
+  }, 15000);
+
+  // Email auto-backup interval (12 hours)
   setInterval(async () => {
     try {
       await performAutoBackup();
@@ -322,6 +398,11 @@ async function startServer() {
       console.error("Scheduled auto-backup failed:", err);
     }
   }, 12 * 60 * 60 * 1000);
+
+  // Google Drive auto-backup interval (5 hours)
+  setInterval(async () => {
+    await performDriveAutoBackup();
+  }, 5 * 60 * 60 * 1000);
 
   app.post("/api/backup/email/send", async (req, res) => {
     try {
