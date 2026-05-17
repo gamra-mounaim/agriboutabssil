@@ -125,7 +125,7 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     console.error('Error adding logo to PDF:', e);
   }
 
-  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.setFontSize(20);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
@@ -139,8 +139,8 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   // Shop Info (Right)
   const shopX = pageWidth - margin;
   doc.setFontSize(9);
-  doc.text(settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 25, { align: 'right' });
-  doc.text(`Tél: ${settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 30, { align: 'right' });
+  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 25, { align: 'right' });
+  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 30, { align: 'right' });
   
   // Date & Time
   const now = new Date();
@@ -293,7 +293,7 @@ export const generateStatementPDF = (data: ReportData, language: string = 'en', 
     console.error('Error adding logo to PDF:', e);
   }
 
-  const shopName = settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   doc.setFontSize(20);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
@@ -305,8 +305,8 @@ export const generateStatementPDF = (data: ReportData, language: string = 'en', 
 
   // Shop Info (Right)
   doc.setFontSize(9);
-  doc.text(settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', pageWidth - margin, 15, { align: 'right' });
-  doc.text(`Tél: ${settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, pageWidth - margin, 20, { align: 'right' });
+  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', pageWidth - margin, 15, { align: 'right' });
+  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, pageWidth - margin, 20, { align: 'right' });
 
   // Date & Time
   const now = new Date();
@@ -377,10 +377,10 @@ export const generateGlobalCustomerReportPDF = (data: GlobalReportData, language
   const isAr = language === 'ar';
   const t = (translations as any)[language] || translations.en;
   const shop = {
-    name: settings?.shop_name || SHOP_DETAILS.name,
-    address: settings?.shop_address || SHOP_DETAILS.address,
-    phone: settings?.shop_phone || SHOP_DETAILS.phone,
-    email: settings?.shop_email || 'contact@example.com',
+    name: settings?.shopName || settings?.shop_name || SHOP_DETAILS.name,
+    address: settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address,
+    phone: settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone,
+    email: settings?.shopEmail || settings?.shop_email || 'contact@example.com',
   };
   
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -466,9 +466,9 @@ interface HistoryReportData {
 export const generateHistoryReportPDF = (data: HistoryReportData, language: string = 'en', settings?: any) => {
   const isAr = language === 'ar';
   const shop = {
-    name: settings?.shop_name || SHOP_DETAILS.name,
-    address: settings?.shop_address || SHOP_DETAILS.address,
-    phone: settings?.shop_phone || SHOP_DETAILS.phone,
+    name: settings?.shopName || settings?.shop_name || SHOP_DETAILS.name,
+    address: settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address,
+    phone: settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone,
   };
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -559,9 +559,9 @@ interface TransactionReceiptData {
 export const generateTransactionReceiptPDF = (data: TransactionReceiptData, language: string = 'en', settings?: any) => {
   const isAr = language === 'ar';
   const shop = {
-    name: settings?.shop_name || SHOP_DETAILS.name,
-    address: settings?.shop_address || SHOP_DETAILS.address,
-    phone: settings?.shop_phone || SHOP_DETAILS.phone,
+    name: settings?.shopName || settings?.shop_name || SHOP_DETAILS.name,
+    address: settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address,
+    phone: settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone,
   };
   const doc = new jsPDF({
     unit: 'mm',
