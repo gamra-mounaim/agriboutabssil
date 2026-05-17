@@ -650,8 +650,13 @@ async function startServer() {
     const movementId = uuidv4();
     
     const transaction = async () => {
-      const customer = (await db.prepare('SELECT name FROM customers WHERE id = ?').get(id)) as any;
-      if (!customer) throw new Error("Customer not found");
+      let customerName = "Client de passage / زبون عابر";
+      
+      if (id !== 'walking') {
+        const customer = (await db.prepare('SELECT name FROM customers WHERE id = ?').get(id)) as any;
+        if (!customer) throw new Error("Customer not found");
+        customerName = customer.name;
+      }
       
       const product = (await db.prepare('SELECT name FROM products WHERE id = ?').get(productId)) as any;
       if (!product) throw new Error("Product not found");
@@ -665,10 +670,10 @@ async function startServer() {
       await db.prepare(`
         INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor)
         VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, 'System')
-      `).run(movementId, productId, product.name, qty, `Customer Return: ${customer.name}`);
+      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`);
 
-      // 3. Update Customer Debt if action is 'debt'
-      if (action === 'debt') {
+      // 3. Update Customer Debt if action is 'debt' (only if not a walking customer)
+      if (action === 'debt' && id !== 'walking') {
         await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(totalValue, id);
         
         // Log in customer history as a reduction of debt (type PAYMENT)
@@ -676,15 +681,15 @@ async function startServer() {
           INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
           VALUES (?, ?, 'PAYMENT', ?, ?, 'CASH')
         `).run(returnId, id, totalValue, `Retour: ${qty} x ${product.name} (${description || 'Non spécifié'})`);
-      } else {
-        // If cash refund, debt remains the same, log with 0 value to show record of transaction
+      } else if (id !== 'walking') {
+        // If cash refund for a registered customer, debt remains the same, log with 0 value to show record of transaction
         await db.prepare(`
           INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
           VALUES (?, ?, 'PAYMENT', 0, ?, 'CASH')
         `).run(returnId, id, `Retour Cash: ${qty} x ${product.name} (Remboursé ${totalValue} DH)`);
       }
 
-      logActivity('RETURN', 'create', `Return of ${qty}x ${product.name} from ${customer.name} (Value: ${totalValue})`, 'system', 'System');
+      logActivity('RETURN', 'create', `Return of ${qty}x ${product.name} from ${customerName} (Value: ${totalValue})`, 'system', 'System');
     };
 
     try {

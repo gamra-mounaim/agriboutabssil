@@ -2935,6 +2935,12 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
     }
   }, [selectedCustomer]);
 
+  useEffect(() => {
+    if (returnModal && returnModal.customer.id === 'walking') {
+      setReturnAction('cash');
+    }
+  }, [returnModal]);
+
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchCustomer.toLowerCase()) || 
     (c.phone && c.phone.includes(searchCustomer))
@@ -3004,13 +3010,22 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
             </form>
           </section>
 
-          <div className="relative group">
-            <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-5 h-5 group-focus-within:text-accent transition-colors", language === 'ar' ? "right-6" : "left-6")} />
-            <input 
-              placeholder={t.customers} 
-              className={cn("w-full bg-white border border-border-subtle rounded-[2rem] py-5 shadow-sm text-sm font-bold focus:border-accent outline-none transition-all", language === 'ar' ? "pr-16 pl-6 text-right" : "pl-16 pr-6")}
-              value={searchCustomer || ''} onChange={e => setSearchCustomer(e.target.value)}
-            />
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1 group">
+              <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-5 h-5 group-focus-within:text-accent transition-colors", language === 'ar' ? "right-6" : "left-6")} />
+              <input 
+                placeholder={t.customers} 
+                className={cn("w-full bg-white border border-border-subtle rounded-[2rem] py-5 shadow-sm text-sm font-bold focus:border-accent outline-none transition-all", language === 'ar' ? "pr-16 pl-6 text-right" : "pl-16 pr-6")}
+                value={searchCustomer || ''} onChange={e => setSearchCustomer(e.target.value)}
+              />
+            </div>
+            <button 
+              onClick={() => setReturnModal({ customer: { id: 'walking', name: t.walkingCustomer || 'Client de passage', debt: 0, email: '', phone: '', address: '' } })} 
+              className="h-full bg-accent text-white py-5 px-8 rounded-[2rem] text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent/20 hover:opacity-90 transition-all shrink-0 active:scale-95"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              {language === 'ar' ? 'إرجاع لزبون عابر' : 'Retour Client Passager'}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -3496,8 +3511,12 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       type="button" 
+                      disabled={returnModal.customer.id === 'walking'}
                       onClick={() => setReturnAction('debt')} 
-                      className={cn("py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all", returnAction === 'debt' ? "bg-accent text-white border-accent" : "bg-white text-text-secondary border-border-subtle")}
+                      className={cn("py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all", 
+                        returnModal.customer.id === 'walking' ? "bg-bg-base text-text-secondary/30 border-border-subtle cursor-not-allowed opacity-50" :
+                        returnAction === 'debt' ? "bg-accent text-white border-accent" : "bg-white text-text-secondary border-border-subtle"
+                      )}
                     >
                       {t.deductFromDebt}
                     </button>
