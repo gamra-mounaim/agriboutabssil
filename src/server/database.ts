@@ -71,6 +71,7 @@ export async function initDb() {
       phone TEXT,
       address TEXT,
       debt REAL DEFAULT 0,
+      due_date TEXT,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -230,6 +231,10 @@ export async function initDb() {
 
   try {
     await db.prepare('ALTER TABLE sales ADD COLUMN invoice_number INTEGER').run();
+  } catch (e) {}
+
+  try {
+    await db.prepare('ALTER TABLE suppliers ADD COLUMN due_date TEXT').run();
   } catch (e) {}
 
   // Initialize settings

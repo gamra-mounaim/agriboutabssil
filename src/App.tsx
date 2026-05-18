@@ -249,9 +249,15 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const userPermissions = profile?.role === 'admin' 
-    ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true }
-    : (profile?.permissions || { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false };
+
+  const userPermissions = profile?.permissions 
+    ? { 
+        ...(profile?.role === 'admin' ? defaultAdminPerms : defaultStaffPerms), 
+        ...profile.permissions 
+      }
+    : (profile?.role === 'admin' ? defaultAdminPerms : defaultStaffPerms);
 
   useEffect(() => {
     if (profile?.role === 'admin' && view === 'pos') {
@@ -260,16 +266,15 @@ export default function App() {
   }, [profile?.role]);
 
   const canAccess = (targetView: View) => {
-    if (profile?.role === 'admin') return true;
-    
+    if (targetView === 'settings' && profile?.role === 'admin') return true;
     if (targetView === 'pos') return true;
-    if (targetView === 'checks' && (profile?.role === 'admin' || userPermissions.customers)) return true;
-    if (targetView === 'financials' && (profile?.role === 'admin' || userPermissions.financials)) return true;
+    
+    if (targetView === 'checks' && userPermissions.customers) return true;
+    if (targetView === 'financials' && userPermissions.financials) return true;
     if (targetView === 'inventory' && userPermissions.stock) return true;
     if (targetView === 'customers' && userPermissions.customers) return true;
-    if (targetView === 'suppliers' && (profile?.role === 'admin' || userPermissions.supplierDebt)) return true;
+    if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
     if (targetView === 'history' && userPermissions.history) return true;
-    if (targetView === 'settings' && profile?.role === 'admin') return true;
     
     return false;
   };
@@ -4849,91 +4854,98 @@ function StaffManagement({
             </tr>
           </thead>
           <tbody>
-            {(users || []).map(u => (
-              <tr key={u.id} className="border-b border-border-subtle last:border-0 hover:bg-bg-base transition-colors text-[13px] group">
-                <td className="p-4">
-                  <div className="flex flex-col font-mono text-xs">
-                    <span className="font-bold text-text-main flex items-center gap-2 text-sm italic">
-                      {(u as any).username || u.email}
-                      {u.id === currentUser.uid && (
-                        <span className="not-italic text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-black tracking-tighter uppercase border border-accent/20">
-                          {language === 'ar' ? 'أنت' : 'YOU'}
+            {(users || []).map(u => {
+              const getIsPermActive = (permission: string) => {
+                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true };
+                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false };
+                
+                if (u.permissions && u.permissions[permission] !== undefined) {
+                  return u.permissions[permission];
+                }
+                return u.role === 'admin' ? defaultAdminPerms[permission] : defaultStaffPerms[permission];
+              };
+
+              return (
+                <tr key={u.id} className="border-b border-border-subtle last:border-0 hover:bg-bg-base transition-colors text-[13px] group">
+                  <td className="p-4">
+                    <div className="flex flex-col font-mono text-xs">
+                      <span className="font-bold text-text-main flex items-center gap-2 text-sm italic">
+                        {(u as any).username || u.email}
+                        {u.id === currentUser.uid && (
+                          <span className="not-italic text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-black tracking-tighter uppercase border border-accent/20">
+                            {language === 'ar' ? 'أنت' : 'YOU'}
+                          </span>
+                        )}
+                      </span>
+                      {u.createdAt && (
+                        <span className="text-[10px] text-text-secondary">
+                          {language === 'ar' ? 'منذ: ' : 'SINCE: '}
+                          {new Date(u.createdAt.seconds ? u.createdAt.seconds * 1000 : u.createdAt).toLocaleDateString()}
                         </span>
                       )}
-                    </span>
-                    {u.createdAt && (
-                      <span className="text-[10px] text-text-secondary">
-                        {language === 'ar' ? 'منذ: ' : 'SINCE: '}
-                        {new Date(u.createdAt.seconds ? u.createdAt.seconds * 1000 : u.createdAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="p-4 text-center">
-                  <span className={cn(
-                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border",
-                    u.role === 'admin' ? "bg-accent/5 border-accent text-accent" : "bg-bg-base border-border-subtle text-text-secondary"
-                  )}>
-                    {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : 'admin') : (language === 'ar' ? 'موظف' : 'staff')}
-                  </span>
-                </td>
-                <td className="p-4">
-                  {u.role === 'staff' && (
-                    <div className="flex flex-wrap gap-2 justify-center">
-                       <PermissionBadge label={t.permStock} active={u.permissions?.stock} onClick={() => togglePermission(u.id, 'stock')} language={language} />
-                       <PermissionBadge label={t.permCustomers} active={u.permissions?.customers} onClick={() => togglePermission(u.id, 'customers')} language={language} />
-                       <PermissionBadge label={t.permHistory} active={u.permissions?.history} onClick={() => togglePermission(u.id, 'history')} language={language} />
-                       <PermissionBadge label={t.canViewProfits} active={u.permissions?.profits} onClick={() => togglePermission(u.id, 'profits')} language={language} />
-                       <PermissionBadge label={t.canEditStock} active={u.permissions?.editStock} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
-                       <PermissionBadge label={(t as any).permSupplierDebt} active={u.permissions?.supplierDebt} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
-                       <PermissionBadge label={(t as any).permFinancials} active={u.permissions?.financials} onClick={() => togglePermission(u.id, 'financials')} language={language} />
-                       <PermissionBadge label={(t as any).permFinancialsSales} active={u.permissions?.financialsSales} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
-                       <PermissionBadge label={(t as any).permFinancialsDebts} active={u.permissions?.financialsDebts} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />
-                       <PermissionBadge label={(t as any).permFinancialsProfits} active={u.permissions?.financialsProfits} onClick={() => togglePermission(u.id, 'financialsProfits')} language={language} />
-                       <PermissionBadge label={(t as any).permFinancialsInventory} active={u.permissions?.financialsInventory} onClick={() => togglePermission(u.id, 'financialsInventory')} language={language} />
                     </div>
-                  )}
-                  {u.role === 'admin' && (
-                    <div className="text-center text-[10px] font-bold text-accent/40 italic uppercase">{language === 'ar' ? "صلاحيات كاملة" : "ALL ACCESS"}</div>
-                  )}
-                </td>
-                <td className="p-4">
-                  <div className={cn("flex items-center gap-3 justify-end", language === 'ar' && "flex-row-reverse justify-start")}>
-                    {/* Promote/Demote */}
-                    <button 
-                      disabled={u.id === currentUser.uid}
-                      onClick={() => toggleRole(u.id, u.role)}
-                      className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      title={u.role === 'admin' ? (language === 'ar' ? 'تخفيض الرتبة' : 'DEMOTE') : (language === 'ar' ? 'ترقية الرتبة' : 'PROMOTE')}
-                    >
-                      {u.role === 'admin' 
-                        ? (language === 'ar' ? 'تخفيض' : 'DEMOTE') 
-                        : (language === 'ar' ? 'ترقية' : 'PROMOTE')
-                      }
-                    </button>
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border",
+                      u.role === 'admin' ? "bg-accent/5 border-accent text-accent" : "bg-bg-base border-border-subtle text-text-secondary"
+                    )}>
+                      {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : 'admin') : (language === 'ar' ? 'موظف' : 'staff')}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-wrap gap-2 justify-center">
+                       <PermissionBadge label={t.permStock} active={getIsPermActive('stock')} onClick={() => togglePermission(u.id, 'stock')} language={language} />
+                       <PermissionBadge label={t.permCustomers} active={getIsPermActive('customers')} onClick={() => togglePermission(u.id, 'customers')} language={language} />
+                       <PermissionBadge label={t.permHistory} active={getIsPermActive('history')} onClick={() => togglePermission(u.id, 'history')} language={language} />
+                       <PermissionBadge label={t.canViewProfits} active={getIsPermActive('profits')} onClick={() => togglePermission(u.id, 'profits')} language={language} />
+                       <PermissionBadge label={t.canEditStock} active={getIsPermActive('editStock')} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
+                       <PermissionBadge label={(t as any).permSupplierDebt} active={getIsPermActive('supplierDebt')} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancials} active={getIsPermActive('financials')} onClick={() => togglePermission(u.id, 'financials')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsSales} active={getIsPermActive('financialsSales')} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsDebts} active={getIsPermActive('financialsDebts')} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsProfits} active={getIsPermActive('financialsProfits')} onClick={() => togglePermission(u.id, 'financialsProfits')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsInventory} active={getIsPermActive('financialsInventory')} onClick={() => togglePermission(u.id, 'financialsInventory')} language={language} />
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className={cn("flex items-center gap-3 justify-end", language === 'ar' && "flex-row-reverse justify-start")}>
+                      {/* Promote/Demote */}
+                      <button 
+                        disabled={u.id === currentUser.uid}
+                        onClick={() => toggleRole(u.id, u.role)}
+                        className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={u.role === 'admin' ? (language === 'ar' ? 'تخفيض الرتبة' : 'DEMOTE') : (language === 'ar' ? 'ترقية الرتبة' : 'PROMOTE')}
+                      >
+                        {u.role === 'admin' 
+                          ? (language === 'ar' ? 'تخفيض' : 'DEMOTE') 
+                          : (language === 'ar' ? 'ترقية' : 'PROMOTE')
+                        }
+                      </button>
 
-                    {/* Change Password */}
-                    <button 
-                      onClick={() => setChangingPasswordUser(u)}
-                      className="p-1.5 hover:bg-accent/10 hover:text-accent text-text-secondary border border-border-subtle rounded transition-all"
-                      title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
-                    >
-                      <Key className="w-4 h-4" />
-                    </button>
+                      {/* Change Password */}
+                      <button 
+                        onClick={() => setChangingPasswordUser(u)}
+                        className="p-1.5 hover:bg-accent/10 hover:text-accent text-text-secondary border border-border-subtle rounded transition-all"
+                        title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                      >
+                        <Key className="w-4 h-4" />
+                      </button>
 
-                    {/* Delete */}
-                    <button 
-                      disabled={u.id === currentUser.uid}
-                      onClick={() => handleDeleteUser(u.id)}
-                      className="p-1.5 hover:bg-danger/10 hover:text-danger text-text-secondary border border-border-subtle rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                      title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {/* Delete */}
+                      <button 
+                        disabled={u.id === currentUser.uid}
+                        onClick={() => handleDeleteUser(u.id)}
+                        className="p-1.5 hover:bg-danger/10 hover:text-danger text-text-secondary border border-border-subtle rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
