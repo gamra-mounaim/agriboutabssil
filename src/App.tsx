@@ -192,8 +192,8 @@ interface ActivityLog {
   type: 'SALE' | 'PAYMENT' | 'PRODUCT' | 'CUSTOMER' | 'STAFF' | 'STOCK' | 'CATEGORY';
   action: 'create' | 'update' | 'delete' | 'login';
   details: string;
-  actor_id: string;
-  actor_name: string;
+  actorId: string;
+  actorName: string;
   timestamp: string;
 }
 
@@ -4246,7 +4246,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
     const matchesYear = d.getFullYear() === filterYear;
     const matchesType = filterActivityType === 'all' || a.type === filterActivityType;
     const matchesSearch = a.details.toLowerCase().includes(searchHistory.toLowerCase()) || 
-                         a.actor_name.toLowerCase().includes(searchHistory.toLowerCase());
+                         (a.actorName || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesType && matchesSearch;
   });
 
@@ -4321,7 +4321,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
                   items: currentList.map(item => {
                     if (subView === 'activity') {
                       const a = item as ActivityLog;
-                      return { date: a.timestamp, amount: 0, description: `[${a.type}] ${a.details} (by ${a.actor_name})` };
+                      return { date: a.timestamp, amount: 0, description: `[${a.type}] ${a.details} (by ${a.actorName || 'System'})` };
                     }
                     const customerMatch = customers.find(c => c.id === (item as Sale).customerId);
                     return {
@@ -4494,7 +4494,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-base border border-border-subtle rounded text-[9px] font-black text-text-secondary uppercase tracking-tighter">
                       <UserCog className="w-2.5 h-2.5" />
-                      {a.actor_name}
+                      {a.actorName || 'System'}
                     </div>
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
