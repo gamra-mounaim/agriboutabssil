@@ -141,6 +141,7 @@ interface Supplier {
   phone?: string;
   address?: string;
   debt: number;
+  due_date?: string;
 }
 
 interface UserProfile {
@@ -249,8 +250,8 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false };
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false };
 
   const userPermissions = profile?.permissions 
     ? { 
@@ -786,7 +787,7 @@ export default function App() {
                   {view === 'inventory' && <Inventory products={products} categories={categories} suppliers={suppliers} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
                   {view === 'pos' && <POS products={products} categories={categories} customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
                   {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} products={products} />}
-                  {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
+                  {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
                   {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} />}
                   {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} permissions={userPermissions} />}
                   {view === 'checks' && <CheckListView checks={checks} language={language} settings={settings} />}
@@ -1081,18 +1082,34 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
   const t = translations[language];
   const isAr = language === 'ar';
 
-  const totalRevenue = stats?.totalSales || 0;
-  const netProfit = stats?.netProfit || 0;
+    const totalRevenue = stats?.totalSales || 0;
+  const netProfit = stats?.expectedProfit || 0;
   const totalCustomerDebt = stats?.outstandingDebt || 0;
+  const dailyProfit = stats?.dailyProfit || 0;
+  const weeklyProfit = stats?.weeklyProfit || 0;
+  const monthlyProfit = stats?.monthlyProfit || 0;
+  const yearlyProfit = stats?.yearlyProfit || 0;
   const totalSupplierDebt = stats?.supplierDebt || 0;
   const inventoryAssetValue = stats?.inventoryValue || 0;
 
   const lowStock = products.filter(p => p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
 
-  // Upcoming Debts Logic from DashboardStats
+    // Upcoming Debts Logic from DashboardStats
   const upcomingDebts = (customers || []).filter(c => {
     if (!c.due_date || c.debt <= 0) return false;
     const dueDate = new Date(c.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 3;
+  }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+
+  const upcomingSupplierDebts = (suppliers || []).filter(s => {
+    if (!s.due_date || s.debt <= 0) return false;
+    const dueDate = new Date(s.due_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -1159,7 +1176,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {permissions.financialsDebts && upcomingDebts.length > 0 && (
+            {permissions.financialsDebts && upcomingDebts.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1174,6 +1191,26 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
             </p>
             <p className="text-xs font-bold font-mono">
                {upcomingDebts.map(c => `${c.name} (${c.due_date})`).join(', ')}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {permissions.supplierDebt && upcomingSupplierDebts.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-amber-600 overflow-hidden relative shadow-sm"
+        >
+          <div className="bg-amber-500 p-2 rounded-xl text-white">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
+              {isAr ? 'مواعيد استحقاق ديون الموردين القريبة' : 'Upcoming Supplier Debt Due Dates'}
+            </p>
+            <p className="text-xs font-bold font-mono">
+               {upcomingSupplierDebts.map(s => `${s.name} (${s.due_date})`).join(', ')}
             </p>
           </div>
         </motion.div>
@@ -1211,7 +1248,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               subtext={isAr ? 'قيمة المخزون الإجمالية' : 'Total Inventory Value'}
             />
           )}
-          {permissions.financialsSales && (
+                    {permissions.financialsSales && (
             /* Black Card */
             <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
               <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
@@ -1223,6 +1260,59 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               <div className="text-[10px] text-white/50 font-medium mt-4">{isAr ? 'إجمالي المبيعات' : 'Total Revenue'}</div>
             </div>
           )}
+        </div>
+      )}
+
+      {permissions.financialsProfits && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h3 className={cn("text-xs font-black uppercase tracking-widest text-text-secondary border-b border-border-subtle pb-2", isAr && "text-right")}>
+            {isAr ? 'الأرباح المحققة للمبيعات' : 'REALIZED SALES PROFITS'}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح اليوم' : 'Today\'s Profit'}</span>
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
+              </div>
+              <div className={cn(isAr && "text-right")}>
+                <span className="text-3xl font-black text-emerald-600">{dailyProfit.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح الأسبوع' : 'Weekly Profit'}</span>
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
+              </div>
+              <div className={cn(isAr && "text-right")}>
+                <span className="text-3xl font-black text-emerald-600">{weeklyProfit.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح الشهر' : 'Monthly Profit'}</span>
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
+              </div>
+              <div className={cn(isAr && "text-right")}>
+                <span className="text-3xl font-black text-emerald-600">{monthlyProfit.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح العام' : 'Yearly Profit'}</span>
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
+              </div>
+              <div className={cn(isAr && "text-right")}>
+                <span className="text-3xl font-black text-emerald-600">{yearlyProfit.toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -3609,7 +3699,6 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                     </span>
                   </div>
                 )}
-
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={() => {
                     setReturnModal(null);
@@ -3632,14 +3721,16 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
 
 
 // --- View: History ---
-function SupplierList({ suppliers, checks, user, settings, setMessage, language, onRefresh }: { suppliers: Supplier[], checks: CheckDoc[], user: any, settings: any, setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void }) {
+function SupplierList({ suppliers, checks, user, settings, setMessage, language, onRefresh, permissions }: { suppliers: Supplier[], checks: CheckDoc[], user: any, settings: any, setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void, permissions?: any }) {
   const t = translations[language];
+  const canViewDebtAmount = permissions ? permissions.viewSupplierDebtAmount !== false : true;
   const [activeTab, setActiveTab] = useState<'suppliers' | 'checks'>('suppliers');
   const [name, setName] = useState('');
   const [initialDebt, setInitialDebt] = useState('0');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+    const [address, setAddress] = useState('');
+  const [supplierDueDate, setSupplierDueDate] = useState('');
   const [searchSupplier, setSearchSupplier] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [supplierHistory, setSupplierHistory] = useState<TransactionRecord[]>([]);
@@ -3652,7 +3743,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
   const [dueDate, setDueDate] = useState('');
   const [adjustNote, setAdjustNote] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', address: '' });
+    const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', address: '', due_date: '' });
 
   const supplierChecks = checks.filter(c => c.partyRole === 'supplier');
 
@@ -3660,18 +3751,20 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
     e.preventDefault();
     if (!name.trim()) return;
     try {
-      await api.addSupplier({ 
+            await api.addSupplier({ 
         name: name.trim(), 
         email: email.trim(), 
         phone: phone.trim(), 
         address: address.trim(),
-        debt: parseFloat(initialDebt) || 0
+        debt: parseFloat(initialDebt) || 0,
+        due_date: supplierDueDate || null
       });
       setName('');
       setInitialDebt('0');
       setEmail('');
       setPhone('');
       setAddress('');
+      setSupplierDueDate('');
       onRefresh();
       setMessage({ text: language === 'ar' ? "تمت إضافة المورد بنجاح." : "Supplier added successfully.", type: 'success' });
     } catch (err) {
@@ -3682,11 +3775,12 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
 
   const openDetails = async (supplier: Supplier) => {
     setSelectedSupplier(supplier);
-    setEditForm({ 
+        setEditForm({ 
       name: supplier.name, 
       email: supplier.email || '', 
       phone: supplier.phone || '', 
-      address: supplier.address || '' 
+      address: supplier.address || '',
+      due_date: supplier.due_date || ''
     });
     setIsEditingProfile(false);
     setLoadingHistory(true);
@@ -3791,7 +3885,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
           <span className="uppercase tracking-widest text-text-secondary">{t.addSupplier}</span>
           <Store className="w-4 h-4 text-accent" />
         </h3>
-        <form onSubmit={addSupplier} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form onSubmit={addSupplier} className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-1 border-b md:border-b-0 md:border-r border-border-subtle pb-4 md:pb-0 md:pr-4">
              <label className="text-[10px] uppercase font-bold text-text-secondary mb-1.5 block">{t.supplierName}</label>
              <input value={name || ''} onChange={e => setName(e.target.value)} placeholder={t.supplierName} className="w-full bg-bg-base border border-border-subtle rounded-lg py-2.5 px-3 text-sm focus:border-accent outline-none font-bold" />
@@ -3803,6 +3897,10 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
           <div className="md:col-span-1 border-b md:border-b-0 md:border-r border-border-subtle pb-4 md:pb-0 md:pr-4">
              <label className="text-[10px] uppercase font-bold text-text-secondary mb-1.5 block">{t.supplierDebt}</label>
              <input type="number" value={initialDebt || ''} onChange={e => setInitialDebt(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-lg py-2.5 px-3 text-sm focus:border-accent outline-none font-black text-danger" />
+          </div>
+          <div className="md:col-span-1 border-b md:border-b-0 md:border-r border-border-subtle pb-4 md:pb-0 md:pr-4">
+             <label className="text-[10px] uppercase font-bold text-text-secondary mb-1.5 block">{t.dueDate}</label>
+             <input type="date" value={supplierDueDate || ''} onChange={e => setSupplierDueDate(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-lg py-2.5 px-3 text-sm focus:border-accent outline-none font-bold" />
           </div>
           <button className="md:col-span-1 h-fit self-end bg-accent text-white py-2.5 rounded-lg text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-accent/20">
             <Plus className="w-4 h-4" />
@@ -3838,36 +3936,42 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
             <div className={cn("p-4 rounded-xl mb-6", s.debt > 0 ? "bg-red-50" : "bg-emerald-50")}>
                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1">{t.youOweSupplier}</p>
                <div className="flex items-baseline gap-1">
-                  <span className={cn("text-2xl font-black tracking-tighter", s.debt > 0 ? "text-danger" : "text-emerald-600")}>{s.debt.toLocaleString()}</span>
+                  <span className={cn("text-2xl font-black tracking-tighter", s.debt > 0 ? "text-danger" : "text-emerald-600")}>
+                    {canViewDebtAmount ? s.debt.toLocaleString() : '***'}
+                  </span>
                   <span className="text-[10px] font-bold text-text-secondary">{t.currency}</span>
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setAdjustModal({ type: 'pay', supplier: s })} className="bg-accent text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md shadow-accent/10 active:scale-95 transition-all">
-                {t.paySupplier}
-              </button>
-              <button onClick={() => setAdjustModal({ type: 'charge', supplier: s })} className="bg-white border border-border-subtle text-text-main py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-accent transition-all">
-                {t.newSupplierCharge.toUpperCase()}
-              </button>
-            </div>
+            {canViewDebtAmount && (
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setAdjustModal({ type: 'pay', supplier: s })} className="bg-accent text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md shadow-accent/10 active:scale-95 transition-all">
+                  {t.paySupplier}
+                </button>
+                <button onClick={() => setAdjustModal({ type: 'charge', supplier: s })} className="bg-white border border-border-subtle text-text-main py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-accent transition-all">
+                  {t.newSupplierCharge.toUpperCase()}
+                </button>
+              </div>
+            )}
             <div className="mt-3 flex gap-2">
                <button onClick={() => openDetails(s)} className="flex-1 py-1.5 text-[9px] font-bold text-text-secondary hover:text-accent uppercase tracking-[0.2em]">{t.view} {t.supplierDetails}</button>
-               <button 
-                 onClick={async () => {
-                   const history = await api.getSupplierHistory(s.id);
-                   generateStatementPDF({
-                     entityName: s.name,
-                     remainingDebt: s.debt,
-                     transactions: history,
-                     type: 'supplier'
-                   }, language, settings);
-                 }}
-                 className="flex-1 py-1.5 text-[9px] font-bold text-accent hover:underline uppercase tracking-[0.2em] flex items-center justify-center gap-1"
-               >
-                 <Printer className="w-3 h-3" />
-                 {language === 'ar' ? "كشف سريع" : "QUICK PDF"}
-               </button>
+               {canViewDebtAmount && (
+                 <button 
+                   onClick={async () => {
+                     const history = await api.getSupplierHistory(s.id);
+                     generateStatementPDF({
+                       entityName: s.name,
+                       remainingDebt: s.debt,
+                       transactions: history,
+                       type: 'supplier'
+                     }, language, settings);
+                   }}
+                   className="flex-1 py-1.5 text-[9px] font-bold text-accent hover:underline uppercase tracking-[0.2em] flex items-center justify-center gap-1"
+                 >
+                   <Printer className="w-3 h-3" />
+                   {language === 'ar' ? "كشف سريع" : "QUICK PDF"}
+                 </button>
+               )}
             </div>
           </div>
         ))}
@@ -3919,53 +4023,94 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
               <div className="p-8 border-b border-border-subtle flex justify-between items-start">
                 <div>
                    <div className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">{t.supplierDetails}</div>
-                   <h3 className="text-3xl font-bold tracking-tight">{selectedSupplier.name}</h3>
+                   {isEditingProfile ? (
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.supplierName}</label>
+                        <input className="text-2xl font-bold tracking-tight bg-bg-base border border-border-subtle rounded-lg px-3 py-1 w-full outline-none focus:border-accent" value={editForm.name || ''} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                     </div>
+                   ) : (
+                     <h3 className="text-3xl font-bold tracking-tight">{selectedSupplier.name}</h3>
+                   )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => {
-                      generateStatementPDF({
-                        entityName: selectedSupplier.name,
-                        remainingDebt: selectedSupplier.debt,
-                        transactions: supplierHistory,
-                        type: 'supplier'
-                      }, language, settings);
-                    }}
-                    className="flex items-center gap-2 text-xs font-bold text-accent hover:bg-accent/5 px-4 py-2 rounded-xl transition-all"
-                  >
-                    <Printer className="w-4 h-4" />
-                    {t.generateStatement}
+                  <button onClick={() => setIsEditingProfile(!isEditingProfile)} className={cn("p-2 rounded-full transition-colors", isEditingProfile ? "bg-accent/10 text-accent" : "hover:bg-bg-base text-text-secondary")}>
+                    <Edit2 className="w-5 h-5" />
                   </button>
+                  {canViewDebtAmount && !isEditingProfile && (
+                    <button 
+                      onClick={() => {
+                        generateStatementPDF({
+                          entityName: selectedSupplier.name,
+                          remainingDebt: selectedSupplier.debt,
+                          transactions: supplierHistory,
+                          type: 'supplier'
+                        }, language, settings);
+                      }}
+                      className="flex items-center gap-2 text-xs font-bold text-accent hover:bg-accent/5 px-4 py-2 rounded-xl transition-all"
+                    >
+                      <Printer className="w-4 h-4" />
+                      {t.generateStatement}
+                    </button>
+                  )}
                   <button onClick={() => setSelectedSupplier(null)} className="p-2 hover:bg-bg-base rounded-full"><X className="w-5 h-5 text-text-secondary" /></button>
                 </div>
               </div>
               <div className="p-8 flex-1 overflow-auto">
-                 <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-6 border-b pb-4">{t.paymentHistory}</h4>
-                 <div className="space-y-4">
-                   {supplierHistory.map(h => (
-                     <div key={h.id} className="flex justify-between items-center p-4 bg-bg-base/30 rounded-xl border border-border-subtle/40">
-                       <div>
-                         <p className="text-xs font-bold text-text-main">
-                           {h.description}
-                           {h.payment_method === 'CHECK' && (
-                             <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                               <CreditCard className="w-3 h-3" /> {t.check} #{h.check_number} {h.check_owner && `(${h.check_owner})`}
-                             </span>
-                           )}
-                         </p>
-                         <p className="text-[10px] text-text-secondary">
-                           {new Date(h.date).toLocaleString()}
-                           {h.payment_method === 'CHECK' && h.check_due_date && (
-                             <span className="ml-2 text-danger">({t.dueDate}: {new Date(h.check_due_date).toLocaleDateString()})</span>
-                           )}
-                         </p>
-                       </div>
-                       <p className={cn("font-black", h.type === 'PAYMENT' ? "text-emerald-500" : "text-danger")}>
-                         {h.type === 'PAYMENT' ? '-' : '+'}{h.amount.toLocaleString()}
-                       </p>
-                     </div>
-                   ))}
-                 </div>
+                {isEditingProfile ? (
+                  <form onSubmit={handleUpdateProfile} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.phone}</label>
+                        <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.phone || ''} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.address}</label>
+                        <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.address || ''} onChange={e => setEditForm({...editForm, address: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.email}</label>
+                        <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.email || ''} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.dueDate}</label>
+                        <input type="date" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.due_date || ''} onChange={e => setEditForm({...editForm, due_date: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="flex gap-4 pt-4 border-t border-border-subtle">
+                       <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-6 py-3 bg-bg-base text-text-secondary font-bold rounded-xl hover:bg-border-subtle transition-all uppercase text-[10px] tracking-widest">{language === 'ar' ? "إلغاء" : "Cancel"}</button>
+                       <button type="submit" className="flex-1 px-6 py-3 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all uppercase text-[10px] tracking-widest">{t.saveChanges}</button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <h4 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mb-6 border-b pb-4">{t.paymentHistory}</h4>
+                    <div className="space-y-4">
+                      {supplierHistory.map(h => (
+                        <div key={h.id} className="flex justify-between items-center p-4 bg-bg-base/30 rounded-xl border border-border-subtle/40">
+                          <div>
+                            <p className="text-xs font-bold text-text-main">
+                              {h.description}
+                              {h.payment_method === 'CHECK' && (
+                                <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                                  <CreditCard className="w-3 h-3" /> {t.check} #{h.check_number} {h.check_owner && `(${h.check_owner})`}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-text-secondary">
+                              {new Date(h.date).toLocaleString()}
+                              {h.payment_method === 'CHECK' && h.check_due_date && (
+                                <span className="ml-2 text-danger">({t.dueDate}: {new Date(h.check_due_date).toLocaleDateString()})</span>
+                              )}
+                            </p>
+                          </div>
+                          <p className={cn("font-black", h.type === 'PAYMENT' ? "text-emerald-500" : "text-danger")}>
+                            {h.type === 'PAYMENT' ? '-' : '+'}{canViewDebtAmount ? h.amount.toLocaleString() : '***'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
@@ -4713,7 +4858,7 @@ function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -4856,8 +5001,8 @@ function StaffManagement({
           <tbody>
             {(users || []).map(u => {
               const getIsPermActive = (permission: string) => {
-                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true };
-                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false };
+                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true };
+                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false };
                 
                 if (u.permissions && u.permissions[permission] !== undefined) {
                   return u.permissions[permission];
@@ -4901,6 +5046,7 @@ function StaffManagement({
                        <PermissionBadge label={t.canViewProfits} active={getIsPermActive('profits')} onClick={() => togglePermission(u.id, 'profits')} language={language} />
                        <PermissionBadge label={t.canEditStock} active={getIsPermActive('editStock')} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
                        <PermissionBadge label={(t as any).permSupplierDebt} active={getIsPermActive('supplierDebt')} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
+                       <PermissionBadge label={(t as any).permSupplierDebtAmount} active={getIsPermActive('viewSupplierDebtAmount')} onClick={() => togglePermission(u.id, 'viewSupplierDebtAmount')} language={language} />
                        <PermissionBadge label={(t as any).permFinancials} active={getIsPermActive('financials')} onClick={() => togglePermission(u.id, 'financials')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsSales} active={getIsPermActive('financialsSales')} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsDebts} active={getIsPermActive('financialsDebts')} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />

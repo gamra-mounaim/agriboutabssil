@@ -1009,7 +1009,7 @@ async function startServer() {
     }
   });
 
-  // --- Stats API ---
+    // --- Stats API ---
   app.get("/api/stats", async (req, res) => {
     const totalSales = ((await db.prepare('SELECT SUM(total) as total FROM sales').get()) as any).total || 0;
     const transactions = ((await db.prepare('SELECT COUNT(*) as count FROM sales').get()) as any).count || 0;
@@ -1019,6 +1019,40 @@ async function startServer() {
     const activeSuppliers = ((await db.prepare('SELECT COUNT(DISTINCT supplier) as count FROM products WHERE supplier IS NOT NULL').get()) as any).count || 0;
     const outstandingDebt = ((await db.prepare('SELECT SUM(debt) as total FROM customers').get()) as any).total || 0;
     const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
+
+    const dailyProfitQuery = `
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= CURRENT_DATE
+    `;
+    const weeklyProfitQuery = `
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)
+    `;
+    const monthlyProfitQuery = `
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)
+    `;
+    const yearlyProfitQuery = `
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)
+    `;
+
+    const dailyProfit = ((await db.prepare(dailyProfitQuery).get()) as any).profit || 0;
+    const weeklyProfit = ((await db.prepare(weeklyProfitQuery).get()) as any).profit || 0;
+    const monthlyProfit = ((await db.prepare(monthlyProfitQuery).get()) as any).profit || 0;
+    const yearlyProfit = ((await db.prepare(yearlyProfitQuery).get()) as any).profit || 0;
  
     res.json(toCamel({
       totalSales,
@@ -1028,7 +1062,11 @@ async function startServer() {
       expectedProfit,
       activeSuppliers,
       outstandingDebt,
-      supplierDebt
+      supplierDebt,
+      dailyProfit,
+      weeklyProfit,
+      monthlyProfit,
+      yearlyProfit
     }));
   });
 
