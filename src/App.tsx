@@ -4072,6 +4072,8 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
     const matchesYear = d.getFullYear() === filterYear;
     const customer = customers.find(c => c.id === s.customerId);
     const matchesSearch = (customer?.name || '').toLowerCase().includes(searchHistory.toLowerCase()) || 
+                          ((s as any).customerName || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
+                          (s.invoiceNumber?.toString() || '').includes(searchHistory.replace('#', '')) ||
                          s.id.toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (s.checkNumber || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (s.checkOwner || '').toLowerCase().includes(searchHistory.toLowerCase());
@@ -4862,7 +4864,7 @@ function StaffManagement({
                     {u.createdAt && (
                       <span className="text-[10px] text-text-secondary">
                         {language === 'ar' ? 'منذ: ' : 'SINCE: '}
-                        {new Date(u.createdAt.seconds * 1000).toLocaleDateString()}
+                        {new Date(u.createdAt.seconds ? u.createdAt.seconds * 1000 : u.createdAt).toLocaleDateString()}
                       </span>
                     )}
                   </div>

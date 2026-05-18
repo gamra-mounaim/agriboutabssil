@@ -82,6 +82,7 @@ async function startServer() {
 
   const toCamel = (obj: any) => {
     if (!obj || typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return obj;
     if (Array.isArray(obj)) return obj.map(toCamel);
     const newObj: any = {};
     for (const key in obj) {
