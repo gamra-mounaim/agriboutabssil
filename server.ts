@@ -103,8 +103,8 @@ async function startServer() {
     const hashedPassword = hashPassword(rawPassword.trim());
     
     // Check if the user is the hardcoded admin or in DB
-    const ADMIN_HASH = '03ac674216f3e15c1d7b18221dd69da636011406d9345c20c85023902146452f';
-    const isHardcodedAdmin = (usernameLower === 'admin') && (hashedPassword === ADMIN_HASH || rawPassword.trim() === '1234');
+    const ADMIN_HASH = '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f';
+    const isHardcodedAdmin = (usernameLower === 'gamra') && (hashedPassword === ADMIN_HASH || rawPassword.trim() === 'yassir2019');
 
     try {
       const user = (await db.prepare('SELECT * FROM users WHERE username = $1 OR lower(username) = $2').get(username, usernameLower)) as any;
@@ -128,14 +128,27 @@ async function startServer() {
       }
 
       if (isHardcodedAdmin) {
-        logActivity('STAFF', 'login', `Admin login: admin`, 'admin', 'admin');
+        logActivity('STAFF', 'login', `Admin login: gamra`, 'admin', 'gamra');
         return res.json({ 
           status: "success", 
           user: { 
             id: 'admin', 
-            username: 'admin', 
+            username: 'gamra', 
             role: 'admin', 
-            permissions: { stock: true, customers: true, history: true, profits: true, editStock: true } 
+            permissions: { 
+              stock: true, 
+              customers: true, 
+              history: true, 
+              profits: true, 
+              editStock: true,
+              supplierDebt: true,
+              financials: true,
+              financialsSales: true,
+              financialsDebts: true,
+              financialsProfits: true,
+              financialsInventory: true,
+              viewSupplierDebtAmount: true
+            } 
           } 
         });
       }

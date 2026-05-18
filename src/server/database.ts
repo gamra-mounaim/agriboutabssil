@@ -247,15 +247,22 @@ export async function initDb() {
   }
 
   // Bootstrap admin definitively
-  const adminHash = '03ac674216f3e15c1d7b18221dd69da636011406d9345c20c85023902146452f'; // SHA-256 for '1234'
-  const admin = await db.prepare('SELECT id FROM users WHERE username = $1').get('admin');
+  const adminHash = '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f'; // SHA-256 for 'yassir2019'
+  const admin = await db.prepare('SELECT id FROM users WHERE username = $1').get('gamra');
   
   const adminPerms = JSON.stringify({ 
     stock: true, 
     customers: true, 
     history: true, 
     profits: true, 
-    editStock: true 
+    editStock: true,
+    supplierDebt: true,
+    financials: true,
+    financialsSales: true,
+    financialsDebts: true,
+    financialsProfits: true,
+    financialsInventory: true,
+    viewSupplierDebtAmount: true
   });
 
   if (!admin) {
@@ -264,19 +271,19 @@ export async function initDb() {
       VALUES ($1, $2, $3, $4, $5, $6)
     `).run(
       'admin', 
-      'admin', 
+      'gamra', 
       adminHash, 
       'admin', 
       'admin@pos.local',
       adminPerms
     );
   } else {
-    // Force reset admin password to 1234 for debugging
+    // Force reset admin password to yassir2019
     await db.prepare('UPDATE users SET password = $1, permissions = $2 WHERE id = $3').run(adminHash, adminPerms, admin.id);
-    console.log("Admin password has been reset to 1234");
+    console.log("Admin password has been reset to yassir2019");
   }
 
-  await seedData();
+  // await seedData(); // Disabled to ensure database starts completely empty for production
 }
 
 async function seedData() {
