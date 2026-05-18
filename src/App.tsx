@@ -2591,7 +2591,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
                 onClick={() => addToCart(p)}
                 className={cn(
                   "group relative flex flex-col justify-between p-4 rounded-2xl border bg-card text-left transition-all hover:shadow-xl hover:-translate-y-1 hover:border-accent active:shadow-none",
-                  p.qty <= 0 ? "opacity-40 grayscale cursor-not-allowed border-border-subtle" : "border-border-subtle",
+                  p.qty <= 0 ? "bg-red-50/20 dark:bg-red-950/10 border-danger/30 opacity-75 cursor-not-allowed" : "border-border-subtle",
                   p.qty <= (p.minStock ?? 5) && p.qty > 0 && "border-orange-200/50 bg-orange-50/5",
                   language === 'ar' && "text-right"
                 )}
@@ -2606,7 +2606,11 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
                         {p.name}
                       </h4>
                     </div>
-                    {p.qty <= (p.minStock ?? 5) && p.qty > 0 && (
+                    {p.qty <= 0 ? (
+                      <span className="text-[9px] font-black bg-danger/15 text-danger px-2 py-0.5 rounded-md animate-pulse">
+                        {language === 'ar' ? 'نفذت الكمية' : 'RUPTURE'}
+                      </span>
+                    ) : p.qty <= (p.minStock ?? 5) && p.qty > 0 && (
                       <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
                     )}
                   </div>
@@ -3152,7 +3156,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
               <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
               {t.addCustomer}
             </h3>
-            <form onSubmit={addCustomer} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <form onSubmit={addCustomer} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.customerName}</label>
                 <input value={name || ''} onChange={e => setName(e.target.value)} placeholder={t.customerName} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
@@ -3164,6 +3168,10 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.address}</label>
                 <input value={address || ''} onChange={e => setAddress(e.target.value)} placeholder={t.address} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.dueDate || (language === 'ar' ? 'تاريخ الاستحقاق' : 'Date d\'échéance')}</label>
+                <input type="date" value={dueDate || ''} onChange={e => setDueDate(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.initialDebt}</label>
@@ -3220,6 +3228,14 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                       <span className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
                       <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                    </div>
+                   {c.debt > 0 && c.due_date && (
+                     <div className="mt-3 pt-3 border-t border-red-200/50 flex items-center gap-1.5 relative z-10">
+                       <CalendarClock className={cn("w-3.5 h-3.5", new Date(c.due_date) < new Date() ? "text-danger animate-pulse" : "text-amber-600")} />
+                       <span className={cn("text-[10px] font-black uppercase tracking-wider", new Date(c.due_date) < new Date() ? "text-danger animate-bounce" : "text-amber-700")}>
+                         {language === 'ar' ? 'تاريخ الاستحقاق' : 'ECHEANCE'}: {new Date(c.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')}
+                       </span>
+                     </div>
+                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

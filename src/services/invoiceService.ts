@@ -722,11 +722,11 @@ export const generateStockReportPDF = (data: StockReportData) => {
     ["Product Name", "Supplier", "Qty", "Min", "Status"];
 
   const tableRows = items.map(p => [
-    p.name,
+    p.name || '',
     p.supplier || '-',
-    p.qty.toString(),
-    (p.minStock ?? 5).toString(),
-    p.qty === 0 ? (isAr ? "نفذ المخزون" : "Out of Stock") : (isAr ? "مخزون منخفض" : "Low Stock")
+    String(p.qty ?? 0),
+    String(p.minStock ?? 5),
+    (p.qty ?? 0) === 0 ? (isAr ? "نفذ المخزون" : "Out of Stock") : (isAr ? "مخزون منخفض" : "Low Stock")
   ]);
 
   (doc as any).autoTable({
@@ -740,16 +740,17 @@ export const generateStockReportPDF = (data: StockReportData) => {
       prepareArabicCell(data);
     },
     didDrawCell: function (data: any) {
-      drawArabicCell(doc, data);
       if (data.section === 'body' && data.column.index === 4) {
         const status = data.cell.raw;
+        let customColor = '#1a1a1a';
         if (status === 'Out of Stock' || status === 'نفذ المخزون') {
-          data.cell.styles.textColor = [234, 88, 12]; // Orange-600
-          data.cell.styles.fontStyle = 'bold';
+          customColor = '#ea580c'; // Orange-600
         } else if (status === 'Low Stock' || status === 'مخزون منخفض') {
-          data.cell.styles.textColor = [220, 38, 38]; // Red-600
-          data.cell.styles.fontStyle = 'bold';
+          customColor = '#dc2626'; // Red-600
         }
+        drawArabicCell(doc, data, customColor);
+      } else {
+        drawArabicCell(doc, data);
       }
     }
   });
