@@ -123,18 +123,28 @@ async function startServer() {
         if (user.password === hashedPassword || user.password === rawPassword.trim()) {
           const { password: _p, ...userWithoutPassword } = user;
           logActivity('STAFF', 'login', `User logged in: ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
-          return res.json({ status: "success", user: userWithoutPassword });
+          return res.json({ 
+            status: "success", 
+            user: {
+              ...userWithoutPassword,
+              sessionVersion: userWithoutPassword.session_version || 1
+            } 
+          });
         }
       }
 
       if (isHardcodedAdmin) {
         logActivity('STAFF', 'login', `Admin login: gamra`, 'admin', 'gamra');
+        const adminDb = (await db.prepare('SELECT session_version FROM users WHERE id = $1').get('admin')) as any;
+        const currentVersion = adminDb ? (adminDb.session_version || 1) : 1;
         return res.json({ 
           status: "success", 
           user: { 
             id: 'admin', 
             username: 'gamra', 
             role: 'admin', 
+            session_version: currentVersion,
+            sessionVersion: currentVersion,
             permissions: { 
               stock: true, 
               customers: true, 
@@ -156,6 +166,48 @@ async function startServer() {
       res.status(401).json({ status: "error", message: "Invalid username or password" });
     } catch (error: any) {
       console.error("Login error:", error);
+      res.status(500).json({ status: "error", message: "Database error: " + error.message });
+    }
+  });
+
+  app.post("/api/auth/verify", async (req, res) => {
+    const { userId, sessionVersion } = req.body;
+    if (!userId) {
+      return res.status(400).json({ status: "error", message: "User ID required" });
+    }
+
+    try {
+      const user = (await db.prepare('SELECT session_version FROM users WHERE id = $1').get(userId)) as any;
+      if (!user) {
+        return res.json({ status: "invalid", message: "User not found" });
+      }
+
+      const currentVersion = user.session_version || 1;
+      const clientVersion = sessionVersion !== undefined ? parseInt(sessionVersion) : undefined;
+
+      if (clientVersion !== undefined && clientVersion !== currentVersion) {
+        return res.json({ status: "invalid", message: "Session expired or logged out from another device" });
+      }
+
+      return res.json({ status: "valid" });
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      res.status(500).json({ status: "error", message: "Database error: " + error.message });
+    }
+  });
+
+  app.post("/api/auth/logout-all", async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ status: "error", message: "User ID required" });
+    }
+
+    try {
+      await db.prepare('UPDATE users SET session_version = COALESCE(session_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1').run(userId);
+      logActivity('STAFF', 'login', `Forced logout from all devices for user: ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
+      return res.json({ status: "success", message: "All sessions logged out successfully" });
+    } catch (error: any) {
+      console.error("Logout-all error:", error);
       res.status(500).json({ status: "error", message: "Database error: " + error.message });
     }
   });

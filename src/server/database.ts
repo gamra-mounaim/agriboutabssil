@@ -53,6 +53,7 @@ export async function initDb() {
       role TEXT DEFAULT 'staff',
       email TEXT,
       permissions TEXT,
+      session_version INTEGER DEFAULT 1,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -235,6 +236,10 @@ export async function initDb() {
 
   try {
     await db.prepare('ALTER TABLE suppliers ADD COLUMN due_date TEXT').run();
+  } catch (e) {}
+
+  try {
+    await db.prepare('ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1').run();
   } catch (e) {}
 
   // Initialize settings

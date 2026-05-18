@@ -35,6 +35,8 @@ const del = async (url: string) => handleResponse(await fetch(url, { method: 'DE
 export const api = {
   // Auth
   login: async (username, password) => post(`${API_URL}/auth/login`, { username, password }),
+  verifySession: async (userId, sessionVersion) => post(`${API_URL}/auth/verify`, { userId, sessionVersion }),
+  logoutAllDevices: async (userId) => post(`${API_URL}/auth/logout-all`, { userId }),
 
   // Products
   getProducts: async () => handleResponse(await fetch(`${API_URL}/products`)),

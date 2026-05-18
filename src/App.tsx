@@ -26,6 +26,7 @@ import {
   AlertCircle,
   UserCog,
   ShieldCheck,
+  ShieldAlert,
   Printer,
   Edit2,
   Eye,
@@ -382,6 +383,30 @@ export default function App() {
   };
 
   const refreshData = useCallback(async () => {
+    // Periodically verify session validity
+    const stored = localStorage.getItem('pos_user');
+    if (stored && stored !== 'undefined') {
+      try {
+        const u = JSON.parse(stored);
+        if (u && u.id) {
+          const verification = await api.verifySession(u.id, u.sessionVersion || u.session_version);
+          if (verification && verification.status === 'invalid') {
+            setMessage({ 
+              text: language === 'ar' ? "تم إنهاء الجلسة. يرجى تسجيل الدخول مجدداً." : "Session expired. Please log in again.", 
+              type: 'error' 
+            });
+            localStorage.removeItem('pos_user');
+            setUser(null);
+            setProfileReady(false);
+            setCurrentUserRole('staff');
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to verify session during polling:", e);
+      }
+    }
+
     try {
       const fetchData = async (fn: () => Promise<any>, fallback: any, name: string, retries = 3) => {
         try {
@@ -457,9 +482,21 @@ export default function App() {
         if (stored && stored !== 'undefined') {
           const u = JSON.parse(stored);
           if (u && u.id) {
-            setUser(u);
-            setCurrentUserRole(u.role || 'staff');
-            setProfileReady(true);
+            try {
+              const verification = await api.verifySession(u.id, u.sessionVersion || u.session_version);
+              if (verification && verification.status === 'invalid') {
+                localStorage.removeItem('pos_user');
+              } else {
+                setUser(u);
+                setCurrentUserRole(u.role || 'staff');
+                setProfileReady(true);
+              }
+            } catch (verifErr) {
+              console.warn("Session verification unreachable, keeping offline session:", verifErr);
+              setUser(u);
+              setCurrentUserRole(u.role || 'staff');
+              setProfileReady(true);
+            }
           } else {
             localStorage.removeItem('pos_user');
           }
@@ -4952,6 +4989,27 @@ function StaffManagement({
     }
   };
 
+  const handleForceLogoutAllDevices = async (userId: string) => {
+    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من تسجيل خروج هذا الحساب من جميع الأجهزة والمتصفحات؟" : "Are you sure you want to force logout this account from all devices and browsers?")) {
+      return;
+    }
+
+    try {
+      await api.logoutAllDevices(userId);
+      setMessage({ 
+        text: language === 'ar' ? "تم تسجيل خروج الحساب من جميع الأجهزة بنجاح." : "Account successfully logged out from all devices.", 
+        type: 'success' 
+      });
+      onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ 
+        text: language === 'ar' ? "فشل تسجيل الخروج من الأجهزة." : "Failed to force logout from devices.", 
+        type: 'error' 
+      });
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 px-4 pb-12">
       <div className={cn("flex flex-col md:flex-row md:items-end justify-between gap-4", language === 'ar' && "md:flex-row-reverse")}>
@@ -5164,6 +5222,15 @@ function StaffManagement({
                         title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
                       >
                         <Key className="w-4 h-4" />
+                      </button>
+
+                      {/* Force Logout Everywhere */}
+                      <button 
+                        onClick={() => handleForceLogoutAllDevices(u.id)}
+                        className="p-1.5 hover:bg-amber-500/10 hover:text-amber-500 text-text-secondary border border-border-subtle rounded transition-all"
+                        title={language === 'ar' ? 'تسجيل الخروج من كافة الأجهزة' : 'Force Logout from all devices'}
+                      >
+                        <ShieldAlert className="w-4 h-4" />
                       </button>
 
                       {/* Delete */}
