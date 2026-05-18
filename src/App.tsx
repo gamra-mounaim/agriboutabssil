@@ -1136,12 +1136,16 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     };
   });
 
-  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card" }: any) => (
+    const formatNumber = (val: number) => {
+    return Math.round(val || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true }: any) => (
     <div className={`${bg} p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]`}>
       <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
       <div className="flex flex-col items-center">
         <div className={`text-4xl font-black ${color}`}>{value}</div>
-        <div className={`text-sm font-bold mt-1 ${color}`}>{isAr ? 'درهم' : currency}</div>
+        {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{isAr ? 'درهم' : currency}</div>}
       </div>
       <div className="text-[10px] text-text-secondary/60 font-medium mt-4">{subtext}</div>
     </div>
@@ -1216,35 +1220,36 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
         </motion.div>
       )}
 
-      {/* Top Stats Grid */}
+            {/* Top Stats Grid */}
       {visibleCardsCount > 0 && (
         <div className={`grid ${gridColsClass} gap-6`}>
           {permissions.financialsDebts && (
             <>
               <StatCard 
                 title={isAr ? 'الديون المعلقة' : 'Pending Debts'} 
-                value={totalCustomerDebt.toLocaleString()} 
+                value={formatNumber(totalCustomerDebt)} 
                 subtext={isAr ? 'محفظة الديون' : 'Debt Wallet'}
               />
               <StatCard 
                 title={isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'} 
-                value={customers.filter(c => c.debt > 0).length} 
+                value={formatNumber(customers.filter(c => c.debt > 0).length)} 
                 subtext={isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with Balance'}
                 color="text-text-main"
+                showCurrency={false}
               />
             </>
           )}
           {permissions.financialsProfits && (
             <StatCard 
               title={isAr ? 'الربح المتوقع' : 'Expected Profit'} 
-              value={netProfit.toLocaleString()} 
+              value={formatNumber(netProfit)} 
               subtext={isAr ? 'الأرباح المتوقعة' : 'Expected Profits'}
             />
           )}
           {permissions.financialsInventory && (
             <StatCard 
               title={isAr ? 'قيمة المخزون' : 'Inventory Value'} 
-              value={inventoryAssetValue.toLocaleString()} 
+              value={formatNumber(inventoryAssetValue)} 
               subtext={isAr ? 'قيمة المخزون الإجمالية' : 'Total Inventory Value'}
             />
           )}
@@ -1254,7 +1259,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
               <div className="flex flex-col items-center">
                  <Logo className="w-12 h-12 mb-2 p-1" />
-                <div className="text-3xl font-black text-white">{totalRevenue.toLocaleString()}</div>
+                                <div className="text-3xl font-black text-white">{formatNumber(totalRevenue)}</div>
                 <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
               </div>
               <div className="text-[10px] text-white/50 font-medium mt-4">{isAr ? 'إجمالي المبيعات' : 'Total Revenue'}</div>
@@ -1275,7 +1280,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{dailyProfit.toLocaleString()}</span>
+                <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
               </div>
             </div>
@@ -1286,7 +1291,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{weeklyProfit.toLocaleString()}</span>
+                <span className="text-3xl font-black text-emerald-600">{formatNumber(weeklyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
               </div>
             </div>
@@ -1297,7 +1302,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{monthlyProfit.toLocaleString()}</span>
+                <span className="text-3xl font-black text-emerald-600">{formatNumber(monthlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
               </div>
             </div>
@@ -1308,7 +1313,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{yearlyProfit.toLocaleString()}</span>
+                <span className="text-3xl font-black text-emerald-600">{formatNumber(yearlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
               </div>
             </div>
