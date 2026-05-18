@@ -1,4 +1,11 @@
 import { jsPDF } from 'jspdf';
+
+export const formatNumber = (val: any) => {
+  if (val === undefined || val === null) return '0';
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  if (isNaN(num)) return '0';
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+};
 import autoTable from 'jspdf-autotable';
 import { SHOP_DETAILS } from '../constants';
 import { uploadInvoiceToSupabase } from './supabaseService';
@@ -16,6 +23,8 @@ interface InvoiceData {
   date: string;
   items: InvoiceItem[];
   total: number;
+  subtotal?: number;
+  discount?: number;
   clientName?: string;
   staffName?: string;
   paymentMethod?: string;
@@ -204,8 +213,8 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     body: data.items.map(item => [
       item.name,
       item.qty.toString(),
-      `${item.price.toFixed(2)} DH`,
-      `${(item.qty * item.price).toFixed(2)} DH`
+      `${formatNumber(item.price)} DH`,
+      `${formatNumber(item.qty * item.price)} DH`
     ]),
     theme: 'striped',
     headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: 'center' },
@@ -224,17 +233,58 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const boxX = pageWidth - margin - boxW;
   doc.setDrawColor(241, 245, 249);
   doc.setFillColor(252, 252, 252);
-  doc.roundedRect(boxX, finalY, boxW, 35, 2, 2, 'FD');
-  
-  doc.setFontSize(9);
-  doc.setTextColor(148, 163, 184);
-  doc.setFont('helvetica', 'normal');
-  doc.text('TOTAL NET À PAYER (TTC):', boxX + 5, finalY + 12);
-  
-  doc.setFontSize(22);
-  doc.setTextColor(15, 23, 42); // Darker black
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${data.total.toFixed(2)} DH`, pageWidth - margin - 5, finalY + 22, { align: 'right' });
+
+  const discountVal = data.discount || 0;
+  const subtotalVal = data.subtotal || (data.total + discountVal);
+
+  if (discountVal > 0) {
+    doc.roundedRect(boxX, finalY, boxW, 45, 2, 2, 'FD');
+    
+    // Subtotal Row
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('TOTAL BRUT (TTC):', boxX + 5, finalY + 10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${formatNumber(subtotalVal)} DH`, pageWidth - margin - 5, finalY + 10, { align: 'right' });
+
+    // Discount Row
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('REMISE (TAKHFID):', boxX + 5, finalY + 18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // Red color for discount
+    doc.text(`-${formatNumber(discountVal)} DH`, pageWidth - margin - 5, finalY + 18, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(boxX + 5, finalY + 23, pageWidth - margin - 5, finalY + 23);
+
+    // Total Net Row
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('NET À PAYER (TTC):', boxX + 5, finalY + 30);
+    
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 40, { align: 'right' });
+  } else {
+    doc.roundedRect(boxX, finalY, boxW, 35, 2, 2, 'FD');
+    
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('TOTAL NET À PAYER (TTC):', boxX + 5, finalY + 12);
+    
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); // Darker black
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 22, { align: 'right' });
+  }
 
   if (data.paymentMethod) {
     doc.setFontSize(8);

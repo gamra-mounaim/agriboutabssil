@@ -2397,6 +2397,8 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
 
       if (saleResult.status === 'success') {
         const lastSaleData = {
+          subtotal: subtotal,
+          discount: discountVal,
           saleId: saleResult.id,
           invoiceNumber: saleResult.invoiceNumber,
           date: new Date().toISOString(),
@@ -3542,6 +3544,8 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                       date: selectedSaleToShow.date,
                       items: (selectedSaleToShow.items || []).map((i: any) => ({ name: i.name, qty: i.qty, price: i.price })),
                       total: selectedSaleToShow.total,
+                      subtotal: selectedSaleToShow.subtotal,
+                      discount: selectedSaleToShow.discount,
                       clientName: selectedCustomer?.name
                     }, language, settings);
                   }}
@@ -4227,6 +4231,8 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       date: sale.date,
       items: (sale.items || []).map(i => ({ name: i.name, qty: i.qty, price: i.price })),
       total: sale.total,
+      subtotal: sale.subtotal,
+      discount: sale.discount,
       clientName: customer?.name,
       staffName: staff?.email,
       paymentMethod: sale.paymentMethod?.toUpperCase(),
