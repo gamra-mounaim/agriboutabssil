@@ -114,6 +114,8 @@ interface Sale {
   id: string;
   invoiceNumber: number;
   total: number;
+  subtotal?: number;
+  discount?: number;
   date: string;
   items: SaleItem[];
   createdAt: any;
@@ -132,6 +134,7 @@ interface Customer {
   phone?: string;
   address?: string;
   due_date?: string;
+  dueDate?: string;
 }
 
 interface Supplier {
@@ -142,12 +145,13 @@ interface Supplier {
   address?: string;
   debt: number;
   due_date?: string;
+  dueDate?: string;
 }
 
 interface UserProfile {
   id: string;
   email: string;
-  role: 'admin' | 'staff';
+  role: 'admin' | 'staff' | 'manager';
   permissions?: {
     stock?: boolean;
     customers?: boolean;
@@ -262,19 +266,19 @@ export default function App() {
 
   const userPermissions = profile?.permissions 
     ? { 
-        ...(profile?.role === 'admin' ? defaultAdminPerms : defaultStaffPerms), 
+        ...((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms), 
         ...profile.permissions 
       }
-    : (profile?.role === 'admin' ? defaultAdminPerms : defaultStaffPerms);
+    : ((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms);
 
   useEffect(() => {
-    if (profile?.role === 'admin' && view === 'pos') {
+    if ((profile?.role === 'admin' || profile?.role === 'manager') && view === 'pos') {
        setView('financials');
     }
   }, [profile?.role]);
 
   const canAccess = (targetView: View) => {
-    if (targetView === 'settings' && profile?.role === 'admin') return true;
+    if (targetView === 'settings' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     if (targetView === 'pos') return true;
     
     if (targetView === 'checks' && userPermissions.customers) return true;
@@ -861,8 +865,9 @@ function DashboardStats({ products, categories, customers, sales, language, stat
   const t = translations[language];
   
   const upcomingDebts = (customers || []).filter(c => {
-    if (!c.due_date || c.debt <= 0) return false;
-    const dueDate = new Date(c.due_date);
+    const cDueDate = c.dueDate || c.due_date;
+    if (!cDueDate || c.debt <= 0) return false;
+    const dueDate = new Date(cDueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -871,7 +876,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 3;
-  }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+  }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
   const totalSalesLifetime = stats?.totalSales || 0;
   const totalStockUnits = stats?.totalStock || 0;
@@ -932,14 +937,15 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           </div>
           <div className="flex flex-wrap gap-2">
             {upcomingDebts.slice(0, 3).map(c => {
-              const isOverdue = new Date(c.due_date!) < new Date();
+              const cDueDate = c.dueDate || c.due_date;
+              const isOverdue = new Date(cDueDate!) < new Date();
               return (
                 <div key={c.id} className={cn(
                   "px-3 py-1.5 rounded-lg text-[11px] font-bold border flex items-center gap-2",
                   isOverdue ? "bg-red-500 text-white border-red-600" : "bg-bg-base border-border-subtle text-text-main"
                 )}>
                   <span>{c.name}</span>
-                  <span className="opacity-60">{c.due_date}</span>
+                  <span className="opacity-60">{cDueDate}</span>
                 </div>
               );
             })}
@@ -1112,8 +1118,9 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
 
     // Upcoming Debts Logic from DashboardStats
   const upcomingDebts = (customers || []).filter(c => {
-    if (!c.due_date || c.debt <= 0) return false;
-    const dueDate = new Date(c.due_date);
+    const cDueDate = c.dueDate || c.due_date;
+    if (!cDueDate || c.debt <= 0) return false;
+    const dueDate = new Date(cDueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -1121,11 +1128,12 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 3;
-  }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+  }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
   const upcomingSupplierDebts = (suppliers || []).filter(s => {
-    if (!s.due_date || s.debt <= 0) return false;
-    const dueDate = new Date(s.due_date);
+    const sDueDate = s.dueDate || s.due_date;
+    if (!sDueDate || s.debt <= 0) return false;
+    const dueDate = new Date(sDueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -1133,7 +1141,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     const diffTime = dueDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 3;
-  }).sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+  }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
   // Trend Data (Last 7 Days)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -1208,7 +1216,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               {t.upcomingDebtPayments}
             </p>
             <p className="text-xs font-bold font-mono">
-               {upcomingDebts.map(c => `${c.name} (${c.due_date})`).join(', ')}
+               {upcomingDebts.map(c => `${c.name} (${c.dueDate || c.due_date})`).join(', ')}
             </p>
           </div>
         </motion.div>
@@ -1228,7 +1236,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               {isAr ? 'مواعيد استحقاق ديون الموردين القريبة' : 'Upcoming Supplier Debt Due Dates'}
             </p>
             <p className="text-xs font-bold font-mono">
-               {upcomingSupplierDebts.map(s => `${s.name} (${s.due_date})`).join(', ')}
+               {upcomingSupplierDebts.map(s => `${s.name} (${s.dueDate || s.due_date})`).join(', ')}
             </p>
           </div>
         </motion.div>
@@ -3089,7 +3097,11 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
       });
       setIsEditingProfile(false);
       onRefresh();
-      setSelectedCustomer({ ...selectedCustomer, ...editForm });
+      setSelectedCustomer({ 
+        ...selectedCustomer, 
+        ...editForm, 
+        dueDate: editForm.due_date 
+      });
       setMessage({ text: t.profileUpdated, type: 'success' });
     } catch (err) {
       setMessage({ text: t.updateFailed, type: 'error' });
@@ -3103,7 +3115,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
         name: selectedCustomer.name,
         phone: selectedCustomer.phone || '',
         address: selectedCustomer.address || '',
-        due_date: selectedCustomer.due_date || ''
+        due_date: selectedCustomer.dueDate || selectedCustomer.due_date || ''
       });
     }
   }, [selectedCustomer]);
@@ -3228,11 +3240,11 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                       <span className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
                       <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                    </div>
-                   {c.debt > 0 && c.due_date && (
+                   {c.debt > 0 && (c.dueDate || c.due_date) && (
                      <div className="mt-3 pt-3 border-t border-red-200/50 flex items-center gap-1.5 relative z-10">
-                       <CalendarClock className={cn("w-3.5 h-3.5", new Date(c.due_date) < new Date() ? "text-danger animate-pulse" : "text-amber-600")} />
-                       <span className={cn("text-[10px] font-black uppercase tracking-wider", new Date(c.due_date) < new Date() ? "text-danger animate-bounce" : "text-amber-700")}>
-                         {language === 'ar' ? 'تاريخ الاستحقاق' : 'ECHEANCE'}: {new Date(c.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')}
+                       <CalendarClock className={cn("w-3.5 h-3.5", new Date((c.dueDate || c.due_date)) < new Date() ? "text-danger animate-pulse" : "text-amber-600")} />
+                       <span className={cn("text-[10px] font-black uppercase tracking-wider", new Date((c.dueDate || c.due_date)) < new Date() ? "text-danger animate-bounce" : "text-amber-700")}>
+                         {language === 'ar' ? 'تاريخ الاستحقاق' : 'ECHEANCE'}: {new Date(c.dueDate || c.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')}
                        </span>
                      </div>
                    )}
@@ -3324,14 +3336,18 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
               <div className="p-8 flex-1 overflow-auto space-y-8">
                 {isEditingProfile ? (
                   <form onSubmit={handleUpdateProfile} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-text-secondary uppercase">{t.phone}</label>
                         <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.phone || ''} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                       </div>
-                      <div className="space-y-1 md:col-span-1">
+                      <div className="space-y-1">
                         <label className="text-[10px] font-bold text-text-secondary uppercase">{t.address}</label>
                         <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.address || ''} onChange={e => setEditForm({...editForm, address: e.target.value})} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.dueDate}</label>
+                        <input type="date" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.due_date || ''} onChange={e => setEditForm({...editForm, due_date: e.target.value})} />
                       </div>
                     </div>
                     <div className="flex gap-4 pt-4 border-t border-border-subtle">
@@ -3362,7 +3378,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className={cn("p-4 rounded-2xl bg-bg-base/50 border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1 flex items-center gap-2">
                           <Phone className="w-3 h-3 text-accent" /> {t.phone}
@@ -3374,6 +3390,16 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                           <MapPin className="w-3 h-3 text-accent" /> {t.address}
                         </div>
                         <div className="text-sm font-bold text-text-main">{selectedCustomer.address || '---'}</div>
+                      </div>
+                      <div className={cn("p-4 rounded-2xl bg-bg-base/50 border border-border-subtle", language === 'ar' && "text-right")}>
+                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1 flex items-center gap-2">
+                          <CalendarClock className="w-3.5 h-3.5 text-accent" /> {t.dueDate}
+                        </div>
+                        <div className="text-sm font-bold text-text-main">
+                          {selectedCustomer.dueDate || selectedCustomer.due_date 
+                            ? new Date(selectedCustomer.dueDate || selectedCustomer.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')
+                            : '---'}
+                        </div>
                       </div>
                     </div>
 
@@ -3819,7 +3845,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
       email: supplier.email || '', 
       phone: supplier.phone || '', 
       address: supplier.address || '',
-      due_date: supplier.due_date || ''
+      due_date: supplier.dueDate || supplier.due_date || ''
     });
     setIsEditingProfile(false);
     setLoadingHistory(true);
@@ -4595,6 +4621,8 @@ function SettingsManagement({
   setBackingUpToDrive: (b: boolean) => void
 }) {
   const t = translations[language];
+  const loggedInProfile = users.find(u => u.id === (currentUser?.id || currentUser?.uid));
+  const canManageStaff = loggedInProfile?.role === 'admin';
   const [tab, setTab] = useState<'shop' | 'users'>('shop');
   
   // Shop details form state
@@ -4634,12 +4662,14 @@ function SettingsManagement({
         >
           {t.shopDetails}
         </button>
-        <button 
-          onClick={() => setTab('users')}
-          className={cn("px-4 py-2 rounded-lg font-bold text-sm transition-all", tab === 'users' ? "bg-accent text-white" : "text-text-secondary hover:bg-bg-base")}
-        >
-          {t.staff}
-        </button>
+        {canManageStaff && (
+          <button 
+            onClick={() => setTab('users')}
+            className={cn("px-4 py-2 rounded-lg font-bold text-sm transition-all", tab === 'users' ? "bg-accent text-white" : "text-text-secondary hover:bg-bg-base")}
+          >
+            {t.staff}
+          </button>
+        )}
       </div>
 
       {tab === 'shop' && (
@@ -4686,7 +4716,7 @@ function SettingsManagement({
         </motion.div>
       )}
 
-      {tab === 'users' && (
+      {tab === 'users' && canManageStaff && (
         <StaffManagement 
           users={users} 
           setMessage={setMessage} 
@@ -4733,8 +4763,8 @@ function StaffManagement({
   const t = translations[language];
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'admin' | 'staff'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
+  const [newRole, setNewRole] = useState<'admin' | 'staff' | 'manager'>('staff');
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
@@ -4809,13 +4839,14 @@ function StaffManagement({
     setIsSubmitting(true);
     try {
       const usernameLower = newUsername.toLowerCase().trim();
-      const result = await api.register(usernameLower, newPassword, newRole, newRole === 'admin' ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true } : newPerms);
+      const isPowerUser = newRole === 'admin' || newRole === 'manager';
+      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
-        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false });
+        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false });
         onRefresh();
       } else {
         setMessage({ text: result.message || "Registration failed", type: 'error' });
@@ -4879,7 +4910,7 @@ function StaffManagement({
     reader.readAsText(file);
   };
 
-  const toggleRole = async (userId: string, currentRole: 'admin' | 'staff') => {
+  const toggleRole = async (userId: string, currentRole: 'admin' | 'staff' | 'manager') => {
     if (userId === currentUser?.id || userId === currentUser?.uid) {
       setMessage({ text: language === 'ar' ? "لا يمكنك تغيير رتبتك." : "Cannot change your own role.", type: 'error' });
       return;
@@ -4887,9 +4918,14 @@ function StaffManagement({
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
 
+    let nextRole: 'admin' | 'staff' | 'manager' = 'staff';
+    if (currentRole === 'staff') nextRole = 'manager';
+    else if (currentRole === 'manager') nextRole = 'admin';
+    else nextRole = 'staff';
+
     try {
       await api.updateUser(userId, {
-        role: currentRole === 'admin' ? 'staff' : 'admin'
+        role: nextRole
       });
       setMessage({ text: language === 'ar' ? "تم تحديث الرتبة." : "User role updated.", type: 'success' });
       onRefresh();
@@ -4956,10 +4992,11 @@ function StaffManagement({
             </div>
             <select 
               value={newRole}
-              onChange={e => setNewRole(e.target.value as 'admin' | 'staff')}
+              onChange={e => setNewRole(e.target.value as 'admin' | 'staff' | 'manager')}
               className={cn("bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-bold", language === 'ar' && "text-right")}
             >
               <option value="staff">{language === 'ar' ? "موظف مبيعات" : "SALES STAFF"}</option>
+              <option value="manager">{language === 'ar' ? "مسؤول (بدون إدارة الموظفين)" : "MANAGER (NO STAFF MGMT)"}</option>
               <option value="admin">{language === 'ar' ? "مدير نظام" : "ADMINISTRATOR"}</option>
             </select>
           </div>
@@ -4991,6 +5028,10 @@ function StaffManagement({
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.supplierDebt} onChange={e => setNewPerms({...newPerms, supplierDebt: e.target.checked})} className="w-4 h-4 accent-accent" />
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permSupplierDebt}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.viewSupplierDebtAmount} onChange={e => setNewPerms({...newPerms, viewSupplierDebtAmount: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permSupplierDebtAmount}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.financials} onChange={e => setNewPerms({...newPerms, financials: e.target.checked})} className="w-4 h-4 accent-accent" />
@@ -5048,7 +5089,7 @@ function StaffManagement({
                 if (u.permissions && u.permissions[permission] !== undefined) {
                   return u.permissions[permission];
                 }
-                return u.role === 'admin' ? defaultAdminPerms[permission] : defaultStaffPerms[permission];
+                return (u.role === 'admin' || u.role === 'manager') ? defaultAdminPerms[permission] : defaultStaffPerms[permission];
               };
 
               return (
@@ -5074,9 +5115,13 @@ function StaffManagement({
                   <td className="p-4 text-center">
                     <span className={cn(
                       "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border",
-                      u.role === 'admin' ? "bg-accent/5 border-accent text-accent" : "bg-bg-base border-border-subtle text-text-secondary"
+                      u.role === 'admin' ? "bg-accent/5 border-accent text-accent" : 
+                      u.role === 'manager' ? "bg-emerald-500/5 border-emerald-500 text-emerald-600" :
+                      "bg-bg-base border-border-subtle text-text-secondary"
                     )}>
-                      {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : 'admin') : (language === 'ar' ? 'موظف' : 'staff')}
+                      {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : 'admin') : 
+                       u.role === 'manager' ? (language === 'ar' ? 'مسؤول (بدون موظفين)' : 'manager') : 
+                       (language === 'ar' ? 'موظف' : 'staff')}
                     </span>
                   </td>
                   <td className="p-4">
@@ -5098,15 +5143,17 @@ function StaffManagement({
                   <td className="p-4">
                     <div className={cn("flex items-center gap-3 justify-end", language === 'ar' && "flex-row-reverse justify-start")}>
                       {/* Promote/Demote */}
-                      <button 
+                       <button 
                         disabled={u.id === currentUser.uid}
-                        onClick={() => toggleRole(u.id, u.role)}
+                        onClick={() => toggleRole(u.id, u.role as any)}
                         className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={u.role === 'admin' ? (language === 'ar' ? 'تخفيض الرتبة' : 'DEMOTE') : (language === 'ar' ? 'ترقية الرتبة' : 'PROMOTE')}
+                        title={language === 'ar' ? 'تغيير الرتبة' : 'CHANGE ROLE'}
                       >
                         {u.role === 'admin' 
-                          ? (language === 'ar' ? 'تخفيض' : 'DEMOTE') 
-                          : (language === 'ar' ? 'ترقية' : 'PROMOTE')
+                          ? (language === 'ar' ? 'مسؤول 🔄' : 'ADMIN 🔄') 
+                          : u.role === 'manager'
+                          ? (language === 'ar' ? 'مسؤول (بدون موظفين) 🔄' : 'MANAGER 🔄')
+                          : (language === 'ar' ? 'موظف 🔄' : 'STAFF 🔄')
                         }
                       </button>
 

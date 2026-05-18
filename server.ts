@@ -603,10 +603,11 @@ async function startServer() {
   });
 
   app.post("/api/customers", async (req, res) => {
-    const { name, email, phone, address, debt, due_date } = req.body;
+    const { name, email, phone, address, debt, due_date, dueDate } = req.body;
+    const finalDueDate = due_date || dueDate || null;
     const id = uuidv4();
     try {
-      await db.prepare('INSERT INTO customers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, due_date || null);
+      await db.prepare('INSERT INTO customers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
       logActivity('CUSTOMER', 'create', `Added customer: ${name} (Initial Debt: ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
@@ -774,13 +775,14 @@ async function startServer() {
 
   app.put("/api/customers/:id", async (req, res) => {
     const { id } = req.params;
-    const { name, email, phone, address, debt, due_date } = req.body;
+    const { name, email, phone, address, debt, due_date, dueDate } = req.body;
+    const finalDueDate = due_date || dueDate || null;
     try {
       await db.prepare(`
         UPDATE customers 
         SET name = ?, email = ?, phone = ?, address = ?, debt = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(name, email, phone, address, debt, due_date || null, id);
+      `).run(name, email, phone, address, debt, finalDueDate, id);
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
