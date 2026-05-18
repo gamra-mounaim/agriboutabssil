@@ -218,6 +218,13 @@ interface Notification {
 }
 
 // --- Main Component ---
+export const formatNumber = (val: any) => {
+  if (val === undefined || val === null) return '0';
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  if (isNaN(num)) return '0';
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+};
+
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -244,7 +251,7 @@ export default function App() {
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [latestBackup, setLatestBackup] = useState<any>(null);
-  const [language, setLanguage] = useState<Language>((localStorage.getItem('lang') as Language) || 'ar');
+  const [language, setLanguage] = useState<Language>((localStorage.getItem('lang') as Language) || 'fr');
   const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('theme') as 'light' | 'dark') || 'light');
 
   const t = translations[language];
@@ -619,18 +626,27 @@ export default function App() {
           {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
         </div>
         
-        <div className="px-4 py-2 border-t border-border-subtle">
-          <div className="flex gap-1 justify-center">
+        <div className="mx-4 my-2 p-3 bg-bg-base/80 border-2 border-accent/30 rounded-2xl shadow-inner text-center">
+          <div className="text-[9px] font-black uppercase text-accent tracking-[0.25em] mb-2 flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
+            {language === 'ar' ? 'لغة الموقع / LANGUE' : 'LANGUE DU SITE'}
+          </div>
+          <div className="flex gap-1.5 justify-center">
             {(['en', 'fr', 'ar'] as Language[]).map(lang => (
               <button
                 key={lang}
-                onClick={() => setLanguage(lang)}
+                onClick={() => {
+                  setLanguage(lang);
+                  localStorage.setItem('lang', lang);
+                }}
                 className={cn(
-                  "px-2 py-1 text-[10px] font-bold rounded uppercase transition-colors",
-                  language === lang ? "bg-accent text-white" : "text-text-secondary hover:bg-bg-base"
+                  "flex-1 py-1.5 text-xs font-black rounded-xl uppercase transition-all duration-300 transform active:scale-95 shadow-sm",
+                  language === lang 
+                    ? "bg-accent text-white border border-accent scale-105 shadow-md shadow-accent/25" 
+                    : "bg-card text-text-secondary border border-border-subtle hover:text-text-main hover:border-text-secondary/30"
                 )}
               >
-                {lang}
+                {lang === 'ar' ? 'العربية' : lang === 'fr' ? 'FR' : 'EN'}
               </button>
             ))}
           </div>
@@ -935,7 +951,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
       <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6 group/stats">
         <StatCard 
           label={t.totalSales} 
-          value={`${totalSalesLifetime.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${t.currency}`} 
+          value={`${formatNumber(totalSalesLifetime)} ${t.currency}`} 
           sub={language === 'ar' ? "إجمالي الأرباح" : "Lifetime Earnings"} 
           highlights
         />
@@ -943,30 +959,30 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           <>
             <StatCard 
               label={t.inventoryValue} 
-              value={`${totalInventoryValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${t.currency}`} 
+              value={`${formatNumber(totalInventoryValue)} ${t.currency}`} 
               sub={language === 'ar' ? "قيمة المخزون الإجمالية" : "Current Asset Value"} 
             />
             <StatCard 
               label={t.expectedProfit} 
-              value={`${totalExpectedProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${t.currency}`} 
+              value={`${formatNumber(totalExpectedProfit)} ${t.currency}`} 
               sub={language === 'ar' ? "الأرباح المتوقعة" : "Projected Gain"} 
             />
           </>
         )}
         <StatCard 
           label={t.customersWithDebt} 
-          value={customersWithDebtCount.toLocaleString()} 
+          value={formatNumber(customersWithDebtCount)} 
           sub={language === 'ar' ? "زبناء بذمتهم مبالغ" : "Customers with balance"} 
         />
         <StatCard 
           label={language === 'ar' ? "الديون المعلقة" : "Outstanding Debt"} 
-          value={`${totalDebtValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${t.currency}`} 
+          value={`${formatNumber(totalDebtValue)} ${t.currency}`} 
           sub={language === 'ar' ? "محفظة الديون" : "Debt Portfolio"} 
           danger={totalDebtValue > 500} 
         />
         <StatCard 
           label={t.totalSupplierDebt} 
-          value={`${totalSupplierDebtValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${t.currency}`} 
+          value={`${formatNumber(totalSupplierDebtValue)} ${t.currency}`} 
           sub={t.youOweSupplier} 
           danger={totalSupplierDebtValue > 0}
         />
@@ -1040,7 +1056,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[12px] font-bold text-text-main">{p.price.toFixed(2)} {t.currency}</div>
+                  <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
                   <div className={cn(
                     "text-[10px] font-black uppercase tracking-tighter",
                     p.qty === 0 ? "text-orange-600" : "text-danger"
@@ -1136,9 +1152,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     };
   });
 
-    const formatNumber = (val: number) => {
-    return Math.round(val || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  };
+    
 
   const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true }: any) => (
     <div className={`${bg} p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]`}>
@@ -1421,7 +1435,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
              <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[300px]">
                 <div className="text-center">
                   <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{isAr ? 'إجمالي ديون الموردين' : 'Supplier Payables'}</div>
-                  <div className="text-5xl font-black text-text-main my-8">{totalSupplierDebt.toLocaleString()}</div>
+                  <div className="text-5xl font-black text-text-main my-8">{formatNumber(totalSupplierDebt)}</div>
                   <div className="text-2xl font-black text-text-main">{isAr ? 'درهم' : currency}</div>
                   <div className="mt-8 pt-8 border-t border-border-subtle">
                     <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{isAr ? 'المبلغ الذي تدينه للمورد' : 'Amount Owed to Suppliers'}</div>
@@ -1871,7 +1885,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                             </div>
                             <div className="flex items-center gap-2">
                                <div className="text-right">
-                                 <div className="text-[12px] font-bold text-text-main">{p.price.toFixed(2)} {t.currency}</div>
+                                 <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
                                  <div className={cn(
                                    "text-[10px] font-black uppercase",
                                    p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary"
@@ -1918,7 +1932,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="text-right">
-                                <div className="text-[12px] font-bold text-text-main">{p.price.toFixed(2)} {t.currency}</div>
+                                <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
                                 <div className={cn(
                                   "text-[10px] font-black uppercase",
                                   p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary"
@@ -1974,8 +1988,8 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                           )}
                         </div>
                       </td>
-                      {permissions.profits && <td className="p-4 text-text-secondary italic">{(p.costPrice || 0).toFixed(2)} {t.currency}</td>}
-                      <td className="p-4 text-text-main font-bold">{p.price.toFixed(2)} {t.currency}</td>
+                      {permissions.profits && <td className="p-4 text-text-secondary italic">{formatNumber(p.costPrice || 0)} {t.currency}</td>}
+                      <td className="p-4 text-text-main font-bold">{formatNumber(p.price)} {t.currency}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           {permissions.editStock ? (
@@ -2598,7 +2612,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
 
                 <div className="mt-6 flex flex-col gap-3">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-text-main tracking-tight">{p.price.toFixed(2)}</span>
+                    <span className="text-xl font-black text-text-main tracking-tight">{formatNumber(p.price)}</span>
                     <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                   </div>
                   
@@ -2681,11 +2695,11 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
                   <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
                     <span className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors leading-tight">{item.name}</span>
                     <span className="text-[10px] font-bold text-text-secondary uppercase mt-0.5 tracking-wider">
-                      {item.price.toFixed(2)} {t.currency} / unit
+                      {formatNumber(item.price)} {t.currency} / unit
                     </span>
                   </div>
                   <div className="font-black text-[14px] text-text-main tracking-tight">
-                    {(item.price * item.qty).toFixed(2)}
+                    {formatNumber((item.price * item.qty))}
                   </div>
                 </div>
                 
@@ -2818,7 +2832,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
                           value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)}
                         >
                           <option value="">{language === 'ar' ? "إختر زبون..." : "Link to Account..."}</option>
-                          {customers.map(c => <option key={c.id} value={c.id}>{c.name} (Debt: {c.debt.toFixed(2)})</option>)}
+                          {customers.map(c => <option key={c.id} value={c.id}>{c.name} (Debt: {formatNumber(c.debt)})</option>)}
                         </select>
                         <ChevronDown className={cn(
                           "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50",
@@ -2843,7 +2857,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.change}</label>
                     <div className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-accent shadow-inner text-center">
-                      {change.toFixed(2)}
+                      {formatNumber(change)}
                     </div>
                   </div>
                 </div>
@@ -2875,7 +2889,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
           <div className="space-y-3 pt-2 border-t border-border-subtle/50">
             <div className="flex justify-between items-center px-1">
                <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">{t.subtotal}</span>
-               <span className="text-xs font-bold text-text-main">{subtotal.toFixed(2)}</span>
+               <span className="text-xs font-bold text-text-main">{formatNumber(subtotal)}</span>
             </div>
             
             <div className="flex justify-between items-center px-1">
@@ -2888,7 +2902,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
             </div>
 
             <div className="flex flex-wrap items-baseline justify-between py-2 border-t border-border-subtle/30 mt-2 gap-2">
-              <span className="text-3xl md:text-4xl font-black text-text-main tracking-tighter break-all">{total.toFixed(2)}</span>
+              <span className="text-3xl md:text-4xl font-black text-text-main tracking-tighter break-all">{formatNumber(total)}</span>
               <span className="text-sm font-bold text-text-secondary uppercase">{t.currency}</span>
             </div>
 
@@ -3201,7 +3215,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                    <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl -translate-y-8 translate-x-8", c.debt > 0 ? "bg-danger/10" : "bg-success/10")} />
                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1 opacity-60">{t.debt}</p>
                    <div className="flex items-baseline gap-1 relative z-10">
-                      <span className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{c.debt.toFixed(2)}</span>
+                      <span className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
                       <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                    </div>
                 </div>
@@ -3242,7 +3256,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <div className="text-xl font-black text-text-main tracking-tighter">
-                      {p.amount.toFixed(2)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
+                      {formatNumber(p.amount)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
                     </div>
                     <div className="text-[10px] font-bold text-text-secondary opacity-60">
                       {new Date(p.date).toLocaleString()}
@@ -3313,19 +3327,19 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{language === 'ar' ? "إجمالي الكريدي" : "Total Accrued"}</div>
                         <div className="text-xl font-black font-mono text-text-main">
-                          {customerHistory.filter(h => h.type === 'DEBT').reduce((sum, h) => sum + h.amount, 0).toFixed(2)} {t.currency}
+                          {formatNumber(customerHistory.filter(h => h.type === 'DEBT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
                         </div>
                       </div>
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{language === 'ar' ? "إجمالي السداد" : "Total Paid"}</div>
                         <div className="text-xl font-black font-mono text-success">
-                          {customerHistory.filter(h => h.type === 'PAYMENT').reduce((sum, h) => sum + h.amount, 0).toFixed(2)} {t.currency}
+                          {formatNumber(customerHistory.filter(h => h.type === 'PAYMENT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
                         </div>
                       </div>
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">{language === 'ar' ? "الباقي (الرصيد)" : "Remaining Balance"}</div>
                         <div className={cn("text-xl font-black font-mono", selectedCustomer.debt > 0 ? "text-danger" : "text-success")}>
-                          {selectedCustomer.debt.toFixed(2)} {t.currency}
+                          {formatNumber(selectedCustomer.debt)} {t.currency}
                         </div>
                       </div>
                     </div>
@@ -3372,7 +3386,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                                    )}
                                  </div>
                                  <div className={cn("text-lg font-black tracking-tighter", item.type === 'PAYMENT' ? "text-success" : "text-danger")}>
-                                    {item.type === 'PAYMENT' ? '+' : '-'}{item.amount.toFixed(2)} {t.currency}
+                                    {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
                                  </div>
                                  <div className="text-[10px] font-bold text-text-secondary/70 mt-1 flex items-center gap-1.5">
                                    <CalendarClock className="w-3 h-3" /> {new Date(item.date).toLocaleString()}
@@ -3502,10 +3516,10 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                     <div key={idx} className="flex justify-between items-center p-4 bg-bg-base rounded-xl border border-border-subtle/50">
                       <div className="space-y-0.5">
                         <p className="text-sm font-bold text-text-main">{it.name}</p>
-                        <p className="text-xs font-medium text-text-secondary">{it.qty} x {it.price.toFixed(2)} {t.currency}</p>
+                        <p className="text-xs font-medium text-text-secondary">{it.qty} x {formatNumber(it.price)} {t.currency}</p>
                       </div>
                       <div className="text-sm font-black text-text-main">
-                        {(it.qty * it.price).toFixed(2)} {t.currency}
+                        {formatNumber((it.qty * it.price))} {t.currency}
                       </div>
                     </div>
                   ))}
@@ -3514,7 +3528,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                 <div className="pt-6 border-t border-border-subtle space-y-2">
                   <div className="flex justify-between items-center px-2">
                      <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.total}</span>
-                     <span className="text-2xl font-black text-accent tracking-tighter">{selectedSaleToShow.total.toFixed(2)} {t.currency}</span>
+                     <span className="text-2xl font-black text-accent tracking-tighter">{formatNumber(selectedSaleToShow.total)} {t.currency}</span>
                   </div>
                 </div>
               </div>
@@ -3700,7 +3714,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                   <div className="bg-bg-base p-4 rounded-2xl border border-border-subtle flex justify-between items-center animate-in fade-in slide-in-from-top-1">
                     <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">{t.total}:</span>
                     <span className="text-lg font-black text-accent">
-                      {(parseInt(returnQty) * parseFloat(returnPrice)).toFixed(2)} {t.currency}
+                      {formatNumber((parseInt(returnQty) * parseFloat(returnPrice)))} {t.currency}
                     </span>
                   </div>
                 )}
@@ -3942,7 +3956,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1">{t.youOweSupplier}</p>
                <div className="flex items-baseline gap-1">
                   <span className={cn("text-2xl font-black tracking-tighter", s.debt > 0 ? "text-danger" : "text-emerald-600")}>
-                    {canViewDebtAmount ? s.debt.toLocaleString() : '***'}
+                    {canViewDebtAmount ? formatNumber(s.debt) : '***'}
                   </span>
                   <span className="text-[10px] font-bold text-text-secondary">{t.currency}</span>
                </div>
@@ -4011,7 +4025,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
                        <Hash className="w-3.5 h-3.5 opacity-40" />
                        {c.checkNumber}
                     </td>
-                    <td className="p-5 text-sm font-black text-success">{c.total.toFixed(2)} DH</td>
+                    <td className="p-5 text-sm font-black text-success">{formatNumber(c.total)} DH</td>
                     <td className="p-5 text-[11px] font-bold text-text-secondary uppercase">{c.checkOwner || '-'}</td>
                   </tr>
                 ))
@@ -4109,7 +4123,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
                             </p>
                           </div>
                           <p className={cn("font-black", h.type === 'PAYMENT' ? "text-emerald-500" : "text-danger")}>
-                            {h.type === 'PAYMENT' ? '-' : '+'}{canViewDebtAmount ? h.amount.toLocaleString() : '***'}
+                            {h.type === 'PAYMENT' ? '-' : '+'}{canViewDebtAmount ? formatNumber(h.amount) : '***'}
                           </p>
                         </div>
                       ))}
@@ -4430,7 +4444,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
                       </div>
                     </td>
                     <td className={cn("p-5", language === 'ar' ? "text-left" : "text-right")}>
-                       <div className="text-base font-black text-text-main tracking-tight">{s.total.toFixed(2)} {t.currency}</div>
+                       <div className="text-base font-black text-text-main tracking-tight">{formatNumber(s.total)} {t.currency}</div>
                     </td>
                     <td className={cn("p-5", language === 'ar' ? "text-left" : "text-right")}>
                       <button 
@@ -4473,7 +4487,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
                        <div className="text-text-secondary text-[11px] font-medium">{new Date(p.date).toLocaleDateString()} • {new Date(p.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                     </td>
                     <td className={cn("p-5", language === 'ar' ? "text-left" : "text-right")}>
-                       <div className="text-base font-black text-success tracking-tight">+{p.amount.toFixed(2)} {t.currency}</div>
+                       <div className="text-base font-black text-success tracking-tight">+{formatNumber(p.amount)} {t.currency}</div>
                     </td>
                   </tr>
                 ))}
@@ -5433,7 +5447,7 @@ function CheckListView({ checks, language, settings }: { checks: CheckDoc[], lan
                   <td className="p-5">
                     <div className={cn("inline-block px-3 py-1 rounded-full text-xs font-black", 
                       check.partyRole === 'customer' ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
-                      {check.partyRole === 'customer' ? '+' : '-'}{check.total.toFixed(2)} DH
+                      {check.partyRole === 'customer' ? '+' : '-'}{formatNumber(check.total)} DH
                     </div>
                   </td>
                   <td className="p-5 text-right font-mono text-[11px] text-text-secondary">
