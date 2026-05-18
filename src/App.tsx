@@ -4235,22 +4235,22 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
     return matchesMonth && matchesYear && matchesSearch;
   });
 
-  const filteredPayments = payments.filter(p => {
+    const filteredPayments = payments.filter(p => {
     const d = new Date(p.date);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
     const matchesYear = d.getFullYear() === filterYear;
-    const matchesSearch = p.customerName.toLowerCase().includes(searchHistory.toLowerCase()) ||
+    const matchesSearch = (p.customerName || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (p.check_number || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (p.check_owner || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesSearch;
   });
 
-  const filteredActivities = (activities || []).filter(a => {
+    const filteredActivities = (activities || []).filter(a => {
     const d = new Date(a.timestamp);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
     const matchesYear = d.getFullYear() === filterYear;
     const matchesType = filterActivityType === 'all' || a.type === filterActivityType;
-    const matchesSearch = a.details.toLowerCase().includes(searchHistory.toLowerCase()) || 
+    const matchesSearch = (a.details || '').toLowerCase().includes(searchHistory.toLowerCase()) || 
                          (a.actorName || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesType && matchesSearch;
   });
