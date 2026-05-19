@@ -1224,44 +1224,36 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
   }
 
   if (permissions.financialsRestricted && !permissions.financials) {
-    const todayDateStr = new Date().toISOString().split('T')[0];
-    const todaySales = sales.filter(s => s.date && typeof s.date === 'string' && s.date.startsWith(todayDateStr));
-    const todayRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
-    
     const debtorCustomers = customers.filter(c => c.debt > 0);
     const debtorCustomersCount = debtorCustomers.length;
-    const totalOutstandingDebt = debtorCustomers.reduce((sum, c) => sum + c.debt, 0);
     
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Simplified Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Daily Sales Card */}
-          <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
-            <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">
-              {isAr ? 'مبيعات اليوم' : "Today's Sales"}
+          {/* Daily Profit Card */}
+          <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[180px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح اليوم' : 'Today\'s Profit'}</span>
+              <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
             </div>
-            <div className="flex flex-col items-center">
-              <Logo className="w-12 h-12 mb-2 p-1" />
-              <div className="text-3xl font-black text-white">{formatNumber(todayRevenue)}</div>
-              <div className="text-sm font-bold mt-1 text-white">{isAr ? 'درهم' : currency}</div>
-            </div>
-            <div className="text-[10px] text-white/50 font-medium mt-4">
-              {isAr ? `عدد العمليات اليوم: ${todaySales.length}` : `Today's Transactions: ${todaySales.length}`}
+            <div className={cn(isAr && "text-right")}>
+              <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
+              <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
             </div>
           </div>
 
           {/* Debtor Customers Card */}
           <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
             <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">
-              {isAr ? 'الزبناء الذين بذمتهم دين' : 'Debtor Customers'}
+              {isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'}
             </div>
             <div className="flex flex-col items-center">
-              <div className="text-4xl font-black text-text-main">{formatNumber(debtorCustomersCount)}</div>
+              <div className="text-4xl font-black text-text-main font-mono">{formatNumber(debtorCustomersCount)}</div>
               <div className="text-sm font-bold text-text-secondary mt-1">{isAr ? 'زبون' : 'Customers'}</div>
             </div>
             <div className="text-[10px] text-text-secondary/60 font-medium mt-4">
-              {isAr ? `إجمالي الديون: ${formatNumber(totalOutstandingDebt)} درهم` : `Total Debt: ${formatNumber(totalOutstandingDebt)} ${currency}`}
+              {isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with balance'}
             </div>
           </div>
         </div>

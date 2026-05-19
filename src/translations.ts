@@ -508,7 +508,7 @@ export const translations = {
     permFinancialsDebts: "لوحة القيادة: عرض ديون الزبناء",
     permFinancialsProfits: "لوحة القيادة: عرض الأرباح المتوقعة",
     permFinancialsInventory: "لوحة القيادة: عرض قيمة المخزون والسلع",
-    permFinancialsRestricted: "لوحة القيادة: صلاحية مبسطة (مبيعات اليوم، التنبيهات، اتجاه المبيعات، عدد الغرماء)",
+    permFinancialsRestricted: "لوحة القيادة: صلاحية مبسطة (أرباح اليوم، التنبيهات، اتجاه المبيعات، عدد الغرماء)",
     saleDetails: "تفاصيل المبيعات",
     returnProduct: "إرجاع السلع",
     returnQty: "الكمية المرجعة",
