@@ -157,7 +157,8 @@ async function startServer() {
               financialsDebts: true,
               financialsProfits: true,
               financialsInventory: true,
-              viewSupplierDebtAmount: true
+              viewSupplierDebtAmount: true,
+              financialsRestricted: true
             } 
           } 
         });

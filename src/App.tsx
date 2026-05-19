@@ -165,6 +165,7 @@ interface UserProfile {
     financialsDebts?: boolean;
     financialsProfits?: boolean;
     financialsInventory?: boolean;
+    financialsRestricted?: boolean;
   };
   createdAt: any;
 }
@@ -262,8 +263,8 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false };
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
 
   const userPermissions = profile?.permissions 
     ? { 
@@ -283,7 +284,7 @@ export default function App() {
     if (targetView === 'pos') return true;
     
     if (targetView === 'checks' && userPermissions.customers) return true;
-    if (targetView === 'financials' && userPermissions.financials) return true;
+    if (targetView === 'financials' && (userPermissions.financials || userPermissions.financialsRestricted)) return true;
     if (targetView === 'inventory' && userPermissions.stock) return true;
     if (targetView === 'customers' && userPermissions.customers) return true;
     if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
@@ -1211,13 +1212,148 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
   );
 
   // Check if no dashboard elements are permitted
-  if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt) {
+  if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt && !permissions.financialsRestricted) {
     return (
       <div className="h-[400px] flex flex-col items-center justify-center space-y-4 opacity-75">
         <ShieldCheck className="w-16 h-16 text-text-secondary animate-pulse" />
         <p className="text-sm font-bold text-text-secondary uppercase tracking-widest text-center">
           {isAr ? "لا تملك صلاحيات لعرض عناصر لوحة القيادة المالية." : "You do not have permissions to view any financial dashboard widgets."}
         </p>
+      </div>
+    );
+  }
+
+  if (permissions.financialsRestricted && !permissions.financials) {
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const todaySales = sales.filter(s => s.date && typeof s.date === 'string' && s.date.startsWith(todayDateStr));
+    const todayRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
+    
+    const debtorCustomers = customers.filter(c => c.debt > 0);
+    const debtorCustomersCount = debtorCustomers.length;
+    const totalOutstandingDebt = debtorCustomers.reduce((sum, c) => sum + c.debt, 0);
+    
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Simplified Top Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Daily Sales Card */}
+          <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
+            <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">
+              {isAr ? 'مبيعات اليوم' : "Today's Sales"}
+            </div>
+            <div className="flex flex-col items-center">
+              <Logo className="w-12 h-12 mb-2 p-1" />
+              <div className="text-3xl font-black text-white">{formatNumber(todayRevenue)}</div>
+              <div className="text-sm font-bold mt-1 text-white">{isAr ? 'درهم' : currency}</div>
+            </div>
+            <div className="text-[10px] text-white/50 font-medium mt-4">
+              {isAr ? `عدد العمليات اليوم: ${todaySales.length}` : `Today's Transactions: ${todaySales.length}`}
+            </div>
+          </div>
+
+          {/* Debtor Customers Card */}
+          <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
+            <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">
+              {isAr ? 'الزبناء الذين بذمتهم دين' : 'Debtor Customers'}
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="text-4xl font-black text-text-main">{formatNumber(debtorCustomersCount)}</div>
+              <div className="text-sm font-bold text-text-secondary mt-1">{isAr ? 'زبون' : 'Customers'}</div>
+            </div>
+            <div className="text-[10px] text-text-secondary/60 font-medium mt-4">
+              {isAr ? `إجمالي الديون: ${formatNumber(totalOutstandingDebt)} درهم` : `Total Debt: ${formatNumber(totalOutstandingDebt)} ${currency}`}
+            </div>
+          </div>
+        </div>
+
+        {/* Simplified Charts & Alerts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sales Trend Chart */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                {isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}
+              </h3>
+            </div>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="colorSalesRestricted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
+                    dy={10}
+                  />
+                  <YAxis hide />
+                  <ReChartsTooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#6366f1" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorSalesRestricted)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Critical Stock Alerts */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                {isAr ? 'تنبيهات المخزون الحرجة' : 'CRITICAL STOCK ALERTS'}
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">
+                  {lowStock.length}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
+              {lowStock.length > 0 ? (
+                lowStock.map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-accent/10 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-accent">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-text-main">{p.name}</div>
+                        <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-black text-danger">{p.qty}</div>
+                      <div className="text-[9px] font-bold text-text-secondary uppercase">{isAr ? 'في المخزن' : 'In Stock'}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                  <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
+                    <CheckCircle className="w-8 h-8 text-success" />
+                  </div>
+                  <p className="text-sm font-bold text-text-secondary">
+                    {isAr ? 'جميع المنتجات متوفرة بشكل جيد.' : 'All products in good stock.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -4801,7 +4937,7 @@ function StaffManagement({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'staff' | 'manager'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false });
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
@@ -4877,13 +5013,13 @@ function StaffManagement({
     try {
       const usernameLower = newUsername.toLowerCase().trim();
       const isPowerUser = newRole === 'admin' || newRole === 'manager';
-      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true } : newPerms);
+      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
-        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false });
+        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
         onRefresh();
       } else {
         setMessage({ text: result.message || "Registration failed", type: 'error' });
@@ -4972,7 +5108,7 @@ function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -5096,6 +5232,10 @@ function StaffManagement({
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancials}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsRestricted} onChange={e => setNewPerms({...newPerms, financialsRestricted: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsRestricted}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.financialsSales} onChange={e => setNewPerms({...newPerms, financialsSales: e.target.checked})} className="w-4 h-4 accent-accent" />
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsSales}</span>
                 </label>
@@ -5141,8 +5281,8 @@ function StaffManagement({
           <tbody>
             {(users || []).map(u => {
               const getIsPermActive = (permission: string) => {
-                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true };
-                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false };
+                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
+                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
                 
                 if (u.permissions && u.permissions[permission] !== undefined) {
                   return u.permissions[permission];
@@ -5192,6 +5332,7 @@ function StaffManagement({
                        <PermissionBadge label={(t as any).permSupplierDebt} active={getIsPermActive('supplierDebt')} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
                        <PermissionBadge label={(t as any).permSupplierDebtAmount} active={getIsPermActive('viewSupplierDebtAmount')} onClick={() => togglePermission(u.id, 'viewSupplierDebtAmount')} language={language} />
                        <PermissionBadge label={(t as any).permFinancials} active={getIsPermActive('financials')} onClick={() => togglePermission(u.id, 'financials')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsRestricted} active={getIsPermActive('financialsRestricted')} onClick={() => togglePermission(u.id, 'financialsRestricted')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsSales} active={getIsPermActive('financialsSales')} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsDebts} active={getIsPermActive('financialsDebts')} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsProfits} active={getIsPermActive('financialsProfits')} onClick={() => togglePermission(u.id, 'financialsProfits')} language={language} />

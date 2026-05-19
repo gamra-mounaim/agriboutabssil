@@ -267,7 +267,8 @@ export async function initDb() {
     financialsDebts: true,
     financialsProfits: true,
     financialsInventory: true,
-    viewSupplierDebtAmount: true
+    viewSupplierDebtAmount: true,
+    financialsRestricted: true
   });
 
   if (!admin) {
