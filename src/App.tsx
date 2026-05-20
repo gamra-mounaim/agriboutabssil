@@ -158,6 +158,7 @@ interface UserProfile {
     customers?: boolean;
     history?: boolean;
     profits?: boolean;
+    viewCostPrice?: boolean;
     editStock?: boolean;
     supplierDebt?: boolean;
     financials?: boolean;
@@ -165,6 +166,7 @@ interface UserProfile {
     financialsDebts?: boolean;
     financialsProfits?: boolean;
     financialsInventory?: boolean;
+    viewSupplierDebtAmount?: boolean;
     financialsRestricted?: boolean;
   };
   createdAt: any;
@@ -263,8 +265,8 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
 
   const userPermissions = profile?.permissions 
     ? { 
@@ -272,12 +274,6 @@ export default function App() {
         ...profile.permissions 
       }
     : ((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms);
-
-  useEffect(() => {
-    if ((profile?.role === 'admin' || profile?.role === 'manager') && view === 'pos') {
-       setView('financials');
-    }
-  }, [profile?.role]);
 
   const canAccess = (targetView: View) => {
     if (targetView === 'settings' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
@@ -292,6 +288,12 @@ export default function App() {
     
     return false;
   };
+
+  useEffect(() => {
+    if ((profile?.role === 'admin' || profile?.role === 'manager') && view === 'pos' && canAccess('financials')) {
+       setView('financials');
+    }
+  }, [profile?.role]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -1901,8 +1903,8 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                 </select>
               </div>
             </div>
-            <div className={cn("grid gap-4", permissions.profits ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3")}>
-              {permissions.profits && (
+            <div className={cn("grid gap-4", permissions.viewCostPrice ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3")}>
+              {permissions.viewCostPrice && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.costPrice}</label>
                   <input 
@@ -2135,7 +2137,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
               <thead>
                 <tr className="bg-[#fafafa] border-b border-border-subtle">
                   <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{language === 'ar' ? 'المنتج' : 'Product'}</th>
-                  {permissions.profits && <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.costPrice}</th>}
+                   {permissions.viewCostPrice && <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.costPrice}</th>}
                   <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.price}</th>
                   <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.inventory}</th>
                   <th className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.supplier}</th>
@@ -2161,7 +2163,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                           )}
                         </div>
                       </td>
-                      {permissions.profits && <td className="p-4 text-text-secondary italic">{formatNumber(p.costPrice || 0)} {t.currency}</td>}
+                      {permissions.viewCostPrice && <td className="p-4 text-text-secondary italic">{formatNumber(p.costPrice || 0)} {t.currency}</td>}
                       <td className="p-4 text-text-main font-bold">{formatNumber(p.price)} {t.currency}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -2350,7 +2352,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                   <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.price}</label>
                   <input required type="number" step="0.01" className="w-full bg-bg-base border border-border-subtle rounded-xl py-2 px-4 text-text-main" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} />
                 </div>
-                {permissions.profits && (
+                {permissions.viewCostPrice && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.costPrice}</label>
                     <input type="number" step="0.01" className="w-full bg-bg-base border border-border-subtle rounded-xl py-2 px-4 text-text-main" value={editForm.costPrice || ''} onChange={e => setEditForm({...editForm, costPrice: e.target.value})} />
@@ -4929,7 +4931,7 @@ function StaffManagement({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'staff' | 'manager'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
@@ -5004,14 +5006,14 @@ function StaffManagement({
     setIsSubmitting(true);
     try {
       const usernameLower = newUsername.toLowerCase().trim();
-      const isPowerUser = newRole === 'admin' || newRole === 'manager';
-      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true } : newPerms);
+      const isPowerUser = newRole === 'admin';
+      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
-        setNewPerms({ stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
+        setNewPerms({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
         onRefresh();
       } else {
         setMessage({ text: result.message || "Registration failed", type: 'error' });
@@ -5100,7 +5102,7 @@ function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -5178,7 +5180,45 @@ function StaffManagement({
             </div>
             <select 
               value={newRole}
-              onChange={e => setNewRole(e.target.value as 'admin' | 'staff' | 'manager')}
+              onChange={e => {
+                const role = e.target.value as 'admin' | 'staff' | 'manager';
+                setNewRole(role);
+                if (role === 'manager') {
+                  setNewPerms({
+                    stock: true,
+                    customers: true,
+                    history: true,
+                    profits: true,
+                    viewCostPrice: true,
+                    editStock: true,
+                    supplierDebt: true,
+                    financials: true,
+                    financialsSales: true,
+                    financialsDebts: true,
+                    financialsProfits: true,
+                    financialsInventory: true,
+                    viewSupplierDebtAmount: true,
+                    financialsRestricted: true
+                  });
+                } else if (role === 'staff') {
+                  setNewPerms({
+                    stock: true,
+                    customers: false,
+                    history: false,
+                    profits: false,
+                    viewCostPrice: false,
+                    editStock: false,
+                    supplierDebt: false,
+                    financials: false,
+                    financialsSales: false,
+                    financialsDebts: false,
+                    financialsProfits: false,
+                    financialsInventory: false,
+                    viewSupplierDebtAmount: false,
+                    financialsRestricted: false
+                  });
+                }
+              }}
               className={cn("bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-bold", language === 'ar' && "text-right")}
             >
               <option value="staff">{language === 'ar' ? "موظف مبيعات" : "SALES STAFF"}</option>
@@ -5187,7 +5227,7 @@ function StaffManagement({
             </select>
           </div>
 
-          {newRole === 'staff' && (
+          {(newRole === 'staff' || newRole === 'manager') && (
             <div className={cn("p-4 bg-bg-base rounded-xl border border-border-subtle", language === 'ar' && "text-right")}>
               <p className="text-[10px] font-black tracking-widest text-text-secondary uppercase mb-3 px-1">{language === 'ar' ? "تحديد الصلاحيات الإضافية" : "ASSIGN MODULE PERMISSIONS"}</p>
               <div className="flex flex-wrap gap-4">
@@ -5206,6 +5246,10 @@ function StaffManagement({
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.profits} onChange={e => setNewPerms({...newPerms, profits: e.target.checked})} className="w-4 h-4 accent-accent" />
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{t.canViewProfits}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.viewCostPrice} onChange={e => setNewPerms({...newPerms, viewCostPrice: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{t.canViewCostPrice}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.editStock} onChange={e => setNewPerms({...newPerms, editStock: e.target.checked})} className="w-4 h-4 accent-accent" />
@@ -5273,8 +5317,8 @@ function StaffManagement({
           <tbody>
             {(users || []).map(u => {
               const getIsPermActive = (permission: string) => {
-                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
-                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
+                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
+                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
                 
                 if (u.permissions && u.permissions[permission] !== undefined) {
                   return u.permissions[permission];
@@ -5320,6 +5364,7 @@ function StaffManagement({
                        <PermissionBadge label={t.permCustomers} active={getIsPermActive('customers')} onClick={() => togglePermission(u.id, 'customers')} language={language} />
                        <PermissionBadge label={t.permHistory} active={getIsPermActive('history')} onClick={() => togglePermission(u.id, 'history')} language={language} />
                        <PermissionBadge label={t.canViewProfits} active={getIsPermActive('profits')} onClick={() => togglePermission(u.id, 'profits')} language={language} />
+                       <PermissionBadge label={t.canViewCostPrice} active={getIsPermActive('viewCostPrice')} onClick={() => togglePermission(u.id, 'viewCostPrice')} language={language} />
                        <PermissionBadge label={t.canEditStock} active={getIsPermActive('editStock')} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
                        <PermissionBadge label={(t as any).permSupplierDebt} active={getIsPermActive('supplierDebt')} onClick={() => togglePermission(u.id, 'supplierDebt')} language={language} />
                        <PermissionBadge label={(t as any).permSupplierDebtAmount} active={getIsPermActive('viewSupplierDebtAmount')} onClick={() => togglePermission(u.id, 'viewSupplierDebtAmount')} language={language} />

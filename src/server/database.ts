@@ -268,6 +268,7 @@ export async function initDb() {
     financialsProfits: true,
     financialsInventory: true,
     viewSupplierDebtAmount: true,
+    viewCostPrice: true,
     financialsRestricted: true
   });
 
