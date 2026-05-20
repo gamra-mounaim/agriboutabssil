@@ -1219,7 +1219,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
       <div className="h-[400px] flex flex-col items-center justify-center space-y-4 opacity-75">
         <ShieldCheck className="w-16 h-16 text-text-secondary animate-pulse" />
         <p className="text-sm font-bold text-text-secondary uppercase tracking-widest text-center">
-          {isAr ? "لا تملك صلاحيات لعرض عناصر لوحة القيادة المالية." : "You do not have permissions to view any financial dashboard widgets."}
+          {t.noFinancialPermissions}
         </p>
       </div>
     );
@@ -1236,26 +1236,26 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           {/* Daily Profit Card */}
           <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[180px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
             <div className="flex justify-between items-start">
-              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح اليوم' : 'Today\'s Profit'}</span>
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
             </div>
             <div className={cn(isAr && "text-right")}>
               <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
-              <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+              <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
             </div>
           </div>
 
           {/* Debtor Customers Card */}
           <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
             <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">
-              {isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'}
+              {t.debtorCustomers}
             </div>
             <div className="flex flex-col items-center">
               <div className="text-4xl font-black text-text-main font-mono">{formatNumber(debtorCustomersCount)}</div>
-              <div className="text-sm font-bold text-text-secondary mt-1">{isAr ? 'زبون' : 'Customers'}</div>
+              <div className="text-sm font-bold text-text-secondary mt-1">{t.customerCountUnit}</div>
             </div>
             <div className="text-[10px] text-text-secondary/60 font-medium mt-4">
-              {isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with balance'}
+              {t.customersWithBalance}
             </div>
           </div>
         </div>
@@ -1266,7 +1266,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
-                {isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}
+                {t.salesTrend7Days}
               </h3>
             </div>
             <div className="h-[250px] w-full">
@@ -1307,7 +1307,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
-                {isAr ? 'تنبيهات المخزون الحرجة' : 'CRITICAL STOCK ALERTS'}
+                {t.stockAlerts}
               </h3>
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">
@@ -1331,7 +1331,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-black text-danger">{p.qty}</div>
-                      <div className="text-[9px] font-bold text-text-secondary uppercase">{isAr ? 'في المخزن' : 'In Stock'}</div>
+                      <div className="text-[9px] font-bold text-text-secondary uppercase">{t.inStock}</div>
                     </div>
                   </div>
                 ))
@@ -1341,7 +1341,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                     <CheckCircle className="w-8 h-8 text-success" />
                   </div>
                   <p className="text-sm font-bold text-text-secondary">
-                    {isAr ? 'جميع المنتجات متوفرة بشكل جيد.' : 'All products in good stock.'}
+                    {t.noStockAlerts}
                   </p>
                 </div>
               )}
@@ -1400,7 +1400,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           </div>
           <div className="flex-1 min-w-[200px]">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
-              {isAr ? 'مواعيد استحقاق ديون الموردين القريبة' : 'Upcoming Supplier Debt Due Dates'}
+              {t.upcomingSupplierDebtDueDates}
             </p>
             <p className="text-xs font-bold font-mono">
                {upcomingSupplierDebts.map(s => `${s.name} (${s.dueDate || s.due_date})`).join(', ')}
@@ -1415,14 +1415,14 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           {permissions.financialsDebts && (
             <>
               <StatCard 
-                title={isAr ? 'الديون المعلقة' : 'Pending Debts'} 
+                title={t.pendingDebts} 
                 value={formatNumber(totalCustomerDebt)} 
-                subtext={isAr ? 'محفظة الديون' : 'Debt Wallet'}
+                subtext={t.debtWallet}
               />
               <StatCard 
-                title={isAr ? 'الزبناء بذمتهم دين' : 'Debtor Customers'} 
+                title={t.debtorCustomers} 
                 value={formatNumber(customers.filter(c => c.debt > 0).length)} 
-                subtext={isAr ? 'زبناء بذمتهم مبالغ' : 'Customers with Balance'}
+                subtext={t.customersWithBalance}
                 color="text-text-main"
                 showCurrency={false}
               />
@@ -1430,16 +1430,16 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
           )}
           {permissions.financialsProfits && (
             <StatCard 
-              title={isAr ? 'الربح المتوقع' : 'Expected Profit'} 
+              title={t.expectedProfit} 
               value={formatNumber(netProfit)} 
-              subtext={isAr ? 'الأرباح المتوقعة' : 'Expected Profits'}
+              subtext={t.expectedProfit}
             />
           )}
           {permissions.financialsInventory && (
             <StatCard 
-              title={isAr ? 'قيمة المخزون' : 'Inventory Value'} 
+              title={t.inventoryValue} 
               value={formatNumber(inventoryAssetValue)} 
-              subtext={isAr ? 'قيمة المخزون الإجمالية' : 'Total Inventory Value'}
+              subtext={t.totalInventoryValue}
             />
           )}
                     {permissions.financialsSales && (
@@ -1451,7 +1451,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                                 <div className="text-3xl font-black text-white">{formatNumber(totalRevenue)}</div>
                 <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
               </div>
-              <div className="text-[10px] text-white/50 font-medium mt-4">{isAr ? 'إجمالي المبيعات' : 'Total Revenue'}</div>
+              <div className="text-[10px] text-white/50 font-medium mt-4">{t.totalSales}</div>
             </div>
           )}
         </div>
@@ -1460,50 +1460,50 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
       {permissions.financialsProfits && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h3 className={cn("text-xs font-black uppercase tracking-widest text-text-secondary border-b border-border-subtle pb-2", isAr && "text-right")}>
-            {isAr ? 'الأرباح المحققة للمبيعات' : 'REALIZED SALES PROFITS'}
+            {t.realizedSalesProfits}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح اليوم' : 'Today\'s Profit'}</span>
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح الأسبوع' : 'Weekly Profit'}</span>
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.weeklyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(weeklyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح الشهر' : 'Monthly Profit'}</span>
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.monthlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(monthlyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{isAr ? 'أرباح العام' : 'Yearly Profit'}</span>
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.yearlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(yearlyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{isAr ? 'درهم' : currency}</span>
+                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
             </div>
           </div>
@@ -1521,10 +1521,23 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                {permissions.financialsInventory && (
                  <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'تنبيهات المخزون الحرجة' : 'CRITICAL STOCK ALERTS'}</h3>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
                       <div className="flex items-center gap-2">
                         <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
-                        <button className="p-2 hover:bg-bg-base rounded-full transition-colors"><Download className="w-4 h-4 text-text-secondary" /></button>
+                        <button 
+                          onClick={() => {
+                            const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
+                            generateStockReportPDF({
+                              items: criticalItems,
+                              generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US'),
+                              language: language
+                            });
+                          }}
+                          className="p-2 hover:bg-bg-base rounded-full transition-colors"
+                          title={language === 'ar' ? "تصدير" : "Export"}
+                        >
+                          <Download className="w-4 h-4 text-text-secondary" />
+                        </button>
                       </div>
                     </div>
 
@@ -1543,7 +1556,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                             </div>
                             <div className="text-right">
                               <div className="text-lg font-black text-danger">{p.qty}</div>
-                              <div className="text-[9px] font-bold text-text-secondary uppercase">{isAr ? 'في المخزن' : 'In Stock'}</div>
+                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.inStock}</div>
                             </div>
                           </div>
                         ))
@@ -1552,7 +1565,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                           <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
                             <CheckCircle className="w-8 h-8 text-success" />
                           </div>
-                          <p className="text-sm font-bold text-text-secondary">{isAr ? 'جميع المنتجات متوفرة بشكل جيد.' : 'All products in good stock.'}</p>
+                          <p className="text-sm font-bold text-text-secondary">{t.noStockAlerts}</p>
                         </div>
                       )}
                     </div>
@@ -1609,11 +1622,11 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
              {/* Supplier Debt Card */}
              <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[300px]">
                 <div className="text-center">
-                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{isAr ? 'إجمالي ديون الموردين' : 'Supplier Payables'}</div>
+                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{t.totalSupplierDebt}</div>
                   <div className="text-5xl font-black text-text-main my-8">{formatNumber(totalSupplierDebt)}</div>
-                  <div className="text-2xl font-black text-text-main">{isAr ? 'درهم' : currency}</div>
+                  <div className="text-2xl font-black text-text-main">{t.currency}</div>
                   <div className="mt-8 pt-8 border-t border-border-subtle">
-                    <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{isAr ? 'المبلغ الذي تدينه للمورد' : 'Amount Owed to Suppliers'}</div>
+                    <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{t.amountOwedToSuppliers}</div>
                   </div>
                 </div>
              </div>
