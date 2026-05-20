@@ -729,7 +729,7 @@ export const generateStockReportPDF = (data: StockReportData) => {
     (p.qty ?? 0) === 0 ? (isAr ? "نفذ المخزون" : "Out of Stock") : (isAr ? "مخزون منخفض" : "Low Stock")
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: 50,
     head: [tableColumn],
     body: tableRows,
