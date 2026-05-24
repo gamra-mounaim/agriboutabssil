@@ -34,6 +34,27 @@ async function startServer() {
     console.log("Initializing DB...");
     await initDb();
     console.log("PostgreSQL Database initialized.");
+    
+    // --- TEMPORARY FIX: Restore gamra to admin ---
+    try {
+      await db.query(`
+        UPDATE users 
+        SET role = 'admin', 
+            permissions = $1 
+        WHERE lower(username) = 'gamra'
+      `, [JSON.stringify({ 
+        stock: true, customers: true, history: true, profits: true, 
+        viewCostPrice: true, editStock: true, supplierDebt: true, 
+        financials: true, financialsSales: true, financialsDebts: true, 
+        financialsProfits: true, financialsInventory: true, 
+        viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true 
+      })]);
+      console.log("Successfully restored gamra to admin.");
+    } catch (e) {
+      console.error("Failed to restore gamra:", e);
+    }
+    // ----------------------------------------------
+
   } catch (dbError) {
     console.error("CRITICAL: Database initialization failed:", dbError);
   }
