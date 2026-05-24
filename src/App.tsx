@@ -1249,38 +1249,83 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
   }, [sales]);
 
   const renderPaymentMethodsWidget = () => (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group hover:border-accent/10 transition-all duration-300">
+    <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
       <div className="flex items-center justify-between mb-8">
-        <h3 className="text-xs font-black uppercase tracking-widest text-text-main">
+        <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
           {(t as any).usedPaymentMethods}
         </h3>
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
+            3
+          </span>
+        </div>
       </div>
-      <div className="space-y-6">
-        <div>
-          <div className="flex justify-between text-sm font-bold mb-2">
-            <span className="text-text-main">{t.cash}</span>
-            <span className="text-text-secondary">{formatNumber(paymentStats.cash)} {t.currency} ({paymentStats.cashPct}%)</span>
+      <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
+        {/* Cash */}
+        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-emerald-500/20 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-emerald-600">
+              <span className="font-bold text-lg">💰</span>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-text-main">{t.cash}</div>
+              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.cashPct}%</div>
+            </div>
           </div>
-          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paymentStats.cashPct}%` }} />
-          </div>
-        </div>
-        <div>
-          <div className="flex justify-between text-sm font-bold mb-2">
-            <span className="text-text-main">{t.card}</span>
-            <span className="text-text-secondary">{formatNumber(paymentStats.card)} {t.currency} ({paymentStats.cardPct}%)</span>
-          </div>
-          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${paymentStats.cardPct}%` }} />
+          <div className="text-right">
+            <div className="text-lg font-black text-emerald-600">{formatNumber(paymentStats.cash)}</div>
+            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
           </div>
         </div>
-        <div>
-          <div className="flex justify-between text-sm font-bold mb-2">
-            <span className="text-text-main">{t.debt}</span>
-            <span className="text-text-secondary">{formatNumber(paymentStats.debt)} {t.currency} ({paymentStats.debtPct}%)</span>
+
+        {/* Card */}
+        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-blue-500/20 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-blue-600">
+              <span className="font-bold text-lg">💳</span>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-text-main">{t.card}</div>
+              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.cardPct}%</div>
+            </div>
           </div>
-          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
-            <div className="h-full bg-red-500 rounded-full" style={{ width: `${paymentStats.debtPct}%` }} />
+          <div className="text-right">
+            <div className="text-lg font-black text-blue-600">{formatNumber(paymentStats.card)}</div>
+            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+          </div>
+        </div>
+
+        {/* Check */}
+        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-amber-500/20 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-amber-600">
+              <span className="font-bold text-lg">📝</span>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-text-main">{(t as any).check}</div>
+              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.walletPct}%</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-black text-amber-600">{formatNumber(paymentStats.wallet)}</div>
+            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+          </div>
+        </div>
+
+        {/* Debt */}
+        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-red-500/20 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-red-600">
+              <span className="font-bold text-lg">📒</span>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-text-main">{t.debt}</div>
+              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.debtPct}%</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-black text-red-600">{formatNumber(paymentStats.debt)}</div>
+            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
           </div>
         </div>
       </div>
