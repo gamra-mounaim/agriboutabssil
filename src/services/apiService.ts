@@ -18,19 +18,43 @@ const handleResponse = async (response: Response) => {
   return response.text();
 };
 
+const getAuthHeaders = () => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const stored = localStorage.getItem('pos_user');
+    if (stored && stored !== 'undefined') {
+      const user = JSON.parse(stored);
+      if (user?.id) {
+        headers['Authorization'] = `Bearer ${user.id}:${user.sessionVersion || user.session_version}`;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse auth headers", e);
+  }
+  return headers;
+};
+
 const post = async (url: string, data: any) => handleResponse(await fetch(url, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: getAuthHeaders(),
   body: JSON.stringify(data)
 }));
 
 const put = async (url: string, data: any) => handleResponse(await fetch(url, {
   method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
+  headers: getAuthHeaders(),
   body: JSON.stringify(data)
 }));
 
-const del = async (url: string) => handleResponse(await fetch(url, { method: 'DELETE' }));
+const get = async (url: string) => handleResponse(await fetch(url, {
+  method: 'GET',
+  headers: getAuthHeaders()
+}));
+
+const del = async (url: string) => handleResponse(await fetch(url, { 
+  method: 'DELETE',
+  headers: getAuthHeaders()
+}));
 
 export const api = {
   // Auth
@@ -39,59 +63,59 @@ export const api = {
   logoutAllDevices: async (userId) => post(`${API_URL}/auth/logout-all`, { userId }),
 
   // Products
-  getProducts: async () => handleResponse(await fetch(`${API_URL}/products`)),
+  getProducts: async () => get(`${API_URL}/products`),
   addProduct: async (product) => post(`${API_URL}/products`, product),
   updateProduct: async (id, product) => put(`${API_URL}/products/${id}`, product),
   adjustStock: async (id, data) => post(`${API_URL}/products/${id}/adjust`, data),
   deleteProduct: async (id) => del(`${API_URL}/products/${id}`),
 
   // Categories
-  getCategories: async () => handleResponse(await fetch(`${API_URL}/categories`)),
+  getCategories: async () => get(`${API_URL}/categories`),
   addCategory: async (name) => post(`${API_URL}/categories`, { name }),
   deleteCategory: async (id) => del(`${API_URL}/categories/${id}`),
 
   // Customers
-  getCustomers: async () => handleResponse(await fetch(`${API_URL}/customers`)),
+  getCustomers: async () => get(`${API_URL}/customers`),
   addCustomer: async (customer) => post(`${API_URL}/customers`, customer),
   updateCustomer: async (id, customer) => put(`${API_URL}/customers/${id}`, customer),
 
   // Users
-  getUsers: async () => handleResponse(await fetch(`${API_URL}/users`)),
+  getUsers: async () => get(`${API_URL}/users`),
   register: async (username, password, role, permissions) => post(`${API_URL}/auth/register`, { username, password, role, permissions }),
   updateUser: async (id, data) => put(`${API_URL}/users/${id}`, data),
   deleteUser: async (id) => del(`${API_URL}/users/${id}`),
 
   // Debt/Payments
-  getPayments: async () => handleResponse(await fetch(`${API_URL}/payments`)),
+  getPayments: async () => get(`${API_URL}/payments`),
   addPayment: async (customerId, paymentData) => post(`${API_URL}/customers/${customerId}/payment`, paymentData),
   addCharge: async (customerId, amount, description) => post(`${API_URL}/customers/${customerId}/charge`, { amount, description }),
-  getCustomerHistory: async (customerId) => handleResponse(await fetch(`${API_URL}/customers/${customerId}/history`)),
+  getCustomerHistory: async (customerId) => get(`${API_URL}/customers/${customerId}/history`),
   returnProduct: async (customerId, returnData) => post(`${API_URL}/customers/${customerId}/return`, returnData),
   
   // Suppliers
-  getSuppliers: async () => handleResponse(await fetch(`${API_URL}/suppliers`)),
+  getSuppliers: async () => get(`${API_URL}/suppliers`),
   addSupplier: async (supplier) => post(`${API_URL}/suppliers`, supplier),
   updateSupplier: async (id, supplier) => put(`${API_URL}/suppliers/${id}`, supplier),
   addSupplierPayment: async (supplierId, paymentData) => post(`${API_URL}/suppliers/${supplierId}/payment`, paymentData),
   addSupplierCharge: async (supplierId, amount, description) => post(`${API_URL}/suppliers/${supplierId}/charge`, { amount, description }),
-  getSupplierHistory: async (supplierId) => handleResponse(await fetch(`${API_URL}/suppliers/${supplierId}/history`)),
+  getSupplierHistory: async (supplierId) => get(`${API_URL}/suppliers/${supplierId}/history`),
 
   // Sales
-  getSales: async () => handleResponse(await fetch(`${API_URL}/sales`)),
-  getSaleItems: async (id) => handleResponse(await fetch(`${API_URL}/sales/${id}/items`)),
-  getChecks: async () => handleResponse(await fetch(`${API_URL}/checks`)),
+  getSales: async () => get(`${API_URL}/sales`),
+  getSaleItems: async (id) => get(`${API_URL}/sales/${id}/items`),
+  getChecks: async () => get(`${API_URL}/checks`),
   createSale: async (sale) => post(`${API_URL}/sales`, sale),
 
   // Stats
-  getStats: async () => handleResponse(await fetch(`${API_URL}/stats`)),
+  getStats: async () => get(`${API_URL}/stats`),
 
   // Activity Logs
-  getActivityLogs: async () => handleResponse(await fetch(`${API_URL}/activity`)),
+  getActivityLogs: async () => get(`${API_URL}/activity`),
   
   // Google Drive Backup
-  getGoogleAuthUrl: async () => handleResponse(await fetch(`${API_URL}/auth/google/url`)),
-  getGoogleDriveStatus: async () => handleResponse(await fetch(`${API_URL}/backup/drive/status`)),
-  backupToGoogleDrive: async () => handleResponse(await fetch(`${API_URL}/backup/drive/upload`, { method: 'POST' })),
+  getGoogleAuthUrl: async () => get(`${API_URL}/auth/google/url`),
+  getGoogleDriveStatus: async () => get(`${API_URL}/backup/drive/status`),
+  backupToGoogleDrive: async () => post(`${API_URL}/backup/drive/upload`, {}),
   sendBackupEmail: async () => post(`${API_URL}/backup/email/send`, {}),
 
   // Communications
@@ -99,16 +123,16 @@ export const api = {
   sendWhatsApp: async (data) => post(`${API_URL}/send-whatsapp`, data),
   
   // Backup
-  getBackup: async () => handleResponse(await fetch(`${API_URL}/backup`)),
-  getLatestBackup: async () => handleResponse(await fetch(`${API_URL}/backup/latest`)),
-  exportBackup: async () => handleResponse(await fetch(`${API_URL}/backup/export`)),
+  getBackup: async () => get(`${API_URL}/backup`),
+  getLatestBackup: async () => get(`${API_URL}/backup/latest`),
+  exportBackup: async () => get(`${API_URL}/backup/export`),
   importBackup: async (data: any) => post(`${API_URL}/backup/import`, { data }),
   
   // Notifications
-  getNotifications: async () => handleResponse(await fetch(`${API_URL}/notifications`)),
+  getNotifications: async () => get(`${API_URL}/notifications`),
   markNotificationRead: async (id) => post(`${API_URL}/notifications/${id}/read`, {}),
   
   // Settings
-  getSettings: async () => handleResponse(await fetch(`${API_URL}/settings`)),
+  getSettings: async () => get(`${API_URL}/settings`),
   updateSettings: async (settings) => post(`${API_URL}/settings`, settings)
 };

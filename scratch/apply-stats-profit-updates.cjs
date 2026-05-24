@@ -1,0 +1,106 @@
+const fs = require('fs');
+const path = 'server.ts';
+let content = fs.readFileSync(path, 'utf8');
+
+const target = `  // --- Stats API ---
+  app.get("/api/stats", async (req, res) => {
+    const totalSales = ((await db.prepare('SELECT SUM(total) as total FROM sales').get()) as any).total || 0;
+    const transactions = ((await db.prepare('SELECT COUNT(*) as count FROM sales').get()) as any).count || 0;
+    const totalStock = ((await db.prepare('SELECT SUM(qty) as total FROM products').get()) as any).total || 0;
+    const inventoryValue = ((await db.prepare('SELECT SUM(cost_price * qty) as total FROM products').get()) as any).total || 0;
+    const expectedProfit = ((await db.prepare('SELECT SUM((price - cost_price) * qty) as total FROM products').get()) as any).total || 0;
+    const activeSuppliers = ((await db.prepare('SELECT COUNT(DISTINCT supplier) as count FROM products WHERE supplier IS NOT NULL').get()) as any).count || 0;
+    const outstandingDebt = ((await db.prepare('SELECT SUM(debt) as total FROM customers').get()) as any).total || 0;
+    const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
+ 
+    res.json(toCamel({
+      totalSales,
+      transactions,
+      totalStock,
+      inventoryValue,
+      expectedProfit,
+      activeSuppliers,
+      outstandingDebt,
+      supplierDebt
+    }));
+  });`;
+
+const replacement = `  // --- Stats API ---
+  app.get("/api/stats", async (req, res) => {
+    const totalSales = ((await db.prepare('SELECT SUM(total) as total FROM sales').get()) as any).total || 0;
+    const transactions = ((await db.prepare('SELECT COUNT(*) as count FROM sales').get()) as any).count || 0;
+    const totalStock = ((await db.prepare('SELECT SUM(qty) as total FROM products').get()) as any).total || 0;
+    const inventoryValue = ((await db.prepare('SELECT SUM(cost_price * qty) as total FROM products').get()) as any).total || 0;
+    const expectedProfit = ((await db.prepare('SELECT SUM((price - cost_price) * qty) as total FROM products').get()) as any).total || 0;
+    const activeSuppliers = ((await db.prepare('SELECT COUNT(DISTINCT supplier) as count FROM products WHERE supplier IS NOT NULL').get()) as any).count || 0;
+    const outstandingDebt = ((await db.prepare('SELECT SUM(debt) as total FROM customers').get()) as any).total || 0;
+    const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
+
+    const dailyProfitQuery = \`
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= CURRENT_DATE
+    \`;
+    const weeklyProfitQuery = \`
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)
+    \`;
+    const monthlyProfitQuery = \`
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)
+    \`;
+    const yearlyProfitQuery = \`
+      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)
+    \`;
+
+    const dailyProfit = ((await db.prepare(dailyProfitQuery).get()) as any).profit || 0;
+    const weeklyProfit = ((await db.prepare(weeklyProfitQuery).get()) as any).profit || 0;
+    const monthlyProfit = ((await db.prepare(monthlyProfitQuery).get()) as any).profit || 0;
+    const yearlyProfit = ((await db.prepare(yearlyProfitQuery).get()) as any).profit || 0;
+ 
+    res.json(toCamel({
+      totalSales,
+      transactions,
+      totalStock,
+      inventoryValue,
+      expectedProfit,
+      activeSuppliers,
+      outstandingDebt,
+      supplierDebt,
+      dailyProfit,
+      weeklyProfit,
+      monthlyProfit,
+      yearlyProfit
+    }));
+  });`;
+
+// Helper normalize newlines for exact matching
+function norm(str) {
+  return str.replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
+}
+
+const normContent = content.replace(/\r\n/g, '\n');
+const normTarget = norm(target);
+const normReplacement = replacement.replace(/\r\n/g, '\n');
+
+const cleanTarget = target.replace(/\r\n/g, '\n').trim();
+const originalIndex = normContent.indexOf(cleanTarget);
+if (originalIndex !== -1) {
+  const replaced = normContent.substring(0, originalIndex) + normReplacement + normContent.substring(originalIndex + cleanTarget.length);
+  fs.writeFileSync(path, replaced.replace(/\n/g, '\r\n'), 'utf8');
+  console.log("Successfully replaced server.ts stats API!");
+} else {
+  console.error("Target not found inside server.ts!");
+}

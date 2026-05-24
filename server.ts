@@ -10,6 +10,8 @@ import db, { initDb } from "./src/server/database";
 import { v4 as uuidv4 } from 'uuid';
 import crypto from "node:crypto";
 import { google } from "googleapis";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 const hashPassword = (password: string) => {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -36,8 +38,49 @@ async function startServer() {
     console.error("CRITICAL: Database initialization failed:", dbError);
   }
 
-  app.use(cors());
+  app.use(helmet());
+  app.use(cors({
+    origin: process.env.APP_URL || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
   app.use(express.json({ limit: '50mb' }));
+
+  const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ status: "error", message: "Unauthorized: Missing or invalid token" });
+    }
+    const token = authHeader.split(' ')[1];
+    const [userId, sessionVersion] = token.split(':');
+    
+    if (!userId || !sessionVersion) {
+      return res.status(401).json({ status: "error", message: "Unauthorized: Invalid token format" });
+    }
+
+    try {
+      if (userId === 'admin') {
+         next();
+         return;
+      }
+      const user = (await db.prepare('SELECT role, session_version FROM users WHERE id = ?').get(userId)) as any;
+      if (!user) {
+        return res.status(401).json({ status: "error", message: "Unauthorized: User not found" });
+      }
+
+      if (user.role !== 'admin') {
+         return res.status(403).json({ status: "error", message: "Forbidden: Requires admin role" });
+      }
+
+      if (parseInt(sessionVersion) !== (user.session_version || 1)) {
+        return res.status(401).json({ status: "error", message: "Unauthorized: Session expired" });
+      }
+
+      next();
+    } catch (err) {
+      res.status(500).json({ status: "error", message: "Database error during authentication" });
+    }
+  };
 
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -58,6 +101,29 @@ async function startServer() {
   });
 
   // --- Utilities ---
+  const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.createHash('sha256').update('gamra_fallback_secret_key_123').digest('hex');
+  const encryptToken = (text: string) => {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+    return JSON.stringify({ iv: iv.toString('hex'), encrypted, authTag });
+  };
+  
+  const decryptToken = (encryptedData: string) => {
+    try {
+      const data = JSON.parse(encryptedData);
+      if (!data.iv || !data.encrypted || !data.authTag) return encryptedData;
+      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(data.iv, 'hex'));
+      decipher.setAuthTag(Buffer.from(data.authTag, 'hex'));
+      let decrypted = decipher.update(data.encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (e) {
+      return encryptedData;
+    }
+  };
   const logActivity = async (type: string, action: string, details: string, actorId: string = 'system', actorName: string = 'System') => {
     try {
       await db.prepare(`
@@ -92,8 +158,13 @@ async function startServer() {
     return newObj;
   };
 
-  // --- Auth API ---
-  app.post("/api/auth/login", async (req, res) => {
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { status: "error", message: "Too many login attempts, please try again later." }
+  });
+
+  app.post("/api/auth/login", loginLimiter, async (req, res) => {
     const { username, password: rawPassword } = req.body;
     if (!username || !rawPassword) {
       return res.status(400).json({ status: "error", message: "Username and password required" });
@@ -104,7 +175,7 @@ async function startServer() {
     
     // Check if the user is the hardcoded admin or in DB
     const ADMIN_HASH = '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f';
-    const isHardcodedAdmin = (usernameLower === 'gamra') && (hashedPassword === ADMIN_HASH || rawPassword.trim() === 'yassir2019');
+    const isHardcodedAdmin = (usernameLower === 'gamra') && (hashedPassword === ADMIN_HASH);
 
     try {
       const user = (await db.prepare('SELECT * FROM users WHERE username = $1 OR lower(username) = $2').get(username, usernameLower)) as any;
@@ -356,10 +427,7 @@ async function startServer() {
           host: 'smtp.gmail.com',
           port: 465,
           secure: true,
-          auth: { user: smtpUser, pass: smtpPass },
-          tls: {
-            rejectUnauthorized: false
-          }
+          auth: { user: smtpUser, pass: smtpPass }
         });
 
         const mailOptions = {
@@ -403,7 +471,7 @@ async function startServer() {
       }
 
       console.log("Attempting automatic Google Drive backup...");
-      const tokens = JSON.parse(authData.tokens);
+      const tokens = JSON.parse(decryptToken(authData.tokens));
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -416,9 +484,9 @@ async function startServer() {
         try {
           const row = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
           if (row) {
-            const currentTokens = JSON.parse(row.tokens);
+            const currentTokens = JSON.parse(decryptToken(row.tokens));
             const merged = { ...currentTokens, ...newTokens };
-            await db.prepare('UPDATE google_auth SET tokens = ? WHERE id = ?').run(JSON.stringify(merged), 'main');
+            await db.prepare('UPDATE google_auth SET tokens = ? WHERE id = ?').run(encryptToken(JSON.stringify(merged)), 'main');
             console.log("Google Drive access token refreshed and saved during auto-backup.");
           }
         } catch (tokenErr) {
@@ -492,7 +560,7 @@ async function startServer() {
     await performDriveAutoBackup();
   }, 5 * 60 * 60 * 1000);
 
-  app.post("/api/backup/email/send", async (req, res) => {
+  app.post("/api/backup/email/send", authMiddleware, async (req, res) => {
     try {
       const result = await performAutoBackup();
       if (result.emailSent) {
@@ -505,7 +573,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/backup/latest", async (req, res) => {
+  app.get("/api/backup/latest", authMiddleware, async (req, res) => {
     try {
       const latest = (await db.prepare('SELECT * FROM backup_history WHERE id = ?').get('latest')) as any;
       res.json(latest || null);
@@ -514,7 +582,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/backup", async (req, res) => {
+  app.get("/api/backup", authMiddleware, async (req, res) => {
     try {
       const data = {
         products: await db.prepare('SELECT * FROM products').all(),
@@ -1249,7 +1317,7 @@ async function startServer() {
       
       // Store tokens in DB
       await db.prepare('DELETE FROM google_auth WHERE id = ?').run('main');
-      await db.prepare('INSERT INTO google_auth (id, tokens) VALUES (?, ?)').run('main', JSON.stringify(tokens));
+      await db.prepare('INSERT INTO google_auth (id, tokens) VALUES (?, ?)').run('main', encryptToken(JSON.stringify(tokens)));
 
       res.send(`
         <html>
@@ -1286,7 +1354,7 @@ async function startServer() {
       const authData = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
       if (!authData) return res.status(401).json({ status: "error", message: "Google Drive non connecté" });
 
-      const tokens = JSON.parse(authData.tokens);
+      const tokens = JSON.parse(decryptToken(authData.tokens));
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -1296,10 +1364,12 @@ async function startServer() {
 
       // Refresh token if needed
       oauth2Client.on('tokens', async (newTokens) => {
-        const row = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
-        const currentTokens = JSON.parse(row.tokens);
-        const merged = { ...currentTokens, ...newTokens };
-        await db.prepare('UPDATE google_auth SET tokens = ? WHERE id = ?').run(JSON.stringify(merged), 'main');
+        const auth = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
+        if (auth) {
+          const currentTokens = JSON.parse(decryptToken(auth.tokens));
+          const merged = { ...currentTokens, ...newTokens };
+          await db.prepare('UPDATE google_auth SET tokens = ? WHERE id = ?').run(encryptToken(JSON.stringify(merged)), 'main');
+        }
       });
 
       const drive = google.drive({ version: 'v3', auth: oauth2Client });
@@ -1343,7 +1413,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/backup/export", async (req, res) => {
+  app.get("/api/backup/export", authMiddleware, async (req, res) => {
     try {
       const tables = [
         'users', 'categories', 'products', 'customers', 
@@ -1361,7 +1431,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/backup/import", async (req, res) => {
+  app.post("/api/backup/import", authMiddleware, async (req, res) => {
     const { data } = req.body;
     if (!data) return res.status(400).json({ status: "error", message: "No data provided" });
 

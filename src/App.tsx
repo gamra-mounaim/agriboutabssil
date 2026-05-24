@@ -168,6 +168,7 @@ interface UserProfile {
     financialsInventory?: boolean;
     viewSupplierDebtAmount?: boolean;
     financialsRestricted?: boolean;
+    financialsPaymentMethods?: boolean;
   };
   createdAt: any;
 }
@@ -265,8 +266,8 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false };
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false };
 
   const userPermissions = profile?.permissions 
     ? { 
@@ -848,7 +849,7 @@ export default function App() {
                   {view === 'pos' && <POS products={products} categories={categories} customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
                   {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} products={products} />}
                   {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
-                  {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} />}
+                  {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} currentUserRole={currentUserRole} />}
                   {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} permissions={userPermissions} />}
                   {view === 'checks' && <CheckListView checks={checks} language={language} settings={settings} />}
                   {view === 'settings' && (
@@ -1036,26 +1037,52 @@ function DashboardStats({ products, categories, customers, sales, language, stat
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Sales Trend */}
-        <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm">
-          <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-6">{language === 'ar' ? "اتجاه المبيعات (7 أيام)" : "SALES TREND (LAST 7 DAYS)"}</h4>
+        <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-6">
+            <h4 className="text-xs font-bold text-text-main flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-accent" />
+              {language === 'ar' ? "اتجاه المبيعات (7 أيام)" : "SALES TREND (LAST 7 DAYS)"}
+            </h4>
+            <div className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">
+              {formatNumber(last7Days.reduce((acc, curr) => acc + curr.amount, 0))} {t.currency}
+            </div>
+          </div>
           <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={last7Days}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} dy={10} />
-                <YAxis hide />
-                <ReChartsTooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                />
-                <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {last7Days.every(d => d.amount === 0) ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
+                <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
+                <span className="text-xs font-bold uppercase tracking-widest">{language === 'ar' ? "لا توجد مبيعات" : "NO SALES"}</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={last7Days}>
+                  <defs>
+                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} dy={10} />
+                  <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
+                  <ReChartsTooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                    itemStyle={{ color: '#6366f1' }}
+                    formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'المبيعات' : 'Sales']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="#6366f1" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorSales)" 
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
+                    dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -1200,7 +1227,65 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
     };
   });
 
-    
+  const paymentStats = useMemo(() => {
+    let cash = 0, card = 0, wallet = 0, debt = 0, total = 0;
+    sales.forEach(s => {
+      const amount = s.total || 0;
+      total += amount;
+      const m = (s.paymentMethod || 'cash').toLowerCase();
+      if (m === 'cash') cash += amount;
+      else if (m === 'card') card += amount;
+      else if (m === 'debt') debt += amount;
+      else if (m === 'check') wallet += amount; // We'll map check/other to digital wallet/checks
+      else wallet += amount; 
+    });
+    return {
+      total,
+      cash, cashPct: total > 0 ? Math.round((cash / total) * 100) : 0,
+      card, cardPct: total > 0 ? Math.round((card / total) * 100) : 0,
+      wallet, walletPct: total > 0 ? Math.round((wallet / total) * 100) : 0,
+      debt, debtPct: total > 0 ? Math.round((debt / total) * 100) : 0,
+    };
+  }, [sales]);
+
+  const renderPaymentMethodsWidget = () => (
+    <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group hover:border-accent/10 transition-all duration-300">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xs font-black uppercase tracking-widest text-text-main">
+          {(t as any).usedPaymentMethods}
+        </h3>
+      </div>
+      <div className="space-y-6">
+        <div>
+          <div className="flex justify-between text-sm font-bold mb-2">
+            <span className="text-text-main">{t.cash}</span>
+            <span className="text-text-secondary">{formatNumber(paymentStats.cash)} {t.currency} ({paymentStats.cashPct}%)</span>
+          </div>
+          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paymentStats.cashPct}%` }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-sm font-bold mb-2">
+            <span className="text-text-main">{t.card}</span>
+            <span className="text-text-secondary">{formatNumber(paymentStats.card)} {t.currency} ({paymentStats.cardPct}%)</span>
+          </div>
+          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${paymentStats.cardPct}%` }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-sm font-bold mb-2">
+            <span className="text-text-main">{t.debt}</span>
+            <span className="text-text-secondary">{formatNumber(paymentStats.debt)} {t.currency} ({paymentStats.debtPct}%)</span>
+          </div>
+          <div className="h-2.5 w-full bg-bg-base rounded-full overflow-hidden">
+            <div className="h-full bg-red-500 rounded-full" style={{ width: `${paymentStats.debtPct}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true }: any) => (
     <div className={`${bg} p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]`}>
@@ -1214,7 +1299,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
   );
 
   // Check if no dashboard elements are permitted
-  if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt && !permissions.financialsRestricted) {
+  if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt && !permissions.financialsRestricted && !permissions.financialsPaymentMethods) {
     return (
       <div className="h-[400px] flex flex-col items-center justify-center space-y-4 opacity-75">
         <ShieldCheck className="w-16 h-16 text-text-secondary animate-pulse" />
@@ -1263,43 +1348,58 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
         {/* Simplified Charts & Alerts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sales Trend Chart */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
+              <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-accent" />
                 {t.salesTrend7Days}
               </h3>
+              <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                {formatNumber(trendData.reduce((acc: number, curr: any) => acc + curr.amount, 0))} {t.currency}
+              </div>
             </div>
             <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
-                  <defs>
-                    <linearGradient id="colorSalesRestricted" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
-                    dy={10}
-                  />
-                  <YAxis hide />
-                  <ReChartsTooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="#6366f1" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorSalesRestricted)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {trendData.every((d: any) => d.amount === 0) ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
+                  <TrendingUp className="w-10 h-10 mb-3 opacity-50" />
+                  <span className="text-xs font-bold uppercase tracking-widest">{t.noSalesInPeriod || "NO SALES"}</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData}>
+                    <defs>
+                      <linearGradient id="colorSalesRestricted" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                      dy={10}
+                    />
+                    <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
+                    <ReChartsTooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                      itemStyle={{ color: '#6366f1' }}
+                      formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'المبيعات' : 'Sales']}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#6366f1" 
+                      strokeWidth={4}
+                      fillOpacity={1} 
+                      fill="url(#colorSalesRestricted)" 
+                      activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
+                      dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -1347,6 +1447,7 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               )}
             </div>
           </div>
+          {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
         </div>
       </div>
     );
@@ -1574,44 +1675,66 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
 
                {/* Sales Trend Chart */}
                {permissions.financialsSales && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
                     <div className="flex items-center justify-between mb-8">
-                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}</h3>
+                       <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
+                         <TrendingUp className="w-5 h-5 text-accent" />
+                         {isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}
+                       </h3>
+                       <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                         {formatNumber(trendData.reduce((acc: number, curr: any) => acc + curr.amount, 0))} {t.currency}
+                       </div>
                     </div>
                     <div className="h-[250px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trendData}>
-                          <defs>
-                            <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis 
-                            dataKey="date" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 600 }}
-                            dy={10}
-                          />
-                          <YAxis hide />
-                          <ReChartsTooltip 
-                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="amount" 
-                            stroke="#6366f1" 
-                            strokeWidth={3}
-                            fillOpacity={1} 
-                            fill="url(#colorSales)" 
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                      {trendData.every((d: any) => d.amount === 0) ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
+                          <TrendingUp className="w-10 h-10 mb-3 opacity-50" />
+                          <span className="text-xs font-bold uppercase tracking-widest">{isAr ? "لا توجد مبيعات" : "NO SALES"}</span>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={trendData}>
+                            <defs>
+                              <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                              dy={10}
+                            />
+                            <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
+                            <ReChartsTooltip 
+                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                              itemStyle={{ color: '#6366f1' }}
+                              formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, isAr ? 'المبيعات' : 'Sales']}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="amount" 
+                              stroke="#6366f1" 
+                              strokeWidth={4}
+                              fillOpacity={1} 
+                              fill="url(#colorSales)" 
+                              activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
+                              dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                  </div>
                )}
+            </div>
+          )}
+          {permissions.financialsPaymentMethods && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {renderPaymentMethodsWidget()}
             </div>
           )}
         </div>
@@ -4435,7 +4558,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
   );
 }
 
-function HistoryView({ sales, payments, activities, customers, appUsers, settings, language, onRefresh, permissions }: { sales: Sale[], payments: Payment[], activities: ActivityLog[], customers: Customer[], appUsers: UserProfile[], settings: any, language: Language, onRefresh: () => void, permissions: any }) {
+function HistoryView({ sales, payments, activities, customers, appUsers, settings, language, onRefresh, permissions, currentUserRole }: { sales: Sale[], payments: Payment[], activities: ActivityLog[], customers: Customer[], appUsers: UserProfile[], settings: any, language: Language, onRefresh: () => void, permissions: any, currentUserRole?: string }) {
   const t = translations[language];
   const [subView, setSubView] = useState<'sales' | 'payments' | 'activity'>('activity');
   const [filterMonth, setFilterMonth] = useState<number>(0);
@@ -4487,12 +4610,63 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
     return matchesMonth && matchesYear && matchesSearch;
   });
 
-    const filteredActivities = (activities || []).filter(a => {
+    const translateActivityDetails = (details: string) => {
+    if (language === 'en') return details;
+    let d = details;
+    if (language === 'ar') {
+      d = d.replace(/User logged in:/i, 'تسجيل دخول المستخدم:');
+      d = d.replace(/Admin login:/i, 'تسجيل دخول المدير:');
+      d = d.replace(/Forced logout from all devices for user:/i, 'تسجيل خروج إجباري من جميع الأجهزة للمستخدم:');
+      d = d.replace(/Created new user:/i, 'تم إنشاء مستخدم جديد:');
+      d = d.replace(/Deleted user account:/i, 'تم حذف حساب المستخدم:');
+      d = d.replace(/Added product:/i, 'تمت إضافة منتج:');
+      d = d.replace(/Updated product:/i, 'تم تحديث منتج:');
+      d = d.replace(/Stock IN:/i, 'إدخال مخزون:');
+      d = d.replace(/Stock OUT:/i, 'إخراج مخزون:');
+      d = d.replace(/via Supplier/i, 'عبر المورد');
+      d = d.replace(/Created category:/i, 'تم إنشاء فئة:');
+      d = d.replace(/Added customer:/i, 'تمت إضافة زبون:');
+      d = d.replace(/Payment of/i, 'دفعة بقيمة');
+      d = d.replace(/from/i, 'من');
+      d = d.replace(/Return of/i, 'إرجاع');
+      d = d.replace(/Value:/i, 'القيمة:');
+      d = d.replace(/Initial Debt:/i, 'الديون الأولية:');
+      d = d.replace(/Qty:/i, 'الكمية:');
+      d = d.replace(/units/i, 'وحدات');
+    } else if (language === 'fr') {
+      d = d.replace(/User logged in:/i, 'Utilisateur connecté :');
+      d = d.replace(/Admin login:/i, 'Connexion admin :');
+      d = d.replace(/Forced logout from all devices for user:/i, 'Déconnexion forcée de tous les appareils pour l\'utilisateur :');
+      d = d.replace(/Created new user:/i, 'Nouvel utilisateur créé :');
+      d = d.replace(/Deleted user account:/i, 'Compte utilisateur supprimé :');
+      d = d.replace(/Added product:/i, 'Produit ajouté :');
+      d = d.replace(/Updated product:/i, 'Produit mis à jour :');
+      d = d.replace(/Stock IN:/i, 'Entrée de stock :');
+      d = d.replace(/Stock OUT:/i, 'Sortie de stock :');
+      d = d.replace(/via Supplier/i, 'via Fournisseur');
+      d = d.replace(/Created category:/i, 'Catégorie créée :');
+      d = d.replace(/Added customer:/i, 'Client ajouté :');
+      d = d.replace(/Payment of/i, 'Paiement de');
+      d = d.replace(/from/i, 'de');
+      d = d.replace(/Return of/i, 'Retour de');
+      d = d.replace(/Value:/i, 'Valeur :');
+      d = d.replace(/Initial Debt:/i, 'Dette initiale :');
+      d = d.replace(/Qty:/i, 'Qté :');
+      d = d.replace(/units/i, 'unités');
+    }
+    return d;
+  };
+
+  const filteredActivities = (activities || []).filter(a => {
+    if (currentUserRole !== 'admin' && (a.actorId === 'admin' || a.actorName === 'gamra')) {
+      return false;
+    }
     const d = new Date(a.timestamp);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
     const matchesYear = d.getFullYear() === filterYear;
     const matchesType = filterActivityType === 'all' || a.type === filterActivityType;
-    const matchesSearch = (a.details || '').toLowerCase().includes(searchHistory.toLowerCase()) || 
+    const translatedDetails = translateActivityDetails(a.details);
+    const matchesSearch = (translatedDetails || '').toLowerCase().includes(searchHistory.toLowerCase()) || 
                          (a.actorName || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesType && matchesSearch;
   });
@@ -4733,7 +4907,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex justify-between items-start">
-                    <div className="text-[13px] font-bold text-text-main leading-tight">{a.details}</div>
+                    <div className="text-[13px] font-bold text-text-main leading-tight">{translateActivityDetails(a.details)}</div>
                     <div className="text-[10px] text-text-secondary font-medium whitespace-nowrap ml-4">
                       {new Date(a.timestamp).toLocaleDateString()} • {new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -4944,7 +5118,7 @@ function StaffManagement({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'staff' | 'manager'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
@@ -5020,13 +5194,13 @@ function StaffManagement({
     try {
       const usernameLower = newUsername.toLowerCase().trim();
       const isPowerUser = newRole === 'admin';
-      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true } : newPerms);
+      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
-        setNewPerms({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false });
+        setNewPerms({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false });
         onRefresh();
       } else {
         setMessage({ text: result.message || "Registration failed", type: 'error' });
@@ -5115,7 +5289,7 @@ function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted' | 'financialsPaymentMethods') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -5211,7 +5385,8 @@ function StaffManagement({
                     financialsProfits: true,
                     financialsInventory: true,
                     viewSupplierDebtAmount: true,
-                    financialsRestricted: true
+                    financialsRestricted: true,
+                    financialsPaymentMethods: true
                   });
                 } else if (role === 'staff') {
                   setNewPerms({
@@ -5228,7 +5403,8 @@ function StaffManagement({
                     financialsProfits: false,
                     financialsInventory: false,
                     viewSupplierDebtAmount: false,
-                    financialsRestricted: false
+                    financialsRestricted: false,
+                    financialsPaymentMethods: false
                   });
                 }
               }}
@@ -5283,6 +5459,10 @@ function StaffManagement({
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.financialsRestricted} onChange={e => setNewPerms({...newPerms, financialsRestricted: e.target.checked})} className="w-4 h-4 accent-accent" />
                   <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsRestricted}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input type="checkbox" checked={newPerms.financialsPaymentMethods} onChange={e => setNewPerms({...newPerms, financialsPaymentMethods: e.target.checked})} className="w-4 h-4 accent-accent" />
+                  <span className="text-xs font-bold text-text-main group-hover:text-accent transition-colors">{(t as any).permFinancialsPaymentMethods}</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.financialsSales} onChange={e => setNewPerms({...newPerms, financialsSales: e.target.checked})} className="w-4 h-4 accent-accent" />
@@ -5383,6 +5563,7 @@ function StaffManagement({
                        <PermissionBadge label={(t as any).permSupplierDebtAmount} active={getIsPermActive('viewSupplierDebtAmount')} onClick={() => togglePermission(u.id, 'viewSupplierDebtAmount')} language={language} />
                        <PermissionBadge label={(t as any).permFinancials} active={getIsPermActive('financials')} onClick={() => togglePermission(u.id, 'financials')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsRestricted} active={getIsPermActive('financialsRestricted')} onClick={() => togglePermission(u.id, 'financialsRestricted')} language={language} />
+                       <PermissionBadge label={(t as any).permFinancialsPaymentMethods} active={getIsPermActive('financialsPaymentMethods')} onClick={() => togglePermission(u.id, 'financialsPaymentMethods')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsSales} active={getIsPermActive('financialsSales')} onClick={() => togglePermission(u.id, 'financialsSales')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsDebts} active={getIsPermActive('financialsDebts')} onClick={() => togglePermission(u.id, 'financialsDebts')} language={language} />
                        <PermissionBadge label={(t as any).permFinancialsProfits} active={getIsPermActive('financialsProfits')} onClick={() => togglePermission(u.id, 'financialsProfits')} language={language} />

@@ -190,6 +190,9 @@ export const translations = {
     realizedSalesProfits: "Realized Sales Profits",
     upcomingSupplierDebtDueDates: "Upcoming Supplier Debt Due Dates",
     amountOwedToSuppliers: "Amount Owed to Suppliers",
+    permFinancialsPaymentMethods: "Dashboard: View Payment Methods Breakdown",
+    usedPaymentMethods: "Used Payment Methods",
+    digitalWallet: "Digital Wallet",
   },
   fr: {
     appName: "AGRI BOUTABSSIL",
@@ -379,6 +382,9 @@ export const translations = {
     realizedSalesProfits: "Bénéfices réalisés sur ventes",
     upcomingSupplierDebtDueDates: "Dates d'échéance des dettes fournisseurs à venir",
     amountOwedToSuppliers: "Montant dû aux fournisseurs",
+    permFinancialsPaymentMethods: "Dashboard : Moyens de paiement utilisés",
+    usedPaymentMethods: "Moyens de paiement utilisés",
+    digitalWallet: "Portefeuille Numérique",
   },
   ar: {
     appName: "AGRI BOUTABSSIL",
@@ -566,5 +572,8 @@ export const translations = {
     realizedSalesProfits: "الأرباح المحققة للمبيعات",
     upcomingSupplierDebtDueDates: "مواعيد استحقاق ديون الموردين القريبة",
     amountOwedToSuppliers: "المبلغ الذي تدينه للمورد",
+    permFinancialsPaymentMethods: "لوحة القيادة: عرض طرق الدفع المستخدمة",
+    usedPaymentMethods: "طرق الدفع المستخدمة",
+    digitalWallet: "المحفظة الرقمية",
   }
 };
