@@ -1461,22 +1461,22 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
               </div>
             </div>
 
-            <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
               {lowStock.length > 0 ? (
                 lowStock.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-accent/10 transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-accent">
-                        <Package className="w-5 h-5" />
+                  <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
+                        <Package className="w-4 h-4" />
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-text-main">{p.name}</div>
-                        <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                      <div className="overflow-hidden">
+                        <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
+                        <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-black text-danger">{p.qty}</div>
-                      <div className="text-[9px] font-bold text-text-secondary uppercase">{t.inStock}</div>
+                    <div className="text-right pl-2 shrink-0">
+                      <div className="text-base font-black text-danger">{p.qty}</div>
+                      <div className="text-[8px] font-bold text-text-secondary uppercase">{t.inStock}</div>
                     </div>
                   </div>
                 ))
@@ -1687,22 +1687,22 @@ function FinancialDashboardView({ stats, sales, payments, customers, suppliers, 
                       </div>
                     </div>
 
-                    <div className="space-y-4 min-h-[250px] flex flex-col">
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
                       {lowStock.length > 0 ? (
                         lowStock.map(p => (
-                          <div key={p.id} className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-accent/10 transition-all">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-accent">
-                                <Package className="w-5 h-5" />
+                          <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
+                                <Package className="w-4 h-4" />
                               </div>
-                              <div>
-                                <div className="text-sm font-bold text-text-main">{p.name}</div>
-                                <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                              <div className="overflow-hidden">
+                                <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
+                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-lg font-black text-danger">{p.qty}</div>
-                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.inStock}</div>
+                            <div className="text-right pl-2 shrink-0">
+                              <div className="text-base font-black text-danger">{p.qty}</div>
+                              <div className="text-[8px] font-bold text-text-secondary uppercase">{t.inStock}</div>
                             </div>
                           </div>
                         ))

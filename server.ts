@@ -37,18 +37,18 @@ async function startServer() {
     
     // --- TEMPORARY FIX: Restore gamra to admin ---
     try {
-      await db.query(`
+      await db.prepare(`
         UPDATE users 
         SET role = 'admin', 
-            permissions = $1 
+            permissions = ? 
         WHERE lower(username) = 'gamra'
-      `, [JSON.stringify({ 
+      `).run(JSON.stringify({ 
         stock: true, customers: true, history: true, profits: true, 
         viewCostPrice: true, editStock: true, supplierDebt: true, 
         financials: true, financialsSales: true, financialsDebts: true, 
         financialsProfits: true, financialsInventory: true, 
         viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true 
-      })]);
+      }));
       console.log("Successfully restored gamra to admin.");
     } catch (e) {
       console.error("Failed to restore gamra:", e);
