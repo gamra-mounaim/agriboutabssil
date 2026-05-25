@@ -655,13 +655,28 @@ async function startServer() {
     const { id } = req.params;
     const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId } = req.body;
     try {
+      const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
+      
       await db.prepare(`
         UPDATE products 
         SET name = ?, price = ?, cost_price = ?, qty = ?, min_stock = ?, barcode = ?, category_id = ?, supplier = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, id);
       
-      logActivity('PRODUCT', 'update', `Updated product: ${name}`, 'system', 'System');
+      let details = `Updated product: ${name}`;
+      if (oldProduct) {
+        let changes = [];
+        if (oldProduct.price != price) changes.push(`Price: ${oldProduct.price}->${price}`);
+        if (oldProduct.cost_price != costPrice) changes.push(`Cost: ${oldProduct.cost_price}->${costPrice}`);
+        if (oldProduct.qty != qty) changes.push(`Qty: ${oldProduct.qty}->${qty}`);
+        if (oldProduct.min_stock != minStock) changes.push(`MinStock: ${oldProduct.min_stock}->${minStock}`);
+        if (oldProduct.barcode != barcode) changes.push(`Barcode: ${oldProduct.barcode || 'none'}->${barcode || 'none'}`);
+        if (changes.length > 0) {
+            details += ` | Changes: ${changes.join(', ')}`;
+        }
+      }
+      
+      logActivity('PRODUCT', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -679,7 +694,7 @@ async function startServer() {
 
   app.post("/api/products/:id/adjust", async (req, res) => {
     const { id } = req.params;
-    const { type, quantity, reason, actor, supplierId } = req.body;
+    const { type, quantity, reason, actor, supplierId, costPrice } = req.body;
     const movementId = uuidv4();
 
     const transaction = async () => {
@@ -703,14 +718,15 @@ async function startServer() {
 
       // If stock in and supplier provided, update supplier debt
       if (type === 'in' && supplierId) {
-        const costAmount = (product.cost_price || 0) * quantity;
+        const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
+        const costAmount = unitCost * quantity;
         if (costAmount > 0) {
           await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(costAmount, supplierId);
           
           await db.prepare(`
             INSERT INTO supplier_history (id, supplier_id, type, amount, description)
             VALUES (?, ?, 'CHARGE', ?, ?)
-          `).run(uuidv4(), supplierId, costAmount, `Stock Refill: ${product.name} (${quantity} units)`);
+          `).run(uuidv4(), supplierId, costAmount, `Stock Refill: ${product.name} (${quantity} units @ ${unitCost})`);
         }
       }
 
@@ -934,11 +950,22 @@ async function startServer() {
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
     try {
+      const oldCustomer = await db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as any;
       await db.prepare(`
         UPDATE customers 
         SET name = ?, email = ?, phone = ?, address = ?, debt = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(name, email, phone, address, debt, finalDueDate, id);
+      
+      let details = `Updated customer: ${name}`;
+      if (oldCustomer) {
+        let changes = [];
+        if (oldCustomer.name != name) changes.push(`Name: ${oldCustomer.name}->${name}`);
+        if (oldCustomer.phone != phone) changes.push(`Phone: ${oldCustomer.phone}->${phone}`);
+        if (oldCustomer.debt != debt) changes.push(`Debt: ${oldCustomer.debt}->${debt}`);
+        if (changes.length > 0) details += ` | Changes: ${changes.join(', ')}`;
+      }
+      logActivity('CUSTOMER', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -969,11 +996,22 @@ async function startServer() {
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
     try {
+      const oldSupplier = await db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id) as any;
       await db.prepare(`
         UPDATE suppliers 
         SET name = ?, email = ?, phone = ?, address = ?, debt = ?, due_date = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(name, email, phone, address, debt, finalDueDate, id);
+
+      let details = `Updated supplier: ${name}`;
+      if (oldSupplier) {
+        let changes = [];
+        if (oldSupplier.name != name) changes.push(`Name: ${oldSupplier.name}->${name}`);
+        if (oldSupplier.phone != phone) changes.push(`Phone: ${oldSupplier.phone}->${phone}`);
+        if (oldSupplier.debt != debt) changes.push(`Debt: ${oldSupplier.debt}->${debt}`);
+        if (changes.length > 0) details += ` | Changes: ${changes.join(', ')}`;
+      }
+      logActivity('SUPPLIER', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });

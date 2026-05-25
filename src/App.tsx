@@ -1826,6 +1826,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
   const [adjQty, setAdjQty] = useState('');
   const [adjReason, setAdjReason] = useState('');
   const [adjSupplierId, setAdjSupplierId] = useState('');
+  const [adjCostPrice, setAdjCostPrice] = useState('');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -1995,7 +1996,8 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
         quantity: parseInt(adjQty),
         reason: adjReason,
         actor: actor,
-        supplierId: adjSupplierId || null
+        supplierId: adjSupplierId || null,
+        costPrice: adjCostPrice ? parseFloat(adjCostPrice) : undefined
       });
       setShowAdjModal(false);
       setAdjQty('');
@@ -2356,6 +2358,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                               <button 
                                 onClick={() => {
                                   setAdjProduct(p);
+                                  setAdjCostPrice(p.costPrice?.toString() || '0');
                                   setShowAdjModal(true);
                                 }}
                                 className="ml-2 w-6 h-6 border border-accent/20 rounded-md flex items-center justify-center hover:bg-accent/10 text-accent transition-colors"
@@ -2463,24 +2466,38 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
               </div>
 
               {adjType === 'in' && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.supplier}</label>
-                  <select 
-                    className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main focus:border-accent outline-none"
-                    value={adjSupplierId}
-                    onChange={(e) => setAdjSupplierId(e.target.value)}
-                  >
-                    <option value="">{language === 'ar' ? "اختر مورد (اختياري)" : "Select Supplier (Optional)"}</option>
-                    {(suppliers || []).map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.supplier}</label>
+                    <select 
+                      className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main focus:border-accent outline-none"
+                      value={adjSupplierId}
+                      onChange={(e) => setAdjSupplierId(e.target.value)}
+                    >
+                      <option value="">{language === 'ar' ? "اختر مورد (اختياري)" : "Select Supplier (Optional)"}</option>
+                      {(suppliers || []).map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   {adjSupplierId && (
-                    <p className="text-[10px] text-accent font-bold px-1 italic">
-                      {language === 'ar' ? "* ستتم إضافة تكلفة السلعة إلى دين المورّد" : "* Item cost will be added to supplier debt"}
-                    </p>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">
+                        {language === 'ar' ? "تكلفة الوحدة (لإضافتها لدين المورد)" : "Unit Cost (Added to Supplier Debt)"}
+                      </label>
+                      <input 
+                        type="number" 
+                        step="any"
+                        className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main focus:border-accent outline-none font-mono" 
+                        value={adjCostPrice} 
+                        onChange={(e) => setAdjCostPrice(e.target.value)} 
+                      />
+                      <p className="text-[10px] text-accent font-bold px-1 italic">
+                        {language === 'ar' ? "* ستتم إضافة إجمالي التكلفة إلى دين المورّد" : "* Total cost will be added to supplier debt"}
+                      </p>
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
               <div className="space-y-2">
@@ -4666,6 +4683,16 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/Deleted user account:/i, 'تم حذف حساب المستخدم:');
       d = d.replace(/Added product:/i, 'تمت إضافة منتج:');
       d = d.replace(/Updated product:/i, 'تم تحديث منتج:');
+      d = d.replace(/Updated customer:/i, 'تم تحديث زبون:');
+      d = d.replace(/Updated supplier:/i, 'تم تحديث مورد:');
+      d = d.replace(/\| Changes:/i, '| التغييرات:');
+      d = d.replace(/Price:/g, 'السعر:');
+      d = d.replace(/Cost:/g, 'التكلفة:');
+      d = d.replace(/MinStock:/g, 'الحد الأدنى:');
+      d = d.replace(/Barcode:/g, 'الباركود:');
+      d = d.replace(/Name:/g, 'الاسم:');
+      d = d.replace(/Phone:/g, 'الهاتف:');
+      d = d.replace(/Debt:/g, 'الدين:');
       d = d.replace(/Stock IN:/i, 'إدخال مخزون:');
       d = d.replace(/Stock OUT:/i, 'إخراج مخزون:');
       d = d.replace(/via Supplier/i, 'عبر المورد');
@@ -4676,7 +4703,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/Return of/i, 'إرجاع');
       d = d.replace(/Value:/i, 'القيمة:');
       d = d.replace(/Initial Debt:/i, 'الديون الأولية:');
-      d = d.replace(/Qty:/i, 'الكمية:');
+      d = d.replace(/Qty:/g, 'الكمية:');
       d = d.replace(/units/i, 'وحدات');
     } else if (language === 'fr') {
       d = d.replace(/User logged in:/i, 'Utilisateur connecté :');
@@ -4686,6 +4713,16 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/Deleted user account:/i, 'Compte utilisateur supprimé :');
       d = d.replace(/Added product:/i, 'Produit ajouté :');
       d = d.replace(/Updated product:/i, 'Produit mis à jour :');
+      d = d.replace(/Updated customer:/i, 'Client mis à jour :');
+      d = d.replace(/Updated supplier:/i, 'Fournisseur mis à jour :');
+      d = d.replace(/\| Changes:/i, '| Modifications :');
+      d = d.replace(/Price:/g, 'Prix :');
+      d = d.replace(/Cost:/g, 'Coût :');
+      d = d.replace(/MinStock:/g, 'Stock min :');
+      d = d.replace(/Barcode:/g, 'Code-barres :');
+      d = d.replace(/Name:/g, 'Nom :');
+      d = d.replace(/Phone:/g, 'Tél :');
+      d = d.replace(/Debt:/g, 'Dette :');
       d = d.replace(/Stock IN:/i, 'Entrée de stock :');
       d = d.replace(/Stock OUT:/i, 'Sortie de stock :');
       d = d.replace(/via Supplier/i, 'via Fournisseur');
@@ -4696,7 +4733,7 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/Return of/i, 'Retour de');
       d = d.replace(/Value:/i, 'Valeur :');
       d = d.replace(/Initial Debt:/i, 'Dette initiale :');
-      d = d.replace(/Qty:/i, 'Qté :');
+      d = d.replace(/Qty:/g, 'Qté :');
       d = d.replace(/units/i, 'unités');
     }
     return d;
