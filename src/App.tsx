@@ -95,6 +95,7 @@ interface Product {
   barcode?: string;
   categoryId?: string;
   supplier?: string;
+  supplierId?: string;
   updatedAt?: any;
 }
 
@@ -185,6 +186,17 @@ interface Payment {
   check_owner?: string;
   check_due_date?: string;
 }
+
+export const moroccanBanks = [
+  'CIH Bank',
+  'Banque Populaire',
+  'Attijariwafa Bank',
+  'BMCE Bank',
+  'Société Générale',
+  'Crédit Agricole',
+  'Al Barid Bank',
+  'بنك آخر...'
+];
 
 type View = 'inventory' | 'pos' | 'customers' | 'suppliers' | 'history' | 'settings' | 'checks' | 'financials';
 
@@ -645,7 +657,7 @@ export default function App() {
   return (
     <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden">
       {/* Sidebar */}
-      <nav className="w-20 md:w-60 border-r border-border-subtle flex flex-col bg-sidebar shadow-xl z-50">
+      <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50">
         <div className="p-6 hidden md:block">
           <div className="flex items-center gap-3">
              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-accent/20 shadow-lg overflow-hidden group">
@@ -653,7 +665,7 @@ export default function App() {
              </div>
              <div>
                 <h1 className="text-[17px] font-black leading-none tracking-tight flex flex-col">
-                   <span className="text-white">AGRI</span>
+                   <span className="text-text-main">AGRI</span>
                    <span className="text-accent text-[12px] mt-0.5">BOUTABSSIL</span>
                 </h1>
                 <div className="h-[2px] w-8 bg-accent mt-2 rounded-full"></div>
@@ -884,7 +896,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 p-3 rounded-xl transition-all group relative font-semibold",
-        active ? "bg-accent/20 text-accent shadow-inner" : "text-white/60 hover:text-white hover:bg-white/5"
+        active ? "bg-accent/20 text-accent shadow-inner" : "text-text-secondary hover:text-text-main hover:bg-bg-base/50"
       )}
     >
       <div className={cn("transition-transform duration-200 group-hover:scale-110", active && "scale-110")}>
@@ -2359,6 +2371,7 @@ function Inventory({ products, categories, suppliers, setMessage, language, onRe
                                 onClick={() => {
                                   setAdjProduct(p);
                                   setAdjCostPrice(p.costPrice?.toString() || '0');
+                                  setAdjSupplierId(p.supplierId || '');
                                   setShowAdjModal(true);
                                 }}
                                 className="ml-2 w-6 h-6 border border-accent/20 rounded-md flex items-center justify-center hover:bg-accent/10 text-accent transition-colors"
@@ -2650,6 +2663,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'debt' | 'check'>('cash');
   const [checkNumber, setCheckNumber] = useState('');
   const [checkOwner, setCheckOwner] = useState('');
+  const [checkBank, setCheckBank] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -2765,7 +2779,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
         staffId: user?.id || user?.uid || 'anonymous',
         items: cart,
         checkNumber: paymentMethod === 'check' ? checkNumber : null,
-        checkOwner: paymentMethod === 'check' ? checkOwner : null
+        checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null
       });
 
       if (saleResult.status === 'success') {
@@ -2783,7 +2797,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
           staffName: user?.email || user?.username || '',
           paymentMethod: paymentMethod.toUpperCase(),
           checkNumber: paymentMethod === 'check' ? checkNumber : undefined,
-          checkOwner: paymentMethod === 'check' ? checkOwner : undefined
+          checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : undefined
         };
 
         setCart([]);
@@ -2793,6 +2807,7 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
         setReceivedAmount('');
         setCheckNumber('');
         setCheckOwner('');
+        setCheckBank('');
         setIsFlahActive(false);
         setOriginalPrices({});
         setShowSuccess(true);
@@ -3243,22 +3258,34 @@ function POS({ products, categories, customers, user, settings, setMessage, lang
              )}
 
              {paymentMethod === 'check' && (
-                <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkNumber}</label>
-                    <input 
-                      placeholder="XXXX-XXXX"
+                    <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'البنك' : 'Bank'}</label>
+                    <select 
                       className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
-                      value={checkNumber || ''} onChange={e => setCheckNumber(e.target.value)}
-                    />
+                      value={checkBank || ''} onChange={e => setCheckBank(e.target.value)}
+                    >
+                      <option value="">{language === 'ar' ? 'اختر البنك' : 'Select Bank'}</option>
+                      {moroccanBanks.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkOwner}</label>
-                    <input 
-                      placeholder={t.customerName}
-                      className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
-                      value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkNumber}</label>
+                      <input 
+                        placeholder="XXXX-XXXX"
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        value={checkNumber || ''} onChange={e => setCheckNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkOwner}</label>
+                      <input 
+                        placeholder={t.customerName}
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
              )}
@@ -3324,6 +3351,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
   const [adjustMethod, setAdjustMethod] = useState<'CASH' | 'CHECK'>('CASH');
   const [checkNum, setCheckNum] = useState('');
   const [checkOwnerModal, setCheckOwnerModal] = useState('');
+  const [checkBankModal, setCheckBankModal] = useState('');
   const [dueDateModal, setDueDateModal] = useState('');
   
   // Product Return States
@@ -3374,7 +3402,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
           payment_method: adjustMethod,
           check_number: adjustMethod === 'CHECK' ? checkNum : null,
           check_due_date: adjustMethod === 'CHECK' ? dueDateModal : null,
-          check_owner: adjustMethod === 'CHECK' ? checkOwnerModal : null
+          check_owner: adjustMethod === 'CHECK' ? (checkBankModal && checkBankModal !== 'بنك آخر...' ? `${checkBankModal} | ${checkOwnerModal}` : checkOwnerModal) : null
         };
         await api.addPayment(adjustModal.customer.id, paymentData);
         setMessage({ text: language === 'ar' ? "تم تسجيل الدفعة." : "Payment posted successfully.", type: 'success' });
@@ -3387,6 +3415,7 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
       setAdjustMethod('CASH');
       setCheckNum('');
       setCheckOwnerModal('');
+      setCheckBankModal('');
       setDueDateModal('');
       onRefresh();
       if (selectedCustomer?.id === adjustModal.customer.id) {
@@ -3998,6 +4027,10 @@ function CustomerList({ customers, user, settings, setMessage, language, onRefre
                 )}
                 {adjustMethod === 'CHECK' && adjustModal.type === 'pay' && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <select className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={checkBankModal || ''} onChange={e => setCheckBankModal(e.target.value)}>
+                      <option value="">{language === 'ar' ? 'اختر البنك' : 'Select Bank'}</option>
+                      {moroccanBanks.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
                     <input placeholder={t.checkNumber} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={checkNum || ''} onChange={e => setCheckNum(e.target.value)} />
                     <input placeholder={t.checkOwner} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={checkOwnerModal || ''} onChange={e => setCheckOwnerModal(e.target.value)} />
                     <input type="date" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={dueDateModal || ''} onChange={e => setDueDateModal(e.target.value)} />
@@ -4170,6 +4203,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
   const [adjustMethod, setAdjustMethod] = useState<'CASH' | 'CHECK'>('CASH');
   const [checkNum, setCheckNum] = useState('');
   const [checkOwner, setCheckOwner] = useState('');
+  const [checkBankSupplier, setCheckBankSupplier] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [adjustNote, setAdjustNote] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -4237,7 +4271,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
           payment_method: adjustMethod,
           check_number: adjustMethod === 'CHECK' ? checkNum : null,
           check_due_date: adjustMethod === 'CHECK' ? dueDate : null,
-          check_owner: adjustMethod === 'CHECK' ? checkOwner : null
+          check_owner: adjustMethod === 'CHECK' ? (checkBankSupplier && checkBankSupplier !== 'بنك آخر...' ? `${checkBankSupplier} | ${checkOwner}` : checkOwner) : null
         };
         await api.addSupplierPayment(adjustModal.supplier.id, paymentData);
         setMessage({ text: language === 'ar' ? "تم تسجيل الدفع للمورد." : "Payment to supplier posted successfully.", type: 'success' });
@@ -4251,6 +4285,7 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
       setAdjustMethod('CASH');
       setCheckNum('');
       setCheckOwner('');
+      setCheckBankSupplier('');
       setDueDate('');
       setAdjustNote('');
       onRefresh();
@@ -4582,6 +4617,13 @@ function SupplierList({ suppliers, checks, user, settings, setMessage, language,
 
                     {adjustMethod === 'CHECK' && (
                       <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2 block">{language === 'ar' ? 'البنك' : 'Bank'}</label>
+                          <select className="w-full bg-bg-base border border-border-subtle rounded-xl py-2.5 px-4 text-sm font-bold focus:border-accent outline-none" value={checkBankSupplier || ''} onChange={e => setCheckBankSupplier(e.target.value)}>
+                            <option value="">{language === 'ar' ? 'اختر البنك' : 'Select Bank'}</option>
+                            {moroccanBanks.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                        </div>
                         <div>
                           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2 block">{t.checkOwner}</label>
                           <input required value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-xl py-2.5 px-4 text-sm font-bold focus:border-accent outline-none" />

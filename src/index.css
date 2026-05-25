@@ -36,6 +36,32 @@
 }
 
 body {
-  @apply bg-bg-base text-text-main transition-colors duration-200;
+  @apply text-text-main transition-colors duration-200;
   font-family: var(--font-sans);
+  background-color: var(--bg-base);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(255, 215, 0, 0.05), transparent 35%),
+    radial-gradient(circle at 85% 30%, rgba(135, 206, 235, 0.05), transparent 35%),
+    radial-gradient(circle at 50% 80%, rgba(144, 238, 144, 0.05), transparent 35%),
+    linear-gradient(rgba(128, 128, 128, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128, 128, 128, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 30px 30px, 30px 30px;
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,100 Q400,200 800,100 T1600,100 T2400,100' stroke='rgba(255,215,0,0.1)' stroke-width='2' fill='none'/%3E%3Cpath d='M0,300 Q600,100 1200,300 T2400,300 T3600,300' stroke='rgba(135,206,235,0.1)' stroke-width='1.5' fill='none'/%3E%3Cpath d='M0,500 Q300,600 600,500 T1200,500 T1800,500 T2400,500' stroke='rgba(144,238,144,0.1)' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-size: 200% 100%;
+  animation: waveFlow 30s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes waveFlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: -100% 0%; }
 }
