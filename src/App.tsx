@@ -655,7 +655,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden">
+    <div className="h-screen w-screen bg-transparent text-text-main flex overflow-hidden">
       {/* Sidebar */}
       <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50">
         <div className="p-6 hidden md:block">
