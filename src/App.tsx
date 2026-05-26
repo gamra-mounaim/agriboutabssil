@@ -49,7 +49,8 @@ import {
   Wallet,
   MapPin,
   Cloud,
-  Key
+  Key,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './components/Logo';
@@ -584,71 +585,84 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg-base px-6">
-        <div className="w-full max-w-sm space-y-8 bg-card p-10 rounded-3xl border border-border-subtle shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-accent/20 group-focus-within:bg-accent transition-colors" />
+      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden px-6" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)' }}>
+        {/* Decorative background shapes */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] bg-yellow-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+
+        <div className="w-full max-w-md space-y-8 bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] relative z-10 group">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-400 via-blue-500 to-accent opacity-70 group-focus-within:opacity-100 transition-opacity" />
           
-          <div className="text-center space-y-2">
-            <div className="inline-flex p-1 rounded-3xl bg-white border-2 border-accent/20 mb-4 overflow-hidden w-28 h-28 items-center justify-center shadow-2xl mx-auto group hover:scale-105 transition-transform">
+          <div className="text-center space-y-3">
+            <div className="inline-flex p-1.5 rounded-[2rem] bg-white border border-gray-100 mb-2 overflow-hidden w-24 h-24 items-center justify-center shadow-lg mx-auto group hover:scale-105 transition-transform duration-300">
               <Logo className="w-full h-full p-2" />
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-text-main">
-              <span className="text-sidebar">AGRI</span>{' '}
-              <span className="text-accent">BOUTABSSIL</span>
+            <h1 className="text-4xl font-black tracking-tight text-gray-800">
+              <span className="text-green-700">AGRI</span>{' '}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent to-orange-400">BOUTABSSIL</span>
             </h1>
-            <p className="text-text-secondary text-[12px] font-bold uppercase tracking-[0.2em] mt-2 bg-accent/5 py-1 px-3 rounded-full inline-block">
+            <p className="text-gray-500 text-[11px] font-bold uppercase tracking-[0.15em] mt-2 bg-gray-50 py-1.5 px-4 rounded-full inline-block border border-gray-100">
               {language === 'fr' ? 'Solutions Agricoles & Industrielles' : (language === 'ar' ? 'حلول فلاحية وصناعية' : 'Agricultural & Industrial Solutions')}
             </p>
           </div>
 
-          <form onSubmit={handleTraditionalLogin} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-text-secondary ml-1">{language === 'ar' ? 'اسم المستخدم' : 'USERNAME'}</label>
-              <input 
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                disabled={signingIn}
-                className={cn("w-full bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-bold transition-all", language === 'ar' && "text-right")}
-                required
-              />
+          <form onSubmit={handleTraditionalLogin} className="space-y-5">
+            <div className="space-y-1.5 relative">
+              <label className="text-[11px] font-bold uppercase text-gray-600 ml-2">{language === 'ar' ? 'اسم المستخدم' : 'USERNAME'}</label>
+              <div className="relative flex items-center">
+                <User className={cn("absolute w-5 h-5 text-gray-400", language === 'ar' ? "right-4" : "left-4")} />
+                <input 
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  disabled={signingIn}
+                  className={cn("w-full bg-gray-50/50 border-2 border-gray-200 rounded-2xl py-3.5 text-sm focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(241,90,36,0.1)] outline-none font-semibold transition-all text-gray-800 placeholder-gray-400", language === 'ar' ? "pr-12 text-right" : "pl-12")}
+                  placeholder={language === 'ar' ? "أدخل اسم المستخدم" : "Enter your username"}
+                  required
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-text-secondary ml-1">{language === 'ar' ? 'كلمة المرور' : 'PASSWORD'}</label>
-              <input 
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                disabled={signingIn}
-                className={cn("w-full bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-bold transition-all", language === 'ar' && "text-right")}
-                required
-              />
+            <div className="space-y-1.5 relative">
+              <label className="text-[11px] font-bold uppercase text-gray-600 ml-2">{language === 'ar' ? 'كلمة المرور' : 'PASSWORD'}</label>
+              <div className="relative flex items-center">
+                <Lock className={cn("absolute w-5 h-5 text-gray-400", language === 'ar' ? "right-4" : "left-4")} />
+                <input 
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  disabled={signingIn}
+                  className={cn("w-full bg-gray-50/50 border-2 border-gray-200 rounded-2xl py-3.5 text-sm focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(241,90,36,0.1)] outline-none font-semibold transition-all text-gray-800 placeholder-gray-400", language === 'ar' ? "pr-12 text-right" : "pl-12")}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
             </div>
             <button
               type="submit"
               disabled={signingIn}
-              className="w-full bg-accent text-white font-black py-4 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm tracking-widest uppercase shadow-lg shadow-accent/20"
+              className="w-full bg-gradient-to-r from-accent to-orange-500 text-white font-bold py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm tracking-widest uppercase shadow-lg shadow-accent/30 mt-2"
             >
               {signingIn ? '...' : (language === 'ar' ? 'دخول النظام' : 'ACCESS TERMINAL')}
             </button>
           </form>
 
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-subtle"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold text-text-secondary"><span className="bg-card px-2 italic">OR</span></div>
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-400"><span className="bg-white px-3 italic">OR</span></div>
           </div>
 
           <button
             onClick={handleGoogleLogin}
             disabled={signingIn}
-            className="w-full bg-white border-2 border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-[11px] uppercase tracking-wider"
+            className="w-full bg-white border-2 border-gray-200 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-[11px] uppercase tracking-wider"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-4 h-4 opacity-70" referrerPolicy="no-referrer" />
+            <img src="https://www.google.com/favicon.ico" className="w-4 h-4 opacity-80" referrerPolicy="no-referrer" />
             {t.login}
           </button>
         </div>
-        <p className="mt-8 text-[10px] text-text-secondary font-mono tracking-tighter opacity-40 uppercase">
-          SECURE_TERMINAL_V2.0 // ENCRYPTED_SESSION_ACTIVE
+        <p className="mt-8 text-[10px] text-gray-500 font-mono tracking-widest opacity-60 uppercase z-10 font-semibold">
+          SECURE_TERMINAL_V2.0 • ENCRYPTED_SESSION
         </p>
       </div>
     );
