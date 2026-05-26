@@ -979,7 +979,21 @@ function DashboardStats({ products, categories, customers, sales, language, stat
     };
   }).reverse();
 
+  const topProductsMap = sales.flatMap(s => s.items).reduce((acc, item) => {
+    acc[item.productId] = (acc[item.productId] || 0) + item.qty;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const topProductsList = Object.entries(topProductsMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, qty]) => {
+      const p = products.find(prod => prod.id === id);
+      return { id, name: p?.name || 'Unknown', qty, price: p?.price || 0 };
+    });
+
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
 
   return (
     <div className="space-y-8 mb-8">
@@ -1061,11 +1075,11 @@ function DashboardStats({ products, categories, customers, sales, language, stat
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Trend */}
-        <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+        <div className="lg:col-span-2 bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden group h-[350px] flex flex-col">
           <div className="flex items-center justify-between mb-6">
-            <h4 className="text-xs font-bold text-text-main flex items-center gap-2">
+            <h4 className="text-xs font-bold text-text-main flex items-center gap-2 uppercase tracking-widest">
               <TrendingUp className="w-4 h-4 text-accent" />
               {language === 'ar' ? "اتجاه المبيعات (7 أيام)" : "SALES TREND (LAST 7 DAYS)"}
             </h4>
@@ -1073,7 +1087,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
               {formatNumber(last7Days.reduce((acc, curr) => acc + curr.amount, 0))} {t.currency}
             </div>
           </div>
-          <div className="h-[250px] w-full">
+          <div className="flex-1 w-full min-h-0">
             {last7Days.every(d => d.amount === 0) ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
                 <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
@@ -1112,8 +1126,78 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           </div>
         </div>
 
-        {/* Critical Stock Alerts */}
+        {/* Top Products */}
         <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[350px]">
+          <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-6 flex items-center gap-2">
+            <ShoppingCart className="w-4 h-4 text-accent" />
+            {language === 'ar' ? "أفضل المنتجات مبيعاً" : "TOP SELLING PRODUCTS"}
+          </h4>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+            {topProductsList.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                <ShoppingCart className="w-8 h-8" />
+                <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+              </div>
+            ) : (
+              topProductsList.map((tp, idx) => (
+                <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base border border-border-subtle rounded-xl hover:border-accent/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
+                      #{idx + 1}
+                    </div>
+                    <div>
+                      <div className="text-[12px] font-bold text-text-main line-clamp-1">{tp.name}</div>
+                      <div className="text-[10px] text-text-secondary">{tp.qty} {language === 'ar' ? 'وحدة مباعة' : 'Units Sold'}</div>
+                    </div>
+                  </div>
+                  <div className="text-[12px] font-bold text-success">{formatNumber(tp.price * tp.qty)} {t.currency}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Category Distribution Pie Chart */}
+        <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden h-[350px] flex flex-col">
+          <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-2 flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 text-blue-500" />
+            {language === 'ar' ? "توزيع قيمة المخزون" : "INVENTORY VALUE BY CATEGORY"}
+          </h4>
+          <div className="flex-1 w-full min-h-0 mt-2">
+            {categoryValueData.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                <LayoutGrid className="w-8 h-8" />
+                <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryValueData}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryValueData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ReChartsTooltip 
+                    formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : 'Value']}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Critical Stock Alerts */}
+        <div className="lg:col-span-2 bg-card border border-border-subtle p-6 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[350px]">
           <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-6 flex items-center justify-between w-full">
             <span>{t.stockAlerts}</span>
             <div className="flex items-center gap-3">
