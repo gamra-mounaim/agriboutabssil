@@ -83,6 +83,8 @@ export interface UserProfile {
     viewSupplierDebtAmount?: boolean;
     financialsRestricted?: boolean;
     financialsPaymentMethods?: boolean;
+    financialsTopProducts?: boolean;
+    financialsTopDebtors?: boolean;
   };
   createdAt: any;
 }

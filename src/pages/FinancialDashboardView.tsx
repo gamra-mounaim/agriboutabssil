@@ -38,6 +38,10 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const inventoryAssetValue = stats?.inventoryValue || 0;
 
   const lowStock = products.filter(p => p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
+  const topProductsList = stats?.topProductsList || [];
+  const topDebtorsList = useMemo(() => {
+    return [...(customers || [])].filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5);
+  }, [customers]);
 
     // Upcoming Debts Logic from DashboardStats
   const upcomingDebts = (customers || []).filter(c => {
@@ -633,9 +637,77 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                )}
             </div>
           )}
-          {permissions.financialsPaymentMethods && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              {renderPaymentMethodsWidget()}
+          {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
+              {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
+              {permissions.financialsTopProducts && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                  <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-accent" />
+                    {(t as any).topSellingProducts}
+                  </h4>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                    {topProductsList.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                        <ShoppingCart className="w-8 h-8" />
+                        <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+                      </div>
+                    ) : (
+                      topProductsList.map((tp: any, idx: number) => (
+                        <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-accent/20 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-black text-sm">
+                              #{idx + 1}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-text-main line-clamp-1">{tp.name}</div>
+                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {isAr ? 'وحدة' : 'Units'}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="text-sm font-black text-emerald-600">{formatNumber(tp.price * tp.qty)}</div>
+                             <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                 </div>
+              )}
+              {permissions.financialsTopDebtors && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                  <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-red-500" />
+                    {(t as any).topDebtors}
+                  </h4>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                    {topDebtorsList.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                        <Users className="w-8 h-8" />
+                        <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+                      </div>
+                    ) : (
+                      topDebtorsList.map((c: any, idx: number) => (
+                        <div key={c.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-red-500/20 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center font-black text-sm">
+                              #{idx + 1}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-text-main line-clamp-1">{c.name}</div>
+                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{c.phone || '-'}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="text-sm font-black text-red-600">{formatNumber(c.debt)}</div>
+                             <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                 </div>
+              )}
             </div>
           )}
         </div>
