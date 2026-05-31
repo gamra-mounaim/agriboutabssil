@@ -1306,6 +1306,7 @@ async function startServer() {
 
     // --- Stats API ---
   app.get("/api/stats", async (req, res) => {
+    try {
     const totalSales = ((await db.prepare('SELECT SUM(total) as total FROM sales').get()) as any).total || 0;
     const transactions = ((await db.prepare('SELECT COUNT(*) as count FROM sales').get()) as any).count || 0;
     const totalStock = ((await db.prepare('SELECT SUM(qty) as total FROM products').get()) as any).total || 0;
@@ -1351,11 +1352,11 @@ async function startServer() {
 
     // Last 7 days sales trend
     const last7DaysData = await db.prepare(`
-      SELECT date(date) as date, SUM(total) as amount
+      SELECT DATE(date) as date, SUM(total) as amount
       FROM sales
-      WHERE date >= date('now', '-6 days')
-      GROUP BY date(date)
-      ORDER BY date(date) ASC
+      WHERE date >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY DATE(date)
+      ORDER BY DATE(date) ASC
     `).all() as any[];
     
     // Create an array with all 7 days (even if amount is 0)
@@ -1394,9 +1395,13 @@ async function startServer() {
       weeklyProfit,
       monthlyProfit,
       yearlyProfit,
-      last7Days,
+      last7Days: last7Days.reverse(),
       topProductsList
     }));
+    } catch (err: any) {
+      console.error("Stats API error:", err);
+      res.status(500).json({ status: "error", message: err.message });
+    }
   });
 
   // --- Communications API (Preserved) ---
