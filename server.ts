@@ -184,7 +184,7 @@ async function startServer() {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ status: "error", message: "Validation error", errors: error.errors });
+        return res.status(400).json({ status: "error", message: "Validation error", errors: error.issues });
       }
       next(error);
     }
