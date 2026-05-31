@@ -160,6 +160,7 @@ export default function App() {
     if (targetView === 'customers' && userPermissions.customers) return true;
     if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
     if (targetView === 'history' && userPermissions.history) return true;
+    if (targetView === 'users' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     
     return false;
   };
@@ -464,6 +465,7 @@ export default function App() {
           {canAccess('customers') && <NavItem icon={<Users className="w-5 h-5" />} label={t.customers} active={view === 'customers'} onClick={() => setView('customers')} />}
           {canAccess('suppliers') && <NavItem icon={<Store className="w-5 h-5" />} label={t.suppliers} active={view === 'suppliers'} onClick={() => setView('suppliers')} />}
           {canAccess('checks') && <NavItem icon={<CreditCard className="w-5 h-5" />} label={t.customerChecks} active={view === 'checks'} onClick={() => setView('checks')} />}
+          {canAccess('users') && <NavItem icon={<UserPlus className="w-5 h-5" />} label={language === 'ar' ? 'الموظفين' : 'Staff'} active={view === 'users'} onClick={() => setView('users')} />}
           {canAccess('settings') && <NavItem icon={<UserCog className="w-5 h-5" />} label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} />}
           {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
         </div>
@@ -649,6 +651,14 @@ export default function App() {
                   {view === 'history' && <HistoryView permissions={userPermissions} currentUserRole={currentUserRole} />}
                   {view === 'financials' && <FinancialDashboardView permissions={userPermissions} currency={t.currency} />}
                   {view === 'checks' && <CheckListView />}
+                  {view === 'users' && <StaffManagement 
+                    isDriveConnected={isDriveConnected} 
+                    backingUpToDrive={backingUpToDrive} 
+                    handleGoogleConnect={handleGoogleConnect} 
+                    handleDriveBackup={handleDriveBackup} 
+                    latestBackup={latestBackup} 
+                    setBackingUpToDrive={setBackingUpToDrive} 
+                  />}
                   {view === 'settings' && (
                     <SettingsManagement isDriveConnected={isDriveConnected} backingUpToDrive={backingUpToDrive} handleGoogleConnect={handleGoogleConnect} handleDriveBackup={handleDriveBackup} latestBackup={latestBackup} setBackingUpToDrive={setBackingUpToDrive} />
                   )}
