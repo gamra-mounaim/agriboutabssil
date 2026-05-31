@@ -255,7 +255,11 @@ export default function App() {
       await api.backupToGoogleDrive();
       setMessage({ text: t.driveBackupSuccess, type: 'success' });
     } catch (e: any) {
-      setMessage({ text: e.message || t.backupError, type: 'error' });
+      const msg = e.message || t.backupError;
+      setMessage({ text: msg, type: 'error' });
+      if (msg.includes('invalid_grant')) {
+        setIsDriveConnected(false);
+      }
     } finally {
       setBackingUpToDrive(false);
     }
@@ -441,9 +445,14 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen bg-transparent text-text-main flex overflow-hidden">
+    <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden relative">
+      {/* Ambient Glassmorphism Background Orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-60 animate-pulse-slow pointer-events-none z-0" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-60 pointer-events-none z-0" />
+      <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-emerald-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-50 pointer-events-none z-0" />
+
       {/* Sidebar */}
-      <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50">
+      <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50 relative">
         <div className="p-6 hidden md:block">
           <div className="flex items-center gap-3">
              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-accent/20 shadow-lg overflow-hidden group">
@@ -520,7 +529,7 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Notification Toast */}
         <AnimatePresence>
           {message && (

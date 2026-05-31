@@ -1615,6 +1615,10 @@ async function startServer() {
       res.json({ status: "success", fileId: response.data.id });
     } catch (e: any) {
       console.error("Drive upload failed:", e);
+      if (e.message && e.message.includes('invalid_grant')) {
+        await db.prepare('DELETE FROM google_auth WHERE id = ?').run('main');
+        return res.status(401).json({ status: "error", message: "invalid_grant: Session expired. Please reconnect to Google Drive." });
+      }
       res.status(500).json({ status: "error", message: e.message });
     }
   });
