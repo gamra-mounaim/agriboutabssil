@@ -1340,6 +1340,38 @@ async function startServer() {
     const weeklyProfit = ((await db.prepare(weeklyProfitQuery).get()) as any).profit || 0;
     const monthlyProfit = ((await db.prepare(monthlyProfitQuery).get()) as any).profit || 0;
     const yearlyProfit = ((await db.prepare(yearlyProfitQuery).get()) as any).profit || 0;
+
+    // Last 7 days sales trend
+    const last7DaysData = await db.prepare(`
+      SELECT date(date) as date, SUM(total) as amount
+      FROM sales
+      WHERE date >= date('now', '-6 days')
+      GROUP BY date(date)
+      ORDER BY date(date) ASC
+    `).all() as any[];
+    
+    // Create an array with all 7 days (even if amount is 0)
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const found = last7DaysData.find((row) => row.date === dateStr);
+      last7Days.push({
+        date: `${d.getDate()}/${d.getMonth() + 1}`,
+        amount: found ? found.amount : 0
+      });
+    }
+
+    // Top Selling Products
+    const topProductsList = await db.prepare(`
+      SELECT p.id, p.name, SUM(si.qty) as qty, MAX(p.price) as price
+      FROM sale_items si
+      JOIN products p ON si.product_id = p.id
+      GROUP BY p.id, p.name
+      ORDER BY qty DESC
+      LIMIT 5
+    `).all();
  
     res.json(toCamel({
       totalSales,
@@ -1353,7 +1385,9 @@ async function startServer() {
       dailyProfit,
       weeklyProfit,
       monthlyProfit,
-      yearlyProfit
+      yearlyProfit,
+      last7Days,
+      topProductsList
     }));
   });
 
@@ -1394,9 +1428,18 @@ async function startServer() {
   });
 
   app.get("/api/activity", async (req, res) => {
-    try {
+    if (!req.query.page) {
       const logs = await db.prepare('SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 100').all();
-      res.json(toCamel(logs));
+      return res.json(toCamel(logs));
+    }
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    
+    try {
+      const total = (await db.prepare('SELECT COUNT(*) as count FROM activity_log').get() as any).count;
+      const logs = await db.prepare('SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+      res.json({ data: toCamel(logs), total, page, limit });
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });
     }

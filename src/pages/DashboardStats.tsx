@@ -49,29 +49,8 @@ function DashboardStats({ products, categories, customers, sales, language, stat
     return { name: cat.name, value };
   }).filter(c => c.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
 
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toLocaleDateString();
-    const daySales = sales.filter(s => new Date(s.date).toLocaleDateString() === dateStr);
-    return {
-      date: dateStr.split('/')[0] + '/' + dateStr.split('/')[1], // Short date
-      amount: daySales.reduce((acc, s) => acc + s.total, 0)
-    };
-  }).reverse();
-
-  const topProductsMap = sales.flatMap(s => s.items).reduce((acc, item) => {
-    acc[item.productId] = (acc[item.productId] || 0) + item.qty;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const topProductsList = Object.entries(topProductsMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id, qty]) => {
-      const p = products.find(prod => prod.id === id);
-      return { id, name: p?.name || 'Unknown', qty, price: p?.price || 0 };
-    });
+  const last7Days = stats?.last7Days || [];
+  const topProductsList = stats?.topProductsList || [];
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -179,27 +158,27 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                 <AreaChart data={last7Days}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }} dy={10} />
-                  <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" strokeOpacity={0.5} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--color-text-secondary)' }} dy={10} />
+                  <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--color-text-secondary)' }} tickFormatter={(val) => formatNumber(val)} />
                   <ReChartsTooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                    itemStyle={{ color: '#6366f1' }}
+                    contentStyle={{ borderRadius: '16px', border: '1px solid var(--color-border-subtle)', background: 'var(--color-card)', backdropFilter: 'blur(12px)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15)', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-text-main)' }}
+                    itemStyle={{ color: 'var(--color-accent)' }}
                     formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'المبيعات' : 'Sales']}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="amount" 
-                    stroke="#6366f1" 
+                    stroke="var(--color-accent)" 
                     strokeWidth={4} 
                     fillOpacity={1} 
                     fill="url(#colorSales)" 
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
-                    dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                    activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--color-accent)' }}
+                    dot={{ r: 3, fill: 'var(--color-bg-base)', stroke: 'var(--color-accent)', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -268,7 +247,8 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                   </Pie>
                   <ReChartsTooltip 
                     formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : 'Value']}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                    contentStyle={{ borderRadius: '16px', border: '1px solid var(--color-border-subtle)', background: 'var(--color-card)', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    itemStyle={{ fontWeight: 'bold', color: 'var(--color-text-main)' }}
                   />
                   <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
                 </PieChart>
@@ -346,12 +326,13 @@ function DashboardStats({ products, categories, customers, sales, language, stat
 function StatCard({ label, value, sub, highlights, danger }: { label: string, value: string | number, sub: string, highlights?: boolean, danger?: boolean }) {
   return (
     <div className={cn(
-      "p-6 rounded-2xl border transition-all duration-300",
-      highlights ? "bg-accent text-white border-accent shadow-lg shadow-accent/10" : "bg-white border-border-subtle group-hover/stats:odd:border-accent/20"
+      "p-6 rounded-[2rem] border transition-all duration-300 relative overflow-hidden group/card hover:-translate-y-1",
+      highlights ? "bg-accent text-white border-accent shadow-[0_15px_30px_-10px_rgba(79,70,229,0.3)]" : "bg-card border-border-subtle hover:border-accent/30 hover:shadow-xl"
     )}>
-      <div className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", highlights ? "text-white/60" : "text-text-secondary")}>{label}</div>
-      <div className="text-3xl font-bold tracking-tighter mb-1 font-mono">{value}</div>
-      <div className={cn("text-[11px] font-medium", highlights ? "text-white/80" : danger ? "text-danger" : "text-text-secondary")}>{sub}</div>
+      {highlights && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full mix-blend-screen filter blur-2xl -mr-10 -mt-10"></div>}
+      <div className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3 relative z-10", highlights ? "text-white/70" : "text-text-secondary")}>{label}</div>
+      <div className="text-3xl font-black tracking-tighter mb-2 font-mono relative z-10">{value}</div>
+      <div className={cn("text-[11px] font-bold relative z-10 tracking-wide", highlights ? "text-white/90" : danger ? "text-danger" : "text-text-secondary/80")}>{sub}</div>
     </div>
   );
 }

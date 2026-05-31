@@ -56,6 +56,14 @@ interface AppState {
 
   fetchData: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+
+  salesTotal: number;
+  salesPage: number;
+  fetchSalesPage: (page: number) => Promise<void>;
+
+  activitiesTotal: number;
+  activitiesPage: number;
+  fetchActivitiesPage: (page: number) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -91,6 +99,28 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  salesTotal: 0,
+  salesPage: 1,
+  fetchSalesPage: async (page: number) => {
+    try {
+      const res = await api.getSales(page, 50) as any;
+      set({ sales: res.data || [], salesTotal: res.total || 0, salesPage: res.page || 1 });
+    } catch (err) {
+      console.error("Failed to fetch paginated sales", err);
+    }
+  },
+
+  activitiesTotal: 0,
+  activitiesPage: 1,
+  fetchActivitiesPage: async (page: number) => {
+    try {
+      const res = await api.getActivityLogs(page, 50) as any;
+      set({ activities: res.data || [], activitiesTotal: res.total || 0, activitiesPage: res.page || 1 });
+    } catch (err) {
+      console.error("Failed to fetch paginated activities", err);
+    }
+  },
+
   fetchData: async () => {
     const fetchApi = async (fn: () => Promise<any>, fallback: any, name: string, retries = 3): Promise<any> => {
       try {
@@ -120,12 +150,12 @@ export const useStore = create<AppState>((set, get) => ({
         fetchApi(api.getCategories, [], 'Categories'),
         fetchApi(api.getCustomers, [], 'Customers'),
         fetchApi(api.getSuppliers, [], 'Suppliers'),
-        fetchApi(api.getSales, [], 'Sales'),
+        fetchApi(() => api.getSales(1, 50), { data: [], total: 0, page: 1 }, 'Sales'),
         fetchApi(api.getChecks, [], 'Checks'),
         fetchApi(api.getPayments, [], 'Payments'),
         fetchApi(api.getStats, null, 'Stats'),
         fetchApi(api.getUsers, [], 'Users'),
-        fetchApi(api.getActivityLogs, [], 'Activity'),
+        fetchApi(() => api.getActivityLogs(1, 50), { data: [], total: 0, page: 1 }, 'Activity'),
         fetchApi(api.getSettings, null, 'Settings'),
         fetchApi(api.getNotifications, [], 'Notifications'),
         fetchApi(api.getLatestBackup, null, 'LatestBackup')
@@ -136,12 +166,16 @@ export const useStore = create<AppState>((set, get) => ({
         categories: Array.isArray(cats) ? cats : [],
         customers: Array.isArray(custs) ? custs : [],
         suppliers: Array.isArray(supps) ? supps : [],
-        sales: Array.isArray(sls) ? sls : [],
+        sales: sls?.data || [],
+        salesTotal: sls?.total || 0,
+        salesPage: sls?.page || 1,
         checks: Array.isArray(cks) ? cks : [],
         payments: Array.isArray(pymts) ? pymts : [],
         stats: stts,
         appUsers: Array.isArray(usrs) ? usrs : [],
-        activities: Array.isArray(logs) ? logs : [],
+        activities: logs?.data || [],
+        activitiesTotal: logs?.total || 0,
+        activitiesPage: logs?.page || 1,
         settings: stngs,
         notifications: Array.isArray(notes) ? notes : [],
         latestBackup: latest

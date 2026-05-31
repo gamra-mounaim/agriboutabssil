@@ -134,7 +134,11 @@ export const api = {
   getStats: async () => get(`${API_URL}/stats`),
 
   // Activity Logs
-  getActivityLogs: async () => get(`${API_URL}/activity`),
+  getActivityLogs: async (page?: number, limit?: number) => {
+    let url = `${API_URL}/activity`;
+    if (page) url += `?page=${page}&limit=${limit || 50}`;
+    return get(url);
+  },
   
   // Google Drive Backup
   getGoogleAuthUrl: async () => get(`${API_URL}/auth/google/url`),

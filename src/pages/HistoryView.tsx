@@ -20,7 +20,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function HistoryView({ permissions, currentUserRole }: { permissions: any, currentUserRole?: string }) {
-  const { customers, sales, payments, activities, appUsers, settings, fetchData: onRefresh } = useStore();
+  const { customers, sales, payments, activities, appUsers, settings, fetchData: onRefresh, salesTotal, salesPage, fetchSalesPage, activitiesTotal, activitiesPage, fetchActivitiesPage } = useStore();
   const { language, user: currentUser } = useAuthStore();
 
   const t = translations[language];
@@ -351,6 +351,30 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
           </div>
         )}
 
+        {subView === 'sales' && salesTotal > 50 && (
+          <div className="flex items-center justify-between p-5 border-t border-border-subtle bg-sidebar/30">
+            <div className="text-xs font-black text-text-secondary uppercase tracking-widest">
+              {language === 'ar' ? `صفحة ${salesPage} من ${Math.ceil(salesTotal / 50)}` : `Page ${salesPage} of ${Math.ceil(salesTotal / 50)}`}
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={salesPage === 1}
+                onClick={() => fetchSalesPage(salesPage - 1)}
+                className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+              >
+                {language === 'ar' ? 'السابق' : 'Previous'}
+              </button>
+              <button 
+                disabled={salesPage >= Math.ceil(salesTotal / 50)}
+                onClick={() => fetchSalesPage(salesPage + 1)}
+                className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+              >
+                {language === 'ar' ? 'التالي' : 'Next'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {subView === 'payments' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -417,6 +441,30 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {subView === 'activity' && activitiesTotal > 50 && (
+          <div className="flex items-center justify-between p-5 border-t border-border-subtle bg-sidebar/30">
+            <div className="text-xs font-black text-text-secondary uppercase tracking-widest">
+              {language === 'ar' ? `صفحة ${activitiesPage} من ${Math.ceil(activitiesTotal / 50)}` : `Page ${activitiesPage} of ${Math.ceil(activitiesTotal / 50)}`}
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={activitiesPage === 1}
+                onClick={() => fetchActivitiesPage(activitiesPage - 1)}
+                className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+              >
+                {language === 'ar' ? 'السابق' : 'Previous'}
+              </button>
+              <button 
+                disabled={activitiesPage >= Math.ceil(activitiesTotal / 50)}
+                onClick={() => fetchActivitiesPage(activitiesPage + 1)}
+                className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+              >
+                {language === 'ar' ? 'التالي' : 'Next'}
+              </button>
+            </div>
           </div>
         )}
 

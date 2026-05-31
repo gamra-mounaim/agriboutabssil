@@ -357,54 +357,53 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden px-6" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)' }}>
-        {/* Decorative background shapes */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] bg-yellow-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
-
-        <div className="w-full max-w-md space-y-8 bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] border border-white/50 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] relative z-10 group">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-400 via-blue-500 to-accent opacity-70 group-focus-within:opacity-100 transition-opacity" />
+      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden bg-bg-base text-text-main">
+        {/* Modern Ambient Background Glows */}
+        <div className="absolute top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-pulse-slow"></div>
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60"></div>
+        
+        <div className="w-full max-w-md space-y-8 bg-card/60 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl relative z-10 group">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-accent opacity-70 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2.5rem]" />
           
-          <div className="text-center space-y-3">
-            <div className="inline-flex p-1.5 rounded-[2rem] bg-white border border-gray-100 mb-2 overflow-hidden w-24 h-24 items-center justify-center shadow-lg mx-auto group hover:scale-105 transition-transform duration-300">
-              <Logo className="w-full h-full p-2" />
+          <div className="text-center space-y-4">
+            <div className="inline-flex p-1.5 rounded-[2rem] bg-white/10 dark:bg-black/20 border border-border-subtle mb-2 overflow-hidden w-24 h-24 items-center justify-center shadow-xl mx-auto group-hover:scale-110 transition-transform duration-500 ease-out backdrop-blur-md">
+              <Logo className="w-full h-full p-2 text-accent" />
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-gray-800">
-              <span className="text-green-700">AGRI</span>{' '}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent to-orange-400">BOUTABSSIL</span>
+            <h1 className="text-4xl font-black tracking-tight font-sans">
+              <span>AGRI</span>{' '}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent to-blue-500">BOUTABSSIL</span>
             </h1>
-            <p className="text-gray-500 text-[11px] font-bold uppercase tracking-[0.15em] mt-2 bg-gray-50 py-1.5 px-4 rounded-full inline-block border border-gray-100">
+            <p className="text-text-secondary text-[10px] font-bold uppercase tracking-[0.2em] mt-2 bg-text-secondary/5 py-1.5 px-4 rounded-full inline-block border border-border-subtle backdrop-blur-sm">
               {language === 'fr' ? 'Solutions Agricoles & Industrielles' : (language === 'ar' ? 'حلول فلاحية وصناعية' : 'Agricultural & Industrial Solutions')}
             </p>
           </div>
 
-          <form onSubmit={handleTraditionalLogin} className="space-y-5">
-            <div className="space-y-1.5 relative">
-              <label className="text-[11px] font-bold uppercase text-gray-600 ml-2">{language === 'ar' ? 'اسم المستخدم' : 'USERNAME'}</label>
-              <div className="relative flex items-center">
-                <User className={cn("absolute w-5 h-5 text-gray-400", language === 'ar' ? "right-4" : "left-4")} />
+          <form onSubmit={handleTraditionalLogin} className="space-y-6 mt-8">
+            <div className="space-y-2 relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{language === 'ar' ? 'اسم المستخدم' : 'USERNAME'}</label>
+              <div className="relative flex items-center group/input">
+                <User className={cn("absolute w-5 h-5 text-text-secondary group-focus-within/input:text-accent transition-colors", language === 'ar' ? "right-4" : "left-4")} />
                 <input 
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   disabled={signingIn}
-                  className={cn("w-full bg-gray-50/50 border-2 border-gray-200 rounded-2xl py-3.5 text-sm focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(241,90,36,0.1)] outline-none font-semibold transition-all text-gray-800 placeholder-gray-400", language === 'ar' ? "pr-12 text-right" : "pl-12")}
+                  className={cn("w-full bg-bg-base/50 border-2 border-border-subtle rounded-2xl py-4 text-sm focus:border-accent focus:bg-bg-base outline-none font-semibold transition-all text-text-main placeholder-text-secondary/50", language === 'ar' ? "pr-12 text-right" : "pl-12")}
                   placeholder={language === 'ar' ? "أدخل اسم المستخدم" : "Enter your username"}
                   required
                 />
               </div>
             </div>
-            <div className="space-y-1.5 relative">
-              <label className="text-[11px] font-bold uppercase text-gray-600 ml-2">{language === 'ar' ? 'كلمة المرور' : 'PASSWORD'}</label>
-              <div className="relative flex items-center">
-                <Lock className={cn("absolute w-5 h-5 text-gray-400", language === 'ar' ? "right-4" : "left-4")} />
+            <div className="space-y-2 relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{language === 'ar' ? 'كلمة المرور' : 'PASSWORD'}</label>
+              <div className="relative flex items-center group/input">
+                <Lock className={cn("absolute w-5 h-5 text-text-secondary group-focus-within/input:text-accent transition-colors", language === 'ar' ? "right-4" : "left-4")} />
                 <input 
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   disabled={signingIn}
-                  className={cn("w-full bg-gray-50/50 border-2 border-gray-200 rounded-2xl py-3.5 text-sm focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(241,90,36,0.1)] outline-none font-semibold transition-all text-gray-800 placeholder-gray-400", language === 'ar' ? "pr-12 text-right" : "pl-12")}
+                  className={cn("w-full bg-bg-base/50 border-2 border-border-subtle rounded-2xl py-4 text-sm focus:border-accent focus:bg-bg-base outline-none font-semibold transition-all text-text-main placeholder-text-secondary/50", language === 'ar' ? "pr-12 text-right" : "pl-12")}
                   placeholder="••••••••"
                   required
                 />
@@ -413,28 +412,28 @@ export default function App() {
             <button
               type="submit"
               disabled={signingIn}
-              className="w-full bg-gradient-to-r from-accent to-orange-500 text-white font-bold py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm tracking-widest uppercase shadow-lg shadow-accent/30 mt-2"
+              className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-[11px] tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] mt-4"
             >
               {signingIn ? '...' : (language === 'ar' ? 'دخول النظام' : 'ACCESS TERMINAL')}
             </button>
           </form>
 
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold text-gray-400"><span className="bg-white px-3 italic">OR</span></div>
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-subtle"></div></div>
+            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-widest text-text-secondary"><span className="bg-card px-4">OR</span></div>
           </div>
 
           <button
             onClick={handleGoogleLogin}
             disabled={signingIn}
-            className="w-full bg-white border-2 border-gray-200 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-[11px] uppercase tracking-wider"
+            className="w-full bg-bg-base/80 border-2 border-border-subtle text-text-main font-bold py-4 rounded-2xl hover:bg-bg-base hover:border-text-secondary/30 transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-[11px] uppercase tracking-wider backdrop-blur-sm"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-4 h-4 opacity-80" referrerPolicy="no-referrer" />
+            <img src="https://www.google.com/favicon.ico" className="w-4 h-4 opacity-90" referrerPolicy="no-referrer" />
             {t.login}
           </button>
         </div>
-        <p className="mt-8 text-[10px] text-gray-500 font-mono tracking-widest opacity-60 uppercase z-10 font-semibold">
-          SECURE_TERMINAL_V2.0 • ENCRYPTED_SESSION
+        <p className="mt-8 text-[9px] text-text-secondary font-mono tracking-[0.3em] opacity-40 uppercase z-10 font-bold">
+          SECURE_TERMINAL_V3.0 • ENCRYPTED_SESSION
         </p>
       </div>
     );
