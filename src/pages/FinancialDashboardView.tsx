@@ -197,7 +197,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
       <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
       <div className="flex flex-col items-center">
         <div className={`text-4xl font-black ${color}`}>{value}</div>
-        {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{isAr ? 'درهم' : currency}</div>}
+        {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{t.currency}</div>}
       </div>
       <div className="text-[10px] text-text-secondary/60 font-medium mt-4">{subtext}</div>
     </div>
@@ -584,7 +584,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     <div className="flex items-center justify-between mb-8">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
-                         {isAr ? 'اتجاه المبيعات (7 أيام)' : 'SALES TREND (7 DAYS)'}
+                         {t.salesTrend7Days}
                        </h3>
                        <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
                          {formatNumber(trendData.reduce((acc: number, curr: any) => acc + curr.amount, 0))} {t.currency}
@@ -594,7 +594,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       {trendData.every((d: any) => d.amount === 0) ? (
                         <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
                           <TrendingUp className="w-10 h-10 mb-3 opacity-50" />
-                          <span className="text-xs font-bold uppercase tracking-widest">{isAr ? "لا توجد مبيعات" : "NO SALES"}</span>
+                          <span className="text-xs font-bold uppercase tracking-widest">{t.noSalesInPeriod}</span>
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
@@ -617,7 +617,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                             <ReChartsTooltip 
                               contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
                               itemStyle={{ color: '#6366f1' }}
-                              formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, isAr ? 'المبيعات' : 'Sales']}
+                              formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, (t as any).salesLabel]}
                             />
                             <Area 
                               type="monotone" 
@@ -661,7 +661,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                             </div>
                             <div>
                               <div className="text-sm font-bold text-text-main line-clamp-1">{tp.name}</div>
-                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {isAr ? 'وحدة' : 'Units'}</div>
+                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {(t as any).unitLabel}</div>
                             </div>
                           </div>
                           <div className="text-right">

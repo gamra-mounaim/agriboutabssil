@@ -199,6 +199,8 @@ export const translations = {
     digitalWallet: "Digital Wallet",
     noData: "No Data",
     noSalesInPeriod: "No Sales in this period",
+    salesLabel: "Sales",
+    unitLabel: "Units",
   },
   fr: {
     appName: "AGRI BOUTABSSIL",
@@ -350,6 +352,7 @@ export const translations = {
     supplierChecks: "Chèques Fournisseurs",
     customerChecks: "Chèques Clients",
     checks: "Chèques",
+    notifications: "Notifications",
     noNotifications: "Aucune notification",
     markAsRead: "Marquer comme lu",
     financialDashboard: "Tableau de Bord Financier",
@@ -397,6 +400,8 @@ export const translations = {
     digitalWallet: "Portefeuille Numérique",
     noData: "Aucune donnée",
     noSalesInPeriod: "Aucune vente durant cette période",
+    salesLabel: "Ventes",
+    unitLabel: "Unités",
   },
   ar: {
     appName: "AGRI BOUTABSSIL",
@@ -548,6 +553,9 @@ export const translations = {
     supplierChecks: "شيكات الموردين",
     customerChecks: "شيكات الزبناء",
     checks: "الشيكات",
+    notifications: "الإشعارات",
+    noNotifications: "لا توجد إشعارات جديدة",
+    markAsRead: "تحديد كمقروء",
     financialDashboard: "لوحة القيادة المالية",
     statementOfAccount: "كشف حساب",
     generateStatement: "استخراج كشف حساب",
@@ -593,5 +601,7 @@ export const translations = {
     digitalWallet: "المحفظة الرقمية",
     noData: "لا توجد بيانات",
     noSalesInPeriod: "لا توجد مبيعات في هذه الفترة",
+    salesLabel: "المبيعات",
+    unitLabel: "وحدة",
   }
 };
