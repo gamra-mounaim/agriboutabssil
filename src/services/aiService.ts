@@ -23,14 +23,14 @@ export const predictSales = async (
   const inventorySummary = products.map(p => ({
     name: p.name,
     stock: p.qty,
-    price: p.sell,
-    cost: p.cost
+    price: p.price,
+    cost: p.costPrice
   }));
 
   const recentSalesSummary = sales.slice(0, 100).map(s => ({
     total: s.total,
     itemsCount: s.items.length,
-    date: s.timestamp
+    date: s.date
   }));
 
   const prompt = `
