@@ -541,7 +541,11 @@ async function startServer() {
 
   // Run initial Google Drive backup 15 seconds after startup if connected
   setTimeout(async () => {
-    await performDriveAutoBackup();
+    try {
+      await performDriveAutoBackup();
+    } catch (err) {
+      console.error("Initial Drive auto-backup failed:", err);
+    }
   }, 15000);
 
   // Email auto-backup interval (12 hours)
@@ -555,7 +559,11 @@ async function startServer() {
 
   // Google Drive auto-backup interval (5 hours)
   setInterval(async () => {
-    await performDriveAutoBackup();
+    try {
+      await performDriveAutoBackup();
+    } catch (err) {
+      console.error("Scheduled Drive auto-backup failed:", err);
+    }
   }, 5 * 60 * 60 * 1000);
 
   app.post("/api/backup/email/send", authMiddleware, async (req, res) => {
