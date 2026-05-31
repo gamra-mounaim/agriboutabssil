@@ -12,6 +12,9 @@ import crypto from "node:crypto";
 import { google } from "googleapis";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || 'gamra-super-secret-jwt-key-2024';
 
 const hashPassword = (password: string) => {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -35,25 +38,7 @@ async function startServer() {
     await initDb();
     console.log("PostgreSQL Database initialized.");
     
-    // --- TEMPORARY FIX: Restore gamra to admin ---
-    try {
-      await db.prepare(`
-        UPDATE users 
-        SET role = 'admin', 
-            permissions = ? 
-        WHERE lower(username) = 'gamra'
-      `).run(JSON.stringify({ 
-        stock: true, customers: true, history: true, profits: true, 
-        viewCostPrice: true, editStock: true, supplierDebt: true, 
-        financials: true, financialsSales: true, financialsDebts: true, 
-        financialsProfits: true, financialsInventory: true, 
-        viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true 
-      }));
-      console.log("Successfully restored gamra to admin.");
-    } catch (e) {
-      console.error("Failed to restore gamra:", e);
-    }
-    // ----------------------------------------------
+    // TEMPORARY FIX REMOVED
 
   } catch (dbError) {
     console.error("CRITICAL: Database initialization failed:", dbError);
@@ -73,33 +58,39 @@ async function startServer() {
       return res.status(401).json({ status: "error", message: "Unauthorized: Missing or invalid token" });
     }
     const token = authHeader.split(' ')[1];
-    const [userId, sessionVersion] = token.split(':');
     
-    if (!userId || !sessionVersion) {
-      return res.status(401).json({ status: "error", message: "Unauthorized: Invalid token format" });
-    }
-
     try {
+      // Handle legacy tokens gracefully by forcing re-login
+      if (token.includes(':')) {
+         return res.status(401).json({ status: "error", message: "Unauthorized: Legacy token format. Please re-login." });
+      }
+
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const { userId, sessionVersion } = decoded;
+
+      if (!userId || !sessionVersion) {
+        return res.status(401).json({ status: "error", message: "Unauthorized: Invalid token payload" });
+      }
+
       if (userId === 'admin') {
+         req.body.user = decoded;
          next();
          return;
       }
-      const user = (await db.prepare('SELECT role, session_version FROM users WHERE id = ?').get(userId)) as any;
+      
+      const user = (await db.prepare('SELECT role, session_version FROM users WHERE id = $1').get(userId)) as any;
       if (!user) {
         return res.status(401).json({ status: "error", message: "Unauthorized: User not found" });
-      }
-
-      if (user.role !== 'admin') {
-         return res.status(403).json({ status: "error", message: "Forbidden: Requires admin role" });
       }
 
       if (parseInt(sessionVersion) !== (user.session_version || 1)) {
         return res.status(401).json({ status: "error", message: "Unauthorized: Session expired" });
       }
 
+      req.body.user = decoded;
       next();
     } catch (err) {
-      res.status(500).json({ status: "error", message: "Database error during authentication" });
+      res.status(401).json({ status: "error", message: "Unauthorized: Invalid or expired token" });
     }
   };
 
@@ -194,9 +185,7 @@ async function startServer() {
     const usernameLower = username.trim().toLowerCase();
     const hashedPassword = hashPassword(rawPassword.trim());
     
-    // Check if the user is the hardcoded admin or in DB
-    const ADMIN_HASH = '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f';
-    const isHardcodedAdmin = (usernameLower === 'gamra') && (hashedPassword === ADMIN_HASH);
+    // Hardcoded admin removed
 
     try {
       const user = (await db.prepare('SELECT * FROM users WHERE username = $1 OR lower(username) = $2').get(username, usernameLower)) as any;
@@ -214,48 +203,22 @@ async function startServer() {
 
         if (user.password === hashedPassword || user.password === rawPassword.trim()) {
           const { password: _p, ...userWithoutPassword } = user;
+          const sessionVersion = userWithoutPassword.session_version || 1;
+          const token = jwt.sign({ userId: userWithoutPassword.id, sessionVersion }, JWT_SECRET, { expiresIn: '7d' });
+          
           logActivity('STAFF', 'login', `User logged in: ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
           return res.json({ 
             status: "success", 
             user: {
               ...userWithoutPassword,
-              sessionVersion: userWithoutPassword.session_version || 1
+              sessionVersion,
+              token
             } 
           });
         }
       }
 
-      if (isHardcodedAdmin) {
-        logActivity('STAFF', 'login', `Admin login: gamra`, 'admin', 'gamra');
-        const adminDb = (await db.prepare('SELECT session_version FROM users WHERE id = $1').get('admin')) as any;
-        const currentVersion = adminDb ? (adminDb.session_version || 1) : 1;
-        return res.json({ 
-          status: "success", 
-          user: { 
-            id: 'admin', 
-            username: 'gamra', 
-            role: 'admin', 
-            session_version: currentVersion,
-            sessionVersion: currentVersion,
-            permissions: { 
-              stock: true, 
-              customers: true, 
-              history: true, 
-              profits: true, 
-              editStock: true,
-              supplierDebt: true,
-              financials: true,
-              financialsSales: true,
-              financialsDebts: true,
-              financialsProfits: true,
-              financialsInventory: true,
-              viewSupplierDebtAmount: true,
-              viewCostPrice: true,
-              financialsRestricted: true
-            } 
-          } 
-        });
-      }
+      // Hardcoded admin logic removed
 
       res.status(401).json({ status: "error", message: "Invalid username or password" });
     } catch (error: any) {

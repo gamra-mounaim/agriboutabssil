@@ -8,7 +8,6 @@ export const formatNumber = (val: any) => {
 };
 import autoTable from 'jspdf-autotable';
 import { SHOP_DETAILS } from '../constants';
-import { uploadInvoiceToSupabase } from './supabaseService';
 import { translations } from '../translations';
 
 interface InvoiceItem {
@@ -501,8 +500,7 @@ export const generateGlobalCustomerReportPDF = (data: GlobalReportData, language
   const filename = `Global_Debt_Report_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 
-  const pdfBlob = doc.output('blob');
-  uploadInvoiceToSupabase(pdfBlob, filename).catch(e => console.warn(e));
+  doc.save(filename);
 };
 
 

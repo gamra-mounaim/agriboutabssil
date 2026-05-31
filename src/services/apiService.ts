@@ -24,7 +24,9 @@ const getAuthHeaders = () => {
     const stored = localStorage.getItem('pos_user');
     if (stored && stored !== 'undefined') {
       const user = JSON.parse(stored);
-      if (user?.id) {
+      if (user?.token) {
+        headers['Authorization'] = `Bearer ${user.token}`;
+      } else if (user?.id) {
         headers['Authorization'] = `Bearer ${user.id}:${user.sessionVersion || user.session_version}`;
       }
     }

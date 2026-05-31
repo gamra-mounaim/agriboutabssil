@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import 'dotenv/config';
 
 if (!process.env.DATABASE_URL) {
@@ -15,10 +15,13 @@ const pool = new Pool({
 });
 
 function convertQuery(sql: string) {
-  // If the query already uses $1, $2, etc., don't convert
   if (sql.includes('$1')) return sql;
   let i = 1;
-  return sql.replace(/\?/g, () => `$${i++}`);
+  // Safer replace: ignores ? inside single quotes
+  return sql.replace(/('[^']*')|\?/g, (match, quoted) => {
+    if (quoted) return quoted;
+    return `$${i++}`;
+  });
 }
 
 const db = {
@@ -41,6 +44,20 @@ const db = {
   },
   exec: async (sql: string) => {
     await pool.query(sql);
+  },
+  // Added transaction support
+  transaction: async (callback: (client: PoolClient) => Promise<void>) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await callback(client);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 };
 

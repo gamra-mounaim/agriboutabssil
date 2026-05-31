@@ -193,6 +193,8 @@ export const translations = {
     permFinancialsPaymentMethods: "Dashboard: View Payment Methods Breakdown",
     usedPaymentMethods: "Used Payment Methods",
     digitalWallet: "Digital Wallet",
+    noData: "No Data",
+    noSalesInPeriod: "No Sales in this period",
   },
   fr: {
     appName: "AGRI BOUTABSSIL",
@@ -385,6 +387,8 @@ export const translations = {
     permFinancialsPaymentMethods: "Dashboard : Moyens de paiement utilisés",
     usedPaymentMethods: "Moyens de paiement utilisés",
     digitalWallet: "Portefeuille Numérique",
+    noData: "Aucune donnée",
+    noSalesInPeriod: "Aucune vente durant cette période",
   },
   ar: {
     appName: "AGRI BOUTABSSIL",
@@ -575,5 +579,7 @@ export const translations = {
     permFinancialsPaymentMethods: "لوحة القيادة: عرض طرق الدفع المستخدمة",
     usedPaymentMethods: "طرق الدفع المستخدمة",
     digitalWallet: "المحفظة الرقمية",
+    noData: "لا توجد بيانات",
+    noSalesInPeriod: "لا توجد مبيعات في هذه الفترة",
   }
 };
