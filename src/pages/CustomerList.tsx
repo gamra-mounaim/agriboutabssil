@@ -71,9 +71,10 @@ export default function CustomerList() {
       setAddress('');
       setDueDate('');
       onRefresh();
-      setMessage({ text: language === 'ar' ? "تمت إضافة الزبون بنجاح." : "Customer added successfully.", type: 'success' });
+      setMessage({ text: t.customerAdded, type: 'success' });
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "فشل إضافة الزبون." : "Failed to add customer.", type: 'error' });
+      console.error(err);
+      setMessage({ text: t.customerAddFailed, type: 'error' });
     }
   };
 
@@ -93,10 +94,10 @@ export default function CustomerList() {
           check_owner: adjustMethod === 'CHECK' ? (checkBankModal && checkBankModal !== 'بنك آخر...' ? `${checkBankModal} | ${check_ownerModal}` : check_ownerModal) : null
         };
         await api.addPayment(adjustModal.customer.id, paymentData);
-        setMessage({ text: language === 'ar' ? "تم تسجيل الدفعة." : "Payment posted successfully.", type: 'success' });
+        setMessage({ text: t.paymentPosted, type: 'success' });
       } else {
         await api.addCharge(adjustModal.customer.id, amt, '');
-        setMessage({ text: language === 'ar' ? "تمت إضافة الدين." : "Charge added successfully.", type: 'success' });
+        setMessage({ text: t.chargeAdded, type: 'success' });
       }
       setAdjustModal(null);
       setAdjustAmount('');
@@ -110,7 +111,7 @@ export default function CustomerList() {
         loadHistory(selectedCustomer.id);
       }
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "فشلت العملية." : "Operation failed.", type: 'error' });
+      setMessage({ text: t.operationFailed, type: 'error' });
     }
   };
 
@@ -153,7 +154,7 @@ export default function CustomerList() {
       }
     } catch (err) {
       console.error(err);
-      setMessage({ text: language === 'ar' ? "فشلت عملية الإرجاع." : "Failed to record return.", type: 'error' });
+      setMessage({ text: t.returnFailed, type: 'error' });
     }
   };
 
@@ -295,7 +296,7 @@ export default function CustomerList() {
               className="h-full bg-accent text-white py-5 px-8 rounded-[2rem] text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent/20 hover:opacity-90 transition-all shrink-0 active:scale-95"
             >
               <ArrowRightLeft className="w-4 h-4" />
-              {language === 'ar' ? 'إرجاع لزبون عابر' : 'Retour Client Passager'}
+              {t.walkingCustomerReturn}
             </button>
           </div>
 
@@ -337,7 +338,7 @@ export default function CustomerList() {
                     {t.payDebt}
                   </button>
                   <button onClick={() => setAdjustModal({ type: 'charge', customer: c })} className="bg-white border-2 border-border-subtle text-text-main py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-accent hover:text-accent transition-all">
-                    {language === 'ar' ? 'إضافة دين' : 'NEW CHARGE'}
+                    {t.newCharge}
                   </button>
                 </div>
                 <button onClick={() => setSelectedCustomer(c)} className="w-full mt-4 py-2 text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-[0.3em] transition-colors border-t border-border-subtle/40 pt-4">{t.view} {t.customerDetails}</button>
@@ -433,7 +434,7 @@ export default function CustomerList() {
                       </div>
                     </div>
                     <div className="flex gap-4 pt-4 border-t border-border-subtle">
-                       <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-6 py-3 bg-bg-base text-text-secondary font-bold rounded-xl hover:bg-border-subtle transition-all uppercase text-[10px] tracking-widest">{language === 'ar' ? "إلغاء" : "Cancel"}</button>
+                       <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-6 py-3 bg-bg-base text-text-secondary font-bold rounded-xl hover:bg-border-subtle transition-all uppercase text-[10px] tracking-widest">{t.cancel}</button>
                        <button type="submit" className="flex-1 px-6 py-3 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all uppercase text-[10px] tracking-widest">{t.saveChanges}</button>
                     </div>
                   </form>
@@ -441,19 +442,19 @@ export default function CustomerList() {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{language === 'ar' ? "إجمالي الكريدي" : "Total Accrued"}</div>
+                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{t.totalAccrued}</div>
                         <div className="text-xl font-black font-mono text-text-main">
                           {formatNumber(customerHistory.filter(h => h.type === 'DEBT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
                         </div>
                       </div>
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{language === 'ar' ? "إجمالي السداد" : "Total Paid"}</div>
+                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{t.totalPaid}</div>
                         <div className="text-xl font-black font-mono text-success">
                           {formatNumber(customerHistory.filter(h => h.type === 'PAYMENT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
                         </div>
                       </div>
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">{language === 'ar' ? "الباقي (الرصيد)" : "Remaining Balance"}</div>
+                        <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">{t.remainingBalance}</div>
                         <div className={cn("text-xl font-black font-mono", selectedCustomer.debt > 0 ? "text-danger" : "text-success")}>
                           {formatNumber(selectedCustomer.debt)} {t.currency}
                         </div>
@@ -487,7 +488,7 @@ export default function CustomerList() {
 
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">{language === 'ar' ? "تاريخ الحساب" : "FINANCIAL HISTORY"}</h4>
+                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">{t.financialHistory}</h4>
                       </div>
                       
                       {loadingHistory ? (

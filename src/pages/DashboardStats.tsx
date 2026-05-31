@@ -71,9 +71,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
               {t.upcomingDebtPayments}
             </p>
             <p className="text-[13px] font-semibold opacity-90">
-              {language === 'ar' 
-                ? `هناك ${upcomingDebts.length} زبناء لديهم ديون مستحقة الأداء.` 
-                : `There are ${upcomingDebts.length} customers with upcoming or overdue debt payments.`}
+              {`${upcomingDebts.length} ${t.upcomingDebtsCount}.`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -99,7 +97,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
         <StatCard 
           label={t.totalSales} 
           value={`${formatNumber(totalSalesLifetime)} ${t.currency}`} 
-          sub={language === 'ar' ? "إجمالي الأرباح" : "Lifetime Earnings"} 
+          sub={t.lifetimeEarnings} 
           highlights
         />
         {permissions.profits && (
@@ -107,24 +105,24 @@ function DashboardStats({ products, categories, customers, sales, language, stat
             <StatCard 
               label={t.inventoryValue} 
               value={`${formatNumber(totalInventoryValue)} ${t.currency}`} 
-              sub={language === 'ar' ? "قيمة المخزون الإجمالية" : "Current Asset Value"} 
+              sub={t.currentAssetValue} 
             />
             <StatCard 
               label={t.expectedProfit} 
               value={`${formatNumber(totalExpectedProfit)} ${t.currency}`} 
-              sub={language === 'ar' ? "الأرباح المتوقعة" : "Projected Gain"} 
+              sub={t.projectedGain} 
             />
           </>
         )}
         <StatCard 
           label={t.customersWithDebt} 
           value={formatNumber(customersWithDebtCount)} 
-          sub={language === 'ar' ? "زبناء بذمتهم مبالغ" : "Customers with balance"} 
+          sub={t.customersWithBalance} 
         />
         <StatCard 
-          label={language === 'ar' ? "الديون المعلقة" : "Outstanding Debt"} 
+          label={t.outstandingDebt}
           value={`${formatNumber(totalDebtValue)} ${t.currency}`} 
-          sub={language === 'ar' ? "محفظة الديون" : "Debt Portfolio"} 
+          sub={t.debtPortfolio} 
           danger={totalDebtValue > 500} 
         />
         <StatCard 
@@ -141,7 +139,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-xs font-bold text-text-main flex items-center gap-2 uppercase tracking-widest">
               <TrendingUp className="w-4 h-4 text-accent" />
-              {language === 'ar' ? "اتجاه المبيعات (7 أيام)" : "SALES TREND (LAST 7 DAYS)"}
+              {t.salesTrend7Days}
             </h4>
             <div className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">
               {formatNumber(last7Days.reduce((acc, curr) => acc + curr.amount, 0))} {t.currency}

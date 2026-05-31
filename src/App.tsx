@@ -115,28 +115,14 @@ export default function App() {
   const [profileReady, setProfileReady] = useState(false);
   const [view, setView] = useState<View>('pos');
   const { products, categories, customers, suppliers, sales, checks, payments, activities, notifications, appUsers, settings, message, stats, latestBackup, setMessage, fetchData: refreshData, markNotificationRead: markAsRead } = useStore();
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  const { language, setLanguage: setAuthLanguage } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [backingUpToDrive, setBackingUpToDrive] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('staff');
-  
-  
-  
-  const [language, setLanguage] = useState<Language>((localStorage.getItem('lang') as Language) || 'fr');
   const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('theme') as 'light' | 'dark') || 'light');
 
+  // Sync language to DOM direction
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
@@ -242,7 +228,7 @@ export default function App() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setMessage({ text: language === 'ar' ? "تم تحميل النسخة الاحتياطية بنجاح" : "Backup downloaded successfully", type: 'success' });
+      setMessage({ text: t.backupDownloaded, type: 'success' });
     } catch (e) {
       setMessage({ text: t.backupError, type: 'error' });
     }
@@ -313,7 +299,7 @@ export default function App() {
   }, [profileReady, refreshData]);
 
   const handleGoogleLogin = () => {
-    setMessage({ text: language === 'ar' ? "تسجيل الدخول عبر Google غير متاح في النسخة المكتبية." : "Google login is disabled in desktop version.", type: 'error' });
+    setMessage({ text: t.backupError, type: 'error' });
   };
 
   const handleTraditionalLogin = async (e: React.FormEvent) => {
@@ -330,11 +316,11 @@ export default function App() {
         setUser(userData);
         setCurrentUserRole(userData.role);
         setProfileReady(true);
-        setMessage({ text: language === 'ar' ? "تم الدخول بنجاح" : "Login Successful", type: 'success' });
+        setMessage({ text: t.loginSuccess, type: 'success' });
       }
     } catch (err: any) {
       console.error(err);
-      setMessage({ text: language === 'ar' ? "خطأ في الاسم أو كلمة المرور" : "Invalid username or password", type: 'error' });
+      setMessage({ text: t.loginFailed, type: 'error' });
     } finally {
       setSigningIn(false);
     }
@@ -379,13 +365,13 @@ export default function App() {
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent to-blue-500">BOUTABSSIL</span>
             </h1>
             <p className="text-text-secondary text-[10px] font-bold uppercase tracking-[0.2em] mt-2 bg-text-secondary/5 py-1.5 px-4 rounded-full inline-block border border-border-subtle backdrop-blur-sm">
-              {language === 'fr' ? 'Solutions Agricoles & Industrielles' : (language === 'ar' ? 'حلول فلاحية وصناعية' : 'Agricultural & Industrial Solutions')}
+              {t.tagline}
             </p>
           </div>
 
           <form onSubmit={handleTraditionalLogin} className="space-y-6 mt-8">
             <div className="space-y-2 relative">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{language === 'ar' ? 'اسم المستخدم' : 'USERNAME'}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{(t as any).username}</label>
               <div className="relative flex items-center group/input">
                 <User className={cn("absolute w-5 h-5 text-text-secondary group-focus-within/input:text-accent transition-colors", language === 'ar' ? "right-4" : "left-4")} />
                 <input 
@@ -394,13 +380,13 @@ export default function App() {
                   onChange={e => setUsername(e.target.value)}
                   disabled={signingIn}
                   className={cn("w-full bg-bg-base/50 border-2 border-border-subtle rounded-2xl py-4 text-sm focus:border-accent focus:bg-bg-base outline-none font-semibold transition-all text-text-main placeholder-text-secondary/50", language === 'ar' ? "pr-12 text-right" : "pl-12")}
-                  placeholder={language === 'ar' ? "أدخل اسم المستخدم" : "Enter your username"}
+                  placeholder={(t as any).username}
                   required
                 />
               </div>
             </div>
             <div className="space-y-2 relative">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{language === 'ar' ? 'كلمة المرور' : 'PASSWORD'}</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-2">{(t as any).password}</label>
               <div className="relative flex items-center group/input">
                 <Lock className={cn("absolute w-5 h-5 text-text-secondary group-focus-within/input:text-accent transition-colors", language === 'ar' ? "right-4" : "left-4")} />
                 <input 
@@ -419,7 +405,7 @@ export default function App() {
               disabled={signingIn}
               className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-[11px] tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] mt-4"
             >
-              {signingIn ? '...' : (language === 'ar' ? 'دخول النظام' : 'ACCESS TERMINAL')}
+              {signingIn ? '...' : (t as any).accessTerminal}
             </button>
           </form>
 
@@ -474,7 +460,7 @@ export default function App() {
           {canAccess('customers') && <NavItem icon={<Users className="w-5 h-5" />} label={t.customers} active={view === 'customers'} onClick={() => setView('customers')} />}
           {canAccess('suppliers') && <NavItem icon={<Store className="w-5 h-5" />} label={t.suppliers} active={view === 'suppliers'} onClick={() => setView('suppliers')} />}
           {canAccess('checks') && <NavItem icon={<CreditCard className="w-5 h-5" />} label={t.customerChecks} active={view === 'checks'} onClick={() => setView('checks')} />}
-          {canAccess('users') && <NavItem icon={<UserPlus className="w-5 h-5" />} label={language === 'ar' ? 'الموظفين' : 'Staff'} active={view === 'users'} onClick={() => setView('users')} />}
+          {canAccess('users') && <NavItem icon={<UserPlus className="w-5 h-5" />} label={(t as any).staffNav} active={view === 'users'} onClick={() => setView('users')} />}
           {canAccess('settings') && <NavItem icon={<UserCog className="w-5 h-5" />} label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} />}
           {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
         </div>
@@ -482,14 +468,14 @@ export default function App() {
         <div className="mx-4 my-2 p-3 bg-bg-base/80 border-2 border-accent/30 rounded-2xl shadow-inner text-center">
           <div className="text-[9px] font-black uppercase text-accent tracking-[0.25em] mb-2 flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
-            {language === 'ar' ? 'لغة الموقع / LANGUE' : 'LANGUE DU SITE'}
+            {(t as any).languageLabel}
           </div>
           <div className="flex gap-1.5 justify-center">
             {(['en', 'fr', 'ar'] as Language[]).map(lang => (
               <button
                 key={lang}
                 onClick={() => {
-                  setLanguage(lang);
+                  setAuthLanguage(lang);
                   localStorage.setItem('lang', lang);
                 }}
                 className={cn(
@@ -522,7 +508,7 @@ export default function App() {
           >
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-accent" />}
             <span className="hidden md:block text-[11px] font-bold uppercase tracking-widest">
-              {theme === 'light' ? (language === 'ar' ? 'الوضع الليلي' : 'Dark Mode') : (language === 'ar' ? 'الوضع النهاري' : 'Light Mode')}
+              {theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
             </span>
           </button>
         </div>
@@ -649,7 +635,7 @@ export default function App() {
               {!canAccess(view) ? (
                 <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-50 grayscale">
                   <ShieldCheck className="w-16 h-16 text-text-secondary" />
-                  <p className="text-sm font-mono uppercase tracking-widest">{language === 'ar' ? "وصول محدود // يرجى مراجعة المسؤول" : "RESTRICTED // CONTACT ADMIN"}</p>
+                  <p className="text-sm font-mono uppercase tracking-widest">{(t as any).restrictedAccess}</p>
                 </div>
               ) : (
                 <>

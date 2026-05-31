@@ -94,6 +94,7 @@ export const api = {
   },
   addCustomer: async (customer) => post(`${API_URL}/customers`, customer),
   updateCustomer: async (id, customer) => put(`${API_URL}/customers/${id}`, customer),
+  deleteCustomer: async (id) => del(`${API_URL}/customers/${id}`),
 
   // Users
   getUsers: async () => get(`${API_URL}/users`),
@@ -112,6 +113,7 @@ export const api = {
   getSuppliers: async () => get(`${API_URL}/suppliers`),
   addSupplier: async (supplier) => post(`${API_URL}/suppliers`, supplier),
   updateSupplier: async (id, supplier) => put(`${API_URL}/suppliers/${id}`, supplier),
+  deleteSupplier: async (id) => del(`${API_URL}/suppliers/${id}`),
   addSupplierPayment: async (supplierId, paymentData) => post(`${API_URL}/suppliers/${supplierId}/payment`, paymentData),
   addSupplierCharge: async (supplierId, amount, description) => post(`${API_URL}/suppliers/${supplierId}/charge`, { amount, description }),
   getSupplierHistory: async (supplierId) => get(`${API_URL}/suppliers/${supplierId}/history`),
