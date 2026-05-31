@@ -674,6 +674,38 @@ async function startServer() {
         if (changes.length > 0) {
             details += ` | Changes: ${changes.join(', ')}`;
         }
+
+        // Handle Supplier Debt Updates
+        const oldSupplierId = oldProduct.supplier_id;
+        const oldCostAmount = (oldProduct.cost_price || 0) * (oldProduct.qty || 0);
+        const newCostAmount = (costPrice || 0) * (qty || 0);
+
+        if (oldSupplierId === supplierId) {
+          if (supplierId && oldCostAmount !== newCostAmount) {
+            const difference = newCostAmount - oldCostAmount;
+            await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(difference, supplierId);
+            await db.prepare(`
+              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+              VALUES (?, ?, ?, ?, ?)
+            `).run(uuidv4(), supplierId, difference > 0 ? 'CHARGE' : 'PAYMENT', Math.abs(difference), `Product Update Adjustment: ${name} (Debt ${difference > 0 ? 'Increased' : 'Decreased'})`);
+          }
+        } else {
+          // Supplier changed
+          if (oldSupplierId && oldCostAmount > 0) {
+            await db.prepare('UPDATE suppliers SET debt = debt - ? WHERE id = ?').run(oldCostAmount, oldSupplierId);
+            await db.prepare(`
+              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+              VALUES (?, ?, 'PAYMENT', ?, ?)
+            `).run(uuidv4(), oldSupplierId, oldCostAmount, `Product supplier changed, stock debt removed: ${name}`);
+          }
+          if (supplierId && newCostAmount > 0) {
+            await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(newCostAmount, supplierId);
+            await db.prepare(`
+              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+              VALUES (?, ?, 'CHARGE', ?, ?)
+            `).run(uuidv4(), supplierId, newCostAmount, `Product transferred to this supplier: ${name} (${qty} units)`);
+          }
+        }
       }
       
       logActivity('PRODUCT', 'update', details, 'system', 'System');
@@ -685,6 +717,16 @@ async function startServer() {
 
   app.delete("/api/products/:id", async (req, res) => {
     try {
+      const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id) as any;
+      if (oldProduct && oldProduct.supplier_id && oldProduct.qty > 0 && oldProduct.cost_price > 0) {
+        const costAmount = oldProduct.qty * oldProduct.cost_price;
+        await db.prepare('UPDATE suppliers SET debt = debt - ? WHERE id = ?').run(costAmount, oldProduct.supplier_id);
+        await db.prepare(`
+          INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+          VALUES (?, ?, 'PAYMENT', ?, ?)
+        `).run(uuidv4(), oldProduct.supplier_id, costAmount, `Product deleted, stock debt removed: ${oldProduct.name}`);
+      }
+
       await db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
       res.json({ status: "success" });
     } catch (error) {
@@ -717,17 +759,24 @@ async function startServer() {
       }
 
       // If stock in and supplier provided, update supplier debt
-      if (type === 'in' && supplierId) {
-        const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
-        const costAmount = unitCost * quantity;
-        if (costAmount > 0) {
-          await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(costAmount, supplierId);
-          
-          await db.prepare(`
-            INSERT INTO supplier_history (id, supplier_id, type, amount, description)
-            VALUES (?, ?, 'CHARGE', ?, ?)
-          `).run(uuidv4(), supplierId, costAmount, `Stock Refill: ${product.name} (${quantity} units @ ${unitCost})`);
-        }
+      const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
+      const costAmount = unitCost * quantity;
+
+      if (type === 'in' && supplierId && costAmount > 0) {
+        await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(costAmount, supplierId);
+        
+        await db.prepare(`
+          INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+          VALUES (?, ?, 'CHARGE', ?, ?)
+        `).run(uuidv4(), supplierId, costAmount, `Stock Refill: ${product.name} (${quantity} units @ ${unitCost})`);
+      } else if (type === 'out' && supplierId && costAmount > 0) {
+        // As requested by user, deduct debt when items are returned to supplier
+        await db.prepare('UPDATE suppliers SET debt = debt - ? WHERE id = ?').run(costAmount, supplierId);
+        
+        await db.prepare(`
+          INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+          VALUES (?, ?, 'PAYMENT', ?, ?)
+        `).run(uuidv4(), supplierId, costAmount, `Returned to Supplier: ${product.name} (${quantity} units @ ${unitCost})`);
       }
 
       logActivity('STOCK', 'update', `Stock ${type}: ${product.name} (${quantity} units)${supplierId ? ' via Supplier' : ''}`, actor || 'system', actor || 'System');
@@ -1008,7 +1057,14 @@ async function startServer() {
         let changes = [];
         if (oldSupplier.name != name) changes.push(`Name: ${oldSupplier.name}->${name}`);
         if (oldSupplier.phone != phone) changes.push(`Phone: ${oldSupplier.phone}->${phone}`);
-        if (oldSupplier.debt != debt) changes.push(`Debt: ${oldSupplier.debt}->${debt}`);
+        if (oldSupplier.debt != debt) {
+          changes.push(`Debt: ${oldSupplier.debt}->${debt}`);
+          const diff = debt - oldSupplier.debt;
+          await db.prepare(`
+            INSERT INTO supplier_history (id, supplier_id, type, amount, description)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(uuidv4(), id, diff > 0 ? 'CHARGE' : 'PAYMENT', Math.abs(diff), 'Manual Debt Adjustment');
+        }
         if (changes.length > 0) details += ` | Changes: ${changes.join(', ')}`;
       }
       logActivity('SUPPLIER', 'update', details, 'system', 'System');
