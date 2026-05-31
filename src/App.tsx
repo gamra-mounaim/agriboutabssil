@@ -4831,6 +4831,8 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/MinStock:/g, 'الحد الأدنى:');
       d = d.replace(/Barcode:/g, 'الباركود:');
       d = d.replace(/Name:/g, 'الاسم:');
+      d = d.replace(/Supplier:/g, 'المورد:');
+      d = d.replace(/Category:/g, 'الفئة:');
       d = d.replace(/Phone:/g, 'الهاتف:');
       d = d.replace(/Debt:/g, 'الدين:');
       d = d.replace(/Stock IN:/i, 'إدخال مخزون:');
@@ -4861,6 +4863,8 @@ function HistoryView({ sales, payments, activities, customers, appUsers, setting
       d = d.replace(/MinStock:/g, 'Stock min :');
       d = d.replace(/Barcode:/g, 'Code-barres :');
       d = d.replace(/Name:/g, 'Nom :');
+      d = d.replace(/Supplier:/g, 'Fournisseur :');
+      d = d.replace(/Category:/g, 'Catégorie :');
       d = d.replace(/Phone:/g, 'Tél :');
       d = d.replace(/Debt:/g, 'Dette :');
       d = d.replace(/Stock IN:/i, 'Entrée de stock :');

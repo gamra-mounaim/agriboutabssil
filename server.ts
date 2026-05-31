@@ -629,15 +629,17 @@ async function startServer() {
       let details = `Updated product: ${name}`;
       if (oldProduct) {
         let changes = [];
-        if (oldProduct.price != price) changes.push(`Price: ${oldProduct.price}->${price}`);
-        if (oldProduct.cost_price != costPrice) changes.push(`Cost: ${oldProduct.cost_price}->${costPrice}`);
-        if (oldProduct.qty != qty) changes.push(`Qty: ${oldProduct.qty}->${qty}`);
-        if (oldProduct.min_stock != minStock) changes.push(`MinStock: ${oldProduct.min_stock}->${minStock}`);
-        if (oldProduct.barcode != barcode) changes.push(`Barcode: ${oldProduct.barcode || 'none'}->${barcode || 'none'}`);
+        if (String(oldProduct.name) !== String(name)) changes.push(`Name: ${oldProduct.name}->${name}`);
+        if (String(oldProduct.price) !== String(price)) changes.push(`Price: ${oldProduct.price}->${price}`);
+        if (String(oldProduct.cost_price) !== String(costPrice)) changes.push(`Cost: ${oldProduct.cost_price}->${costPrice}`);
+        if (String(oldProduct.qty) !== String(qty)) changes.push(`Qty: ${oldProduct.qty}->${qty}`);
+        if (String(oldProduct.min_stock) !== String(minStock)) changes.push(`MinStock: ${oldProduct.min_stock}->${minStock}`);
+        if (String(oldProduct.barcode || '') !== String(barcode || '')) changes.push(`Barcode: ${oldProduct.barcode || 'none'}->${barcode || 'none'}`);
+        if (String(oldProduct.category_id || '') !== String(categoryId || '')) changes.push(`Category: Changed`);
+        if (String(oldProduct.supplier || '') !== String(supplier || '')) changes.push(`Supplier: ${oldProduct.supplier || 'none'}->${supplier || 'none'}`);
         if (changes.length > 0) {
             details += ` | Changes: ${changes.join(', ')}`;
         }
-
       }
       
       logActivity('PRODUCT', 'update', details, 'system', 'System');
