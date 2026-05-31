@@ -447,7 +447,7 @@ export default function StaffManagement({
                     <div className="flex flex-col font-mono text-xs">
                       <span className="font-bold text-text-main flex items-center gap-2 text-sm italic">
                         {(u as any).username || u.email}
-                        {u.id === currentUser.uid && (
+                        {(u.id === currentUser?.id || u.id === currentUser?.uid) && (
                           <span className="not-italic text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-black tracking-tighter uppercase border border-accent/20">
                             {language === 'ar' ? 'أنت' : 'YOU'}
                           </span>
@@ -496,7 +496,7 @@ export default function StaffManagement({
                     <div className={cn("flex items-center gap-3 justify-end", language === 'ar' && "flex-row-reverse justify-start")}>
                       {/* Promote/Demote */}
                        <button 
-                        disabled={u.id === currentUser.uid}
+                        disabled={u.id === currentUser?.id || u.id === currentUser?.uid}
                         onClick={() => toggleRole(u.id, u.role as any)}
                         className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title={language === 'ar' ? 'تغيير الرتبة' : 'CHANGE ROLE'}
@@ -529,7 +529,7 @@ export default function StaffManagement({
 
                       {/* Delete */}
                       <button 
-                        disabled={u.id === currentUser.uid}
+                        disabled={u.id === currentUser?.id || u.id === currentUser?.uid}
                         onClick={() => handleDeleteUser(u.id)}
                         className="p-1.5 hover:bg-danger/10 hover:text-danger text-text-secondary border border-border-subtle rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                         title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
