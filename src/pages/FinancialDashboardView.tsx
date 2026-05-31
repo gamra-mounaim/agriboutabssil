@@ -5,6 +5,7 @@ import * as LucideIcons from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale, SaleItem, Supplier, UserProfile, Payment, ActivityLog, CheckDoc, Notification, TransactionRecord, moroccanBanks } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 import { 
   generateInvoicePDF, 
@@ -19,7 +20,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
-export default function FinancialDashboardView({ stats, sales, payments, customers, suppliers, language, currency, products, settings, permissions }: { stats: any, sales: any[], payments: any[], customers: any[], suppliers: any[], language: Language, currency: string, products: any[], settings: any, permissions: any }) {
+export default function FinancialDashboardView({ permissions, currency }: { permissions: any, currency?: string }) {
+  const { products, customers, suppliers, sales, payments, stats, settings } = useStore();
+  const { language, user } = useAuthStore();
+
   const t = translations[language];
   const isAr = language === 'ar';
 
@@ -323,7 +327,7 @@ export default function FinancialDashboardView({ stats, sales, payments, custome
                       </div>
                       <div className="overflow-hidden">
                         <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
-                        <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                        <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
                       </div>
                     </div>
                     <div className="text-right pl-2 shrink-0">
@@ -549,7 +553,7 @@ export default function FinancialDashboardView({ stats, sales, payments, custome
                               </div>
                               <div className="overflow-hidden">
                                 <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
-                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.category}</div>
+                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
                               </div>
                             </div>
                             <div className="text-right pl-2 shrink-0">

@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale, SaleItem, Supplier, UserProfile, Payment, ActivityLog, CheckDoc, Notification, TransactionRecord, moroccanBanks } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 import { 
   generateInvoicePDF, 
@@ -18,7 +19,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
-export default function Inventory({ products, categories, suppliers, setMessage, language, onRefresh, permissions }: { products: Product[], categories: Category[], suppliers: Supplier[], setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void, permissions: any }) {
+export default function Inventory({ permissions }: { permissions: any }) {
+  const { products, categories, suppliers, fetchData: onRefresh, setMessage } = useStore();
+  const { language, user } = useAuthStore();
+
   const t = translations[language];
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');

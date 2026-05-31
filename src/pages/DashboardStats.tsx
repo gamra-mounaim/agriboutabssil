@@ -5,6 +5,7 @@ import { ArrowUpRight, ArrowDownRight, Package, Users, Wallet, AlertTriangle, Tr
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { generateStockReportPDF } from '../services/invoiceService';
 
 export default // --- Component: Dashboard Highlights ---

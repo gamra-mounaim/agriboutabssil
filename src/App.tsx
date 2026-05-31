@@ -15,6 +15,7 @@ tifier: Apache-2.0
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useStore, useAuthStore } from './store/useStore';
 import { api } from './services/apiService';
 import { 
   Store, 
@@ -113,24 +114,26 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [profileReady, setProfileReady] = useState(false);
   const [view, setView] = useState<View>('pos');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [checks, setChecks] = useState<CheckDoc[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { products, categories, customers, suppliers, sales, checks, payments, activities, notifications, appUsers, settings, message, stats, latestBackup, setMessage, fetchData: refreshData, markNotificationRead: markAsRead } = useStore();
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
   const [showNotifications, setShowNotifications] = useState(false);
-  const [appUsers, setAppUsers] = useState<UserProfile[]>([]);
-  const [settings, setSettings] = useState<any>(null);
+  
+  
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [backingUpToDrive, setBackingUpToDrive] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('staff');
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [latestBackup, setLatestBackup] = useState<any>(null);
+  
+  
+  
   const [language, setLanguage] = useState<Language>((localStorage.getItem('lang') as Language) || 'fr');
   const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('theme') as 'light' | 'dark') || 'light');
 
@@ -257,98 +260,9 @@ export default function App() {
     }
   };
 
-  const refreshData = useCallback(async () => {
-    // Periodically verify session validity
-    const stored = localStorage.getItem('pos_user');
-    if (stored && stored !== 'undefined') {
-      try {
-        const u = JSON.parse(stored);
-        if (u && u.id) {
-          const verification = await api.verifySession(u.id, u.sessionVersion || u.session_version);
-          if (verification && verification.status === 'invalid') {
-            setMessage({ 
-              text: language === 'ar' ? "تم إنهاء الجلسة. يرجى تسجيل الدخول مجدداً." : "Session expired. Please log in again.", 
-              type: 'error' 
-            });
-            localStorage.removeItem('pos_user');
-            setUser(null);
-            setProfileReady(false);
-            setCurrentUserRole('staff');
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to verify session during polling:", e);
-      }
-    }
+  
 
-    try {
-      const fetchData = async (fn: () => Promise<any>, fallback: any, name: string, retries = 3) => {
-        try {
-          const res = await fn();
-          return res;
-        } catch (err: any) {
-          if (err.name === 'AbortError') return fallback;
-          
-          // Retry logic for connection issues or server starting up
-          const isNetworkError = err.message.includes('Failed to fetch') || 
-                                err.message.includes('NetworkError') ||
-                                err.message.includes('status: 502') ||
-                                err.message.includes('status: 503') ||
-                                err.message.includes('status: 504');
-
-          if (retries > 0 && isNetworkError) {
-            console.warn(`Retrying fetch for ${name}... (${retries} retries left)`);
-            await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
-            return fetchData(fn, fallback, name, retries - 1);
-          }
-
-          console.error(`Error fetching ${name}:`, err);
-          return fallback;
-        }
-      };
-
-      // Sequential fetching to avoid overwhelming server during startup/compilation
-      const prods = await fetchData(api.getProducts, [], 'Products');
-      const cats = await fetchData(api.getCategories, [], 'Categories');
-      const custs = await fetchData(api.getCustomers, [], 'Customers');
-      const supps = await fetchData(api.getSuppliers, [], 'Suppliers');
-      const sls = await fetchData(api.getSales, [], 'Sales');
-      const cks = await fetchData(api.getChecks, [], 'Checks');
-      const pymts = await fetchData(api.getPayments, [], 'Payments');
-      const stts = await fetchData(api.getStats, null, 'Stats');
-      const usrs = await fetchData(api.getUsers, [], 'Users');
-      const logs = await fetchData(api.getActivityLogs, [], 'Activity');
-      const stngs = await fetchData(api.getSettings, null, 'Settings');
-      const notes = await fetchData(api.getNotifications, [], 'Notifications');
-      const latest = await fetchData(api.getLatestBackup, null, 'LatestBackup');
-
-      if (prods) setProducts(Array.isArray(prods) ? prods : []);
-      if (cats) setCategories(Array.isArray(cats) ? cats : []);
-      if (custs) setCustomers(Array.isArray(custs) ? custs : []);
-      if (supps) setSuppliers(Array.isArray(supps) ? supps : []);
-      if (sls) setSales(Array.isArray(sls) ? sls : []);
-      if (cks) setChecks(Array.isArray(cks) ? cks : []);
-      if (pymts) setPayments(Array.isArray(pymts) ? pymts : []);
-      if (stts) setStats(stts);
-      if (usrs) setAppUsers(Array.isArray(usrs) ? usrs : []);
-      if (logs) setActivities(Array.isArray(logs) ? logs : []);
-      if (stngs) setSettings(stngs);
-      if (notes) setNotifications(Array.isArray(notes) ? notes : []);
-      if (latest) setLatestBackup(latest);
-    } catch (e) {
-      console.error("Critical Refresh Error:", e);
-    }
-  }, []);
-
-  const markAsRead = async (id: string) => {
-    try {
-      await api.markNotificationRead(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (err) {
-      console.error("Failed to mark as read", err);
-    }
-  };
+  
 
   useEffect(() => {
     const autoLogin = async () => {
@@ -729,28 +643,15 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {view === 'inventory' && <Inventory products={products} categories={categories} suppliers={suppliers} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
-                  {view === 'pos' && <POS products={products} categories={categories} customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} />}
-                  {view === 'customers' && <CustomerList customers={customers} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} payments={payments} sales={sales} products={products} />}
-                  {view === 'suppliers' && <SupplierList suppliers={suppliers} checks={checks} user={user} settings={settings} setMessage={setMessage} language={language} onRefresh={refreshData} permissions={userPermissions} />}
-                  {view === 'history' && <HistoryView sales={sales} payments={payments} activities={activities} customers={customers} appUsers={appUsers} settings={settings} language={language} onRefresh={refreshData} permissions={userPermissions} currentUserRole={currentUserRole} />}
-                  {view === 'financials' && <FinancialDashboardView stats={stats} sales={sales} payments={payments} customers={customers} suppliers={suppliers} language={language} currency={t.currency} products={products} settings={settings} permissions={userPermissions} />}
-                  {view === 'checks' && <CheckListView checks={checks} language={language} settings={settings} />}
+                  {view === 'inventory' && <Inventory permissions={userPermissions} />}
+                  {view === 'pos' && <POS />}
+                  {view === 'customers' && <CustomerList />}
+                  {view === 'suppliers' && <SupplierList permissions={userPermissions} />}
+                  {view === 'history' && <HistoryView permissions={userPermissions} currentUserRole={currentUserRole} />}
+                  {view === 'financials' && <FinancialDashboardView permissions={userPermissions} currency={t.currency} />}
+                  {view === 'checks' && <CheckListView />}
                   {view === 'settings' && (
-                    <SettingsManagement 
-                      users={appUsers} 
-                      settings={settings} 
-                      setMessage={setMessage} 
-                      currentUser={user} 
-                      language={language} 
-                      onRefresh={refreshData}
-                      isDriveConnected={isDriveConnected}
-                      backingUpToDrive={backingUpToDrive}
-                      handleGoogleConnect={handleGoogleConnect}
-                      handleDriveBackup={handleDriveBackup}
-                      latestBackup={latestBackup}
-                      setBackingUpToDrive={setBackingUpToDrive}
-                    />
+                    <SettingsManagement isDriveConnected={isDriveConnected} backingUpToDrive={backingUpToDrive} handleGoogleConnect={handleGoogleConnect} handleDriveBackup={handleDriveBackup} latestBackup={latestBackup} setBackingUpToDrive={setBackingUpToDrive} />
                   )}
                 </>
               )}

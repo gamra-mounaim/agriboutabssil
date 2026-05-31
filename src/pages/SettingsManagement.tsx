@@ -5,6 +5,7 @@ import * as LucideIcons from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale, SaleItem, Supplier, UserProfile, Payment, ActivityLog, CheckDoc, Notification, TransactionRecord, moroccanBanks } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 import { 
   generateInvoicePDF, 
@@ -20,25 +21,12 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function SettingsManagement({ 
-  users, 
-  settings, 
-  setMessage, 
-  currentUser, 
-  language, 
-  onRefresh,
   isDriveConnected,
   backingUpToDrive,
   handleGoogleConnect,
   handleDriveBackup,
-  latestBackup,
   setBackingUpToDrive
 }: { 
-  users: UserProfile[], 
-  settings: any, 
-  setMessage: (m: { text: string, type: 'success' | 'error' }) => void, 
-  currentUser: any, 
-  language: Language, 
-  onRefresh: () => void,
   isDriveConnected: boolean,
   backingUpToDrive: boolean,
   handleGoogleConnect: () => Promise<void>,
@@ -46,6 +34,9 @@ export default function SettingsManagement({
   latestBackup: any,
   setBackingUpToDrive: (b: boolean) => void
 }) {
+  const { appUsers: users, settings, setMessage, fetchData: onRefresh, latestBackup } = useStore();
+  const { language, user: currentUser } = useAuthStore();
+
   const t = translations[language];
   const loggedInProfile = users.find(u => u.id === (currentUser?.id || currentUser?.uid));
   const canManageStaff = loggedInProfile?.role === 'admin';
@@ -144,11 +135,11 @@ export default function SettingsManagement({
 
       {tab === 'users' && canManageStaff && (
         <StaffManagement 
-          users={users} 
-          setMessage={setMessage} 
-          currentUser={currentUser} 
-          language={language} 
-          onRefresh={onRefresh}
+           
+           
+           
+           
+          
           isDriveConnected={isDriveConnected}
           backingUpToDrive={backingUpToDrive}
           handleGoogleConnect={handleGoogleConnect}

@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale, SaleItem, Supplier, UserProfile, Payment, ActivityLog, CheckDoc, Notification, TransactionRecord, moroccanBanks } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 import { 
   generateInvoicePDF, 
@@ -18,7 +19,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
-export default function CustomerList({ customers, user, settings, setMessage, language, onRefresh, payments, sales, products }: { customers: Customer[], user: any, settings: any, setMessage: (m: { text: string, type: 'success' | 'error' }) => void, language: Language, onRefresh: () => void, payments: any[], sales: Sale[], products: Product[] }) {
+export default function CustomerList() {
+  const { products, customers, sales, payments, settings, fetchData: onRefresh, setMessage } = useStore();
+  const { language, user } = useAuthStore();
+
   const t = translations[language];
   const [activeTab, setActiveTab] = useState<'list' | 'checks'>('list');
   const [name, setName] = useState('');
@@ -34,7 +38,7 @@ export default function CustomerList({ customers, user, settings, setMessage, la
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustMethod, setAdjustMethod] = useState<'CASH' | 'CHECK'>('CASH');
   const [checkNum, setCheckNum] = useState('');
-  const [checkOwnerModal, setCheckOwnerModal] = useState('');
+  const [check_ownerModal, setcheck_ownerModal] = useState('');
   const [checkBankModal, setCheckBankModal] = useState('');
   const [dueDateModal, setDueDateModal] = useState('');
   
@@ -86,7 +90,7 @@ export default function CustomerList({ customers, user, settings, setMessage, la
           payment_method: adjustMethod,
           check_number: adjustMethod === 'CHECK' ? checkNum : null,
           check_due_date: adjustMethod === 'CHECK' ? dueDateModal : null,
-          check_owner: adjustMethod === 'CHECK' ? (checkBankModal && checkBankModal !== 'بنك آخر...' ? `${checkBankModal} | ${checkOwnerModal}` : checkOwnerModal) : null
+          check_owner: adjustMethod === 'CHECK' ? (checkBankModal && checkBankModal !== 'بنك آخر...' ? `${checkBankModal} | ${check_ownerModal}` : check_ownerModal) : null
         };
         await api.addPayment(adjustModal.customer.id, paymentData);
         setMessage({ text: language === 'ar' ? "تم تسجيل الدفعة." : "Payment posted successfully.", type: 'success' });
@@ -98,7 +102,7 @@ export default function CustomerList({ customers, user, settings, setMessage, la
       setAdjustAmount('');
       setAdjustMethod('CASH');
       setCheckNum('');
-      setCheckOwnerModal('');
+      setcheck_ownerModal('');
       setCheckBankModal('');
       setDueDateModal('');
       onRefresh();
@@ -344,8 +348,8 @@ export default function CustomerList({ customers, user, settings, setMessage, la
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
-            {payments.filter(p => p.paymentMethod === 'CHECK').length > 0 ? (
-              payments.filter(p => p.paymentMethod === 'CHECK').map(p => (
+            {payments.filter(p => p.payment_method === 'CHECK').length > 0 ? (
+              payments.filter(p => p.payment_method === 'CHECK').map(p => (
                 <div key={p.id} className="bg-white border-2 border-border-subtle rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-accent/40 transition-all shadow-sm group">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
@@ -354,10 +358,10 @@ export default function CustomerList({ customers, user, settings, setMessage, la
                     <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
                       <div className="text-sm font-black text-text-main group-hover:text-accent transition-colors">{p.customerName}</div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                        <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> #{p.checkNumber}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {p.checkOwner}</span>
-                        <span className={cn("flex items-center gap-1", p.checkDueDate && new Date(p.checkDueDate) < new Date() ? "text-danger" : "text-amber-600")}>
-                          <CalendarClock className="w-3 h-3" /> {p.checkDueDate ? new Date(p.checkDueDate).toLocaleDateString() : '---'}
+                        <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> #{p.check_number}</span>
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {p.check_owner}</span>
+                        <span className={cn("flex items-center gap-1", p.check_due_date && new Date(p.check_due_date) < new Date() ? "text-danger" : "text-amber-600")}>
+                          <CalendarClock className="w-3 h-3" /> {p.check_due_date ? new Date(p.check_due_date).toLocaleDateString() : '---'}
                         </span>
                       </div>
                     </div>
@@ -716,7 +720,7 @@ export default function CustomerList({ customers, user, settings, setMessage, la
                       {moroccanBanks.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                     <input placeholder={t.checkNumber} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={checkNum || ''} onChange={e => setCheckNum(e.target.value)} />
-                    <input placeholder={t.checkOwner} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={checkOwnerModal || ''} onChange={e => setCheckOwnerModal(e.target.value)} />
+                    <input placeholder={t.checkOwner} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={check_ownerModal || ''} onChange={e => setcheck_ownerModal(e.target.value)} />
                     <input type="date" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none" value={dueDateModal || ''} onChange={e => setDueDateModal(e.target.value)} />
                   </div>
                 )}

@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale, SaleItem, Supplier, UserProfile, Payment, ActivityLog, CheckDoc, Notification, TransactionRecord, moroccanBanks } from '../types';
 import { Language, translations } from '../translations';
+import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 import { 
   generateInvoicePDF, 
@@ -18,7 +19,10 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
-export default function HistoryView({ sales, payments, activities, customers, appUsers, settings, language, onRefresh, permissions, currentUserRole }: { sales: Sale[], payments: Payment[], activities: ActivityLog[], customers: Customer[], appUsers: UserProfile[], settings: any, language: Language, onRefresh: () => void, permissions: any, currentUserRole?: string }) {
+export default function HistoryView({ permissions, currentUserRole }: { permissions: any, currentUserRole?: string }) {
+  const { customers, sales, payments, activities, appUsers, settings, fetchData: onRefresh } = useStore();
+  const { language, user: currentUser } = useAuthStore();
+
   const t = translations[language];
   const [subView, setSubView] = useState<'sales' | 'payments' | 'activity'>('activity');
   const [filterMonth, setFilterMonth] = useState<number>(0);
