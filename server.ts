@@ -675,37 +675,6 @@ async function startServer() {
             details += ` | Changes: ${changes.join(', ')}`;
         }
 
-        // Handle Supplier Debt Updates
-        const oldSupplierId = oldProduct.supplier_id;
-        const oldCostAmount = (oldProduct.cost_price || 0) * (oldProduct.qty || 0);
-        const newCostAmount = (costPrice || 0) * (qty || 0);
-
-        if (oldSupplierId === supplierId) {
-          if (supplierId && oldCostAmount !== newCostAmount) {
-            const difference = newCostAmount - oldCostAmount;
-            await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(difference, supplierId);
-            await db.prepare(`
-              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
-              VALUES (?, ?, ?, ?, ?)
-            `).run(uuidv4(), supplierId, difference > 0 ? 'CHARGE' : 'PAYMENT', Math.abs(difference), `Product Update Adjustment: ${name} (Debt ${difference > 0 ? 'Increased' : 'Decreased'})`);
-          }
-        } else {
-          // Supplier changed
-          if (oldSupplierId && oldCostAmount > 0) {
-            await db.prepare('UPDATE suppliers SET debt = debt - ? WHERE id = ?').run(oldCostAmount, oldSupplierId);
-            await db.prepare(`
-              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
-              VALUES (?, ?, 'PAYMENT', ?, ?)
-            `).run(uuidv4(), oldSupplierId, oldCostAmount, `Product supplier changed, stock debt removed: ${name}`);
-          }
-          if (supplierId && newCostAmount > 0) {
-            await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(newCostAmount, supplierId);
-            await db.prepare(`
-              INSERT INTO supplier_history (id, supplier_id, type, amount, description)
-              VALUES (?, ?, 'CHARGE', ?, ?)
-            `).run(uuidv4(), supplierId, newCostAmount, `Product transferred to this supplier: ${name} (${qty} units)`);
-          }
-        }
       }
       
       logActivity('PRODUCT', 'update', details, 'system', 'System');
