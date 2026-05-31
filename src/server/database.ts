@@ -242,6 +242,17 @@ export async function initDb() {
     await db.prepare('ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1').run();
   } catch (e) {}
 
+  // Convert qty to REAL to support decimals (kg, liters, etc.)
+  try {
+    await db.prepare('ALTER TABLE products ALTER COLUMN qty TYPE REAL').run();
+  } catch (e) {}
+  try {
+    await db.prepare('ALTER TABLE sale_items ALTER COLUMN qty TYPE REAL').run();
+  } catch (e) {}
+  try {
+    await db.prepare('ALTER TABLE stock_movements ALTER COLUMN quantity TYPE REAL').run();
+  } catch (e) {}
+
   // Initialize settings
   const settingsData = await db.prepare('SELECT * FROM settings WHERE id = $1').get('main');
   if (!settingsData) {
