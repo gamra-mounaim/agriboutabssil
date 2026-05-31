@@ -13,6 +13,8 @@ import { google } from "googleapis";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
+import * as schemas from "./src/server/schemas";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'gamra-super-secret-jwt-key-2024';
 
@@ -175,6 +177,18 @@ async function startServer() {
     max: 5,
     message: { status: "error", message: "Too many login attempts, please try again later." }
   });
+
+  const validate = (schema: z.ZodSchema) => (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      req.body = schema.parse(req.body);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ status: "error", message: "Validation error", errors: error.errors });
+      }
+      next(error);
+    }
+  };
 
   app.post("/api/auth/login", loginLimiter, async (req, res) => {
     const { username, password: rawPassword } = req.body;
@@ -588,7 +602,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", validate(schemas.productSchema), async (req, res) => {
     const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId } = req.body;
     const id = uuidv4();
     try {
@@ -614,7 +628,7 @@ async function startServer() {
     }
   });
 
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("/api/products/:id", validate(schemas.productSchema), async (req, res) => {
     const { id } = req.params;
     const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId } = req.body;
     try {
@@ -730,7 +744,7 @@ async function startServer() {
     res.json(toCamel(categories));
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", validate(schemas.categorySchema), async (req, res) => {
     const { name } = req.body;
     const id = uuidv4();
     try {
@@ -752,12 +766,47 @@ async function startServer() {
   });
 
   // --- Customers API ---
-  app.get("/api/customers", async (req, res) => {
-    const customers = await db.prepare('SELECT * FROM customers').all();
-    res.json(toCamel(customers));
+  app.get("/api/products", async (req, res) => {
+    if (!req.query.page) {
+      const products = await db.prepare('SELECT * FROM products ORDER BY name ASC').all();
+      return res.json(toCamel(products));
+    }
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const search = req.query.search ? `%${req.query.search}%` : null;
+    
+    let query = 'SELECT * FROM products';
+    let countQuery = 'SELECT COUNT(*) as count FROM products';
+    let params: any[] = [];
+    
+    if (search) {
+      query += ' WHERE name LIKE ? OR barcode LIKE ?';
+      countQuery += ' WHERE name LIKE ? OR barcode LIKE ?';
+      params.push(search, search);
+    }
+    
+    query += ' ORDER BY name ASC LIMIT ? OFFSET ?';
+    
+    const total = (await db.prepare(countQuery).get(...params) as any).count;
+    const products = await db.prepare(query).all(...params, limit, (page - 1) * limit);
+    
+    res.json({ data: toCamel(products), total, page, limit });
   });
 
-  app.post("/api/customers", async (req, res) => {
+  app.get("/api/customers", async (req, res) => {
+    if (!req.query.page) {
+      const customers = await db.prepare('SELECT * FROM customers ORDER BY name ASC').all();
+      return res.json(toCamel(customers));
+    }
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const total = (await db.prepare('SELECT COUNT(*) as count FROM customers').get() as any).count;
+    const customers = await db.prepare('SELECT * FROM customers ORDER BY name ASC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+    res.json({ data: toCamel(customers), total, page, limit });
+  });
+
+  app.post("/api/customers", validate(schemas.customerSchema), async (req, res) => {
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
     const id = uuidv4();
@@ -961,7 +1010,7 @@ async function startServer() {
     res.json(toCamel(suppliers));
   });
 
-  app.post("/api/suppliers", async (req, res) => {
+  app.post("/api/suppliers", validate(schemas.supplierSchema), async (req, res) => {
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
     const id = uuidv4();
@@ -1060,19 +1109,45 @@ async function startServer() {
 
   // --- Sales API ---
   app.get("/api/sales", async (req, res) => {
-    try {
-      const sales = await db.prepare('SELECT * FROM sales ORDER BY date DESC').all() as any[];
-      const salesWithItems = await Promise.all(sales.map(async sale => {
-        const items = await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(sale.id);
-        return {
-          ...sale,
-          items: toCamel(items)
-        };
+    if (!req.query.page) {
+      const sales = await db.prepare('SELECT * FROM sales ORDER BY date DESC').all();
+      const saleItems = await db.prepare('SELECT * FROM sale_items').all();
+      const itemsBySale = saleItems.reduce((acc: any, item: any) => {
+        if (!acc[item.sale_id]) acc[item.sale_id] = [];
+        acc[item.sale_id].push(item);
+        return acc;
+      }, {});
+      const salesWithItems = sales.map((sale: any) => ({
+        ...sale,
+        items: itemsBySale[sale.id] || []
       }));
-      res.json(toCamel(salesWithItems));
-    } catch (err: any) {
-      res.status(500).json({ status: "error", message: err.message });
+      return res.json(toCamel(salesWithItems));
     }
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    
+    const total = (await db.prepare('SELECT COUNT(*) as count FROM sales').get() as any).count;
+    const sales = await db.prepare('SELECT * FROM sales ORDER BY date DESC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+    
+    const saleIds = sales.map((s: any) => s.id);
+    let itemsBySale = {};
+    if (saleIds.length > 0) {
+      const placeholders = saleIds.map(() => '?').join(',');
+      const saleItems = await db.prepare(`SELECT * FROM sale_items WHERE sale_id IN (${placeholders})`).all(...saleIds);
+      itemsBySale = saleItems.reduce((acc: any, item: any) => {
+        if (!acc[item.sale_id]) acc[item.sale_id] = [];
+        acc[item.sale_id].push(item);
+        return acc;
+      }, {});
+    }
+    
+    const salesWithItems = sales.map((sale: any) => ({
+      ...sale,
+      items: (itemsBySale as any)[sale.id] || []
+    }));
+    
+    res.json({ data: toCamel(salesWithItems), total, page, limit });
   });
 
   app.get("/api/sales/:id/items", async (req, res) => {
@@ -1140,7 +1215,33 @@ async function startServer() {
     }
   });
 
-  app.post("/api/sales", async (req, res) => {
+  app.get("/api/dashboard/stats", async (req, res) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const salesToday = (await db.prepare("SELECT SUM(total) as total, COUNT(*) as count FROM sales WHERE date(date) = ?").get(today) as any) || { total: 0, count: 0 };
+      
+      const products = await db.prepare('SELECT id, name, qty, min_stock, price FROM products').all() as any[];
+      const lowStockCount = products.filter((p: any) => p.qty <= (p.min_stock ?? 5) && p.qty > 0).length;
+      const outOfStockCount = products.filter((p: any) => p.qty === 0).length;
+      
+      const customers = await db.prepare('SELECT SUM(debt) as total_debt FROM customers').get() as any;
+      const suppliers = await db.prepare('SELECT SUM(debt) as total_debt FROM suppliers').get() as any;
+
+      res.json({
+        salesToday: salesToday.total || 0,
+        salesCountToday: salesToday.count || 0,
+        lowStockCount,
+        outOfStockCount,
+        totalCustomerDebt: customers?.total_debt || 0,
+        totalSupplierDebt: suppliers?.total_debt || 0,
+        productsCount: products.length
+      });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
+  app.post("/api/sales", validate(schemas.saleSchema), async (req, res) => {
     const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner } = req.body;
     const saleId = uuidv4();
 

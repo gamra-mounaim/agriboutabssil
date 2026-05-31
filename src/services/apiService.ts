@@ -65,7 +65,14 @@ export const api = {
   logoutAllDevices: async (userId) => post(`${API_URL}/auth/logout-all`, { userId }),
 
   // Products
-  getProducts: async () => get(`${API_URL}/products`),
+  getProducts: async (page?: number, limit?: number, search?: string) => {
+    let url = `${API_URL}/products`;
+    if (page) {
+      url += `?page=${page}&limit=${limit || 50}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+    }
+    return get(url);
+  },
   addProduct: async (product) => post(`${API_URL}/products`, product),
   updateProduct: async (id, product) => put(`${API_URL}/products/${id}`, product),
   adjustStock: async (id, data) => post(`${API_URL}/products/${id}/adjust`, data),
@@ -77,7 +84,14 @@ export const api = {
   deleteCategory: async (id) => del(`${API_URL}/categories/${id}`),
 
   // Customers
-  getCustomers: async () => get(`${API_URL}/customers`),
+  getCustomers: async (page?: number, limit?: number, search?: string) => {
+    let url = `${API_URL}/customers`;
+    if (page) {
+      url += `?page=${page}&limit=${limit || 50}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+    }
+    return get(url);
+  },
   addCustomer: async (customer) => post(`${API_URL}/customers`, customer),
   updateCustomer: async (id, customer) => put(`${API_URL}/customers/${id}`, customer),
 
@@ -103,10 +117,18 @@ export const api = {
   getSupplierHistory: async (supplierId) => get(`${API_URL}/suppliers/${supplierId}/history`),
 
   // Sales
-  getSales: async () => get(`${API_URL}/sales`),
+  getSales: async (page?: number, limit?: number) => {
+    let url = `${API_URL}/sales`;
+    if (page) url += `?page=${page}&limit=${limit || 50}`;
+    return get(url);
+  },
   getSaleItems: async (id) => get(`${API_URL}/sales/${id}/items`),
   getChecks: async () => get(`${API_URL}/checks`),
   createSale: async (sale) => post(`${API_URL}/sales`, sale),
+  deleteSale: async (id) => del(`${API_URL}/sales/${id}`),
+
+  // Dashboard
+  getDashboardStats: async () => get(`${API_URL}/dashboard/stats`),
 
   // Stats
   getStats: async () => get(`${API_URL}/stats`),
