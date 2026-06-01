@@ -50,6 +50,7 @@ export default function CheckListView() {
             <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary transition-colors group-focus-within:text-accent", language === 'ar' ? "right-4" : "left-4")} />
             <input 
               type="text"
+              dir={language === 'ar' ? 'rtl' : 'ltr'}
               placeholder={t.searchChecks}
               className={cn("bg-white border-2 border-border-subtle rounded-2xl py-3 px-10 text-sm focus:border-accent outline-none w-full md:w-80 font-bold transition-all shadow-sm", language === 'ar' && "text-right")}
               value={searchTerm}

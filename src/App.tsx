@@ -1,17 +1,6 @@
-import CheckListView from './pages/CheckListView';
-import StaffManagement from './pages/StaffManagement';
-import SettingsManagement from './pages/SettingsManagement';
-import HistoryView from './pages/HistoryView';
-import SupplierList from './pages/SupplierList';
-import CustomerList from './pages/CustomerList';
-import POS from './pages/POS';
-import Inventory from './pages/Inventory';
-import FinancialDashboardView from './pages/FinancialDashboardView';
 /**
  * @license
- * SPDX-License-Iden
-import DashboardStats from './pages/DashboardStats';
-tifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -97,7 +86,18 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import CheckListView from './pages/CheckListView';
+import StaffManagement from './pages/StaffManagement';
+import SettingsManagement from './pages/SettingsManagement';
+import HistoryView from './pages/HistoryView';
+import SupplierList from './pages/SupplierList';
+import CustomerList from './pages/CustomerList';
+import POS from './pages/POS';
+import Inventory from './pages/Inventory';
+import FinancialDashboardView from './pages/FinancialDashboardView';
+
 import { Product, Category, SaleItem, Sale, Customer, Supplier, UserProfile, Payment, moroccanBanks, View, TransactionRecord, ActivityLog, CheckDoc, Notification } from './types';
+
 // --- Main Component ---
 export const formatNumber = (val: any) => {
   if (val === undefined || val === null) return '0';
@@ -251,10 +251,6 @@ export default function App() {
     }
   };
 
-  
-
-  
-
   useEffect(() => {
     const autoLogin = async () => {
       try {
@@ -293,14 +289,11 @@ export default function App() {
   useEffect(() => {
     if (profileReady) {
       refreshData();
-      const interval = setInterval(refreshData, 30000); // Polling every 30s
+      // ✅ FIX: Polling reduced to 60s to reduce server load (was 30s)
+      const interval = setInterval(refreshData, 60000);
       return () => clearInterval(interval);
     }
   }, [profileReady, refreshData]);
-
-  const handleGoogleLogin = () => {
-    setMessage({ text: t.backupError, type: 'error' });
-  };
 
   const handleTraditionalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,7 +305,18 @@ export default function App() {
       const result = await api.login(username, password);
       if (result.status === "success") {
         const userData = result.user;
-        localStorage.setItem('pos_user', JSON.stringify(userData));
+        // ✅ FIX: Store only essential session info (id, role, username) — not full profile
+        const sessionData = {
+          id: userData.id,
+          uid: userData.uid,
+          role: userData.role,
+          username: userData.username,
+          displayName: userData.displayName,
+          email: userData.email,
+          photoURL: userData.photoURL,
+          sessionVersion: userData.sessionVersion || userData.session_version,
+        };
+        localStorage.setItem('pos_user', JSON.stringify(sessionData));
         setUser(userData);
         setCurrentUserRole(userData.role);
         setProfileReady(true);
@@ -408,20 +412,6 @@ export default function App() {
               {signingIn ? '...' : (t as any).accessTerminal}
             </button>
           </form>
-
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-subtle"></div></div>
-            <div className="relative flex justify-center text-[9px] uppercase font-black tracking-widest text-text-secondary"><span className="bg-card px-4">OR</span></div>
-          </div>
-
-          <button
-            onClick={handleGoogleLogin}
-            disabled={signingIn}
-            className="w-full bg-bg-base/80 border-2 border-border-subtle text-text-main font-bold py-4 rounded-2xl hover:bg-bg-base hover:border-text-secondary/30 transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-[11px] uppercase tracking-wider backdrop-blur-sm"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-4 h-4 opacity-90" referrerPolicy="no-referrer" />
-            {t.login}
-          </button>
         </div>
         <p className="mt-8 text-[9px] text-text-secondary font-mono tracking-[0.3em] opacity-40 uppercase z-10 font-bold">
           SECURE_TERMINAL_V3.0 • ENCRYPTED_SESSION
