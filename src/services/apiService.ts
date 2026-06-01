@@ -131,6 +131,7 @@ export const api = {
 
   // Dashboard
   getDashboardStats: async () => get(`${API_URL}/dashboard/stats`),
+  getDamagesReport: async () => get(`${API_URL}/reports/damages`),
 
   // Stats
   getStats: async () => get(`${API_URL}/stats`),

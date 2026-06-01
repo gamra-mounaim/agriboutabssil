@@ -209,10 +209,12 @@ export default function Inventory({ permissions }: { permissions: any }) {
       // If OUT -> only use adjSupplierId if reason is 'return'
       const finalSupplierId = adjType === 'in' ? adjSupplierId : (adjType === 'out' && adjOutReason === 'return' ? adjSupplierId : null);
 
+      const finalReason = adjType === 'out' && adjOutReason === 'damage' ? `[DAMAGE] ${adjReason}` : adjReason;
+
       await api.adjustStock(adjProduct.id, {
         type: adjType,
         quantity: parseFloat(adjQty),
-        reason: adjReason,
+        reason: finalReason,
         actor: actor,
         supplierId: finalSupplierId || null,
         costPrice: adjCostPrice ? parseFloat(adjCostPrice) : undefined

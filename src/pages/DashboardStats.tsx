@@ -6,7 +6,8 @@ import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale } from '../types';
 import { Language, translations } from '../translations';
 import { useStore, useAuthStore } from '../store/useStore';
-import { generateStockReportPDF } from '../services/invoiceService';
+import { generateStockReportPDF, generateDamagesReportPDF } from '../services/invoiceService';
+import api from '../services/apiService';
 
 export default // --- Component: Dashboard Highlights ---
 function DashboardStats({ products, categories, customers, sales, language, stats, permissions }: { products: Product[], categories: Category[], customers: Customer[], sales: Sale[], language: Language, stats: any, permissions: any }) {
@@ -33,6 +34,17 @@ function DashboardStats({ products, categories, customers, sales, language, stat
   const customersWithDebtCount = (customers || []).filter(c => c.debt > 0).length;
   const totalDebtValue = stats?.outstandingDebt || 0;
   const totalSupplierDebtValue = stats?.supplierDebt || 0;
+  const totalDamagesLoss = stats?.totalDamagesLoss || 0;
+
+  const handleExportDamages = async () => {
+    try {
+      const damages = await api.getDamagesReport();
+      generateDamagesReportPDF(damages, totalDamagesLoss, language, undefined);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export damages report");
+    }
+  };
 
   const lowStockCount = products.filter(p => p.qty <= (p.minStock ?? 5) && p.qty > 0).length;
   const outOfStockCount = products.filter(p => p.qty === 0).length;
@@ -93,7 +105,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6 group/stats">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 group/stats">
         <StatCard 
           label={t.totalSales} 
           value={`${formatNumber(totalSalesLifetime)} ${t.currency}`} 
@@ -130,6 +142,13 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           value={`${formatNumber(totalSupplierDebtValue)} ${t.currency}`} 
           sub={t.youOweSupplier} 
           danger={totalSupplierDebtValue > 0}
+        />
+        <StatCard 
+          label={language === 'ar' ? 'السلع التالفة' : 'Damaged Goods'} 
+          value={`${formatNumber(totalDamagesLoss)} ${t.currency}`} 
+          sub={language === 'ar' ? 'انقر لتصدير PDF' : 'Click to export PDF'} 
+          danger={totalDamagesLoss > 0}
+          onClick={handleExportDamages}
         />
       </div>
 
@@ -321,11 +340,12 @@ function DashboardStats({ products, categories, customers, sales, language, stat
   );
 }
 
-function StatCard({ label, value, sub, highlights, danger }: { label: string, value: string | number, sub: string, highlights?: boolean, danger?: boolean }) {
+function StatCard({ label, value, sub, highlights, danger, onClick }: { label: string, value: string | number, sub: string, highlights?: boolean, danger?: boolean, onClick?: () => void }) {
   return (
-    <div className={cn(
+    <div onClick={onClick} className={cn(
       "p-6 rounded-[2rem] border transition-all duration-300 relative overflow-hidden group/card hover:-translate-y-1",
-      highlights ? "bg-accent text-white border-accent shadow-[0_15px_30px_-10px_rgba(79,70,229,0.3)]" : "bg-card border-border-subtle hover:border-accent/30 hover:shadow-xl"
+      highlights ? "bg-accent text-white border-accent shadow-[0_15px_30px_-10px_rgba(79,70,229,0.3)]" : "bg-card border-border-subtle hover:border-accent/30 hover:shadow-xl",
+      onClick ? "cursor-pointer" : ""
     )}>
       {highlights && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full mix-blend-screen filter blur-2xl -mr-10 -mt-10"></div>}
       <div className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3 relative z-10", highlights ? "text-white/70" : "text-text-secondary")}>{label}</div>

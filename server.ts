@@ -701,12 +701,15 @@ async function startServer() {
 
       const newQty = type === 'in' ? product.qty + quantity : product.qty - quantity;
       
+      const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
+      const costAmount = unitCost * quantity;
+
       await db.prepare('UPDATE products SET qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newQty, id);
       
       await db.prepare(`
-        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(movementId, id, product.name, type, quantity, reason, actor);
+        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(movementId, id, product.name, type, quantity, reason, actor, unitCost);
 
       // Check for low stock alert
       if (newQty <= (product.min_stock || 5)) {
@@ -715,9 +718,6 @@ async function startServer() {
       }
 
       // If stock in and supplier provided, update supplier debt
-      const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
-      const costAmount = unitCost * quantity;
-
       if (type === 'in' && supplierId && costAmount > 0) {
         await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(costAmount, supplierId);
         
@@ -892,7 +892,7 @@ async function startServer() {
         customerName = customer.name;
       }
       
-      const product = (await db.prepare('SELECT name FROM products WHERE id = ?').get(productId)) as any;
+      const product = (await db.prepare('SELECT name, cost_price FROM products WHERE id = ?').get(productId)) as any;
       if (!product) throw new Error("Product not found");
 
       const totalValue = qty * price;
@@ -902,9 +902,9 @@ async function startServer() {
 
       // 2. Log stock movement
       await db.prepare(`
-        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor)
-        VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, 'System')
-      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`);
+        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor, cost_price)
+        VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, 'System', ?)
+      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`, product.cost_price || 0);
 
       // 3. Update Customer Debt if action is 'debt' (only if not a walking customer)
       if (action === 'debt' && id !== 'walking') {
@@ -1235,6 +1235,8 @@ async function startServer() {
       const customers = await db.prepare('SELECT SUM(debt) as total_debt FROM customers').get() as any;
       const suppliers = await db.prepare('SELECT SUM(debt) as total_debt FROM suppliers').get() as any;
 
+      const damagesRow = await db.prepare("SELECT SUM(quantity * cost_price) as total_loss FROM stock_movements WHERE type = 'out' AND reason LIKE '[DAMAGE]%'").get() as any;
+
       res.json({
         salesToday: salesToday.total || 0,
         salesCountToday: salesToday.count || 0,
@@ -1242,8 +1244,18 @@ async function startServer() {
         outOfStockCount,
         totalCustomerDebt: customers?.total_debt || 0,
         totalSupplierDebt: suppliers?.total_debt || 0,
-        productsCount: products.length
+        productsCount: products.length,
+        totalDamagesLoss: damagesRow?.total_loss || 0
       });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
+  app.get("/api/reports/damages", authMiddleware, async (req, res) => {
+    try {
+      const damages = await db.prepare("SELECT * FROM stock_movements WHERE type = 'out' AND reason LIKE '[DAMAGE]%' ORDER BY timestamp DESC").all();
+      res.json(toCamel(damages));
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
     }
@@ -1272,11 +1284,13 @@ async function startServer() {
 
         await db.prepare('UPDATE products SET qty = qty - ? WHERE id = ?').run(item.qty, item.productId);
 
+        const pCost = (await db.prepare('SELECT cost_price FROM products WHERE id = ?').get(item.productId) as any)?.cost_price || 0;
+
         // Record stock movement for sale
         await db.prepare(`
-          INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(uuidv4(), item.productId, item.name, 'sale', item.qty, `Sale #${saleId.slice(0, 8)}`, staffId);
+          INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(uuidv4(), item.productId, item.name, 'sale', item.qty, `Sale #${saleId.slice(0, 8)}`, staffId, pCost);
 
         // Check for low stock alert
         const updatedProduct = (await db.prepare('SELECT name, qty, min_stock FROM products WHERE id = ?').get(item.productId)) as any;

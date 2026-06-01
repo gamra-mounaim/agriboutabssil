@@ -755,3 +755,68 @@ export const generateStockReportPDF = (data: StockReportData) => {
 
   doc.save(`STOCK_ALERTS_REPORT_${Date.now()}.pdf`);
 };
+
+export const generateDamagesReportPDF = (data: any[], totalValue: number, language: string = 'en', settings?: any) => {
+  const isAr = language === 'ar';
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  doc.setFontSize(22);
+  doc.setTextColor(51, 65, 85);
+  doc.text(isAr ? 'تقرير السلع التالفة' : 'Damaged Goods Report', pageWidth / 2, 20, { align: 'center' });
+
+  doc.setFontSize(12);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${isAr ? 'تاريخ التقرير' : 'Date'}: ${new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}`, pageWidth / 2, 30, { align: 'center' });
+
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(226, 232, 240);
+  doc.line(20, 40, pageWidth - 20, 40);
+
+  const tableColumn = isAr ? 
+    ["التاريخ", "المنتج", "الكمية", "تكلفة الوحدة", "الخسارة", "ملاحظة"] : 
+    ["Date", "Product", "Qty", "Unit Cost", "Total Loss", "Reason"];
+
+  const tableRows = data.map(d => [
+    new Date(d.timestamp).toLocaleDateString(),
+    d.productName || '',
+    String(d.quantity || 0),
+    `${(d.costPrice || 0).toFixed(2)} DH`,
+    `${((d.quantity || 0) * (d.costPrice || 0)).toFixed(2)} DH`,
+    (d.reason || '').replace('[DAMAGE] ', '')
+  ]);
+
+  autoTable(doc, {
+    startY: 50,
+    head: [tableColumn],
+    body: tableRows,
+    theme: 'striped',
+    headStyles: { fillColor: [220, 38, 38] }, // Red for damages
+    styles: { fontSize: 9, halign: isAr ? 'right' : 'left' },
+    didParseCell: function (data: any) {
+      if (typeof prepareArabicCell === 'function') prepareArabicCell(data);
+    },
+    didDrawCell: function (data: any) {
+      if (typeof drawArabicCell === 'function') drawArabicCell(doc, data);
+    }
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  
+  // Total Loss Area
+  const boxW = 80;
+  const boxX = pageWidth - 20 - boxW;
+  doc.setDrawColor(241, 245, 249);
+  doc.setFillColor(254, 242, 242); // light red bg
+  doc.roundedRect(boxX, finalY, boxW, 25, 2, 2, 'FD');
+  
+  doc.setFontSize(10);
+  doc.setTextColor(153, 27, 27);
+  doc.text(isAr ? 'إجمالي الخسارة (درهم):' : 'TOTAL LOSS (DH):', boxX + boxW / 2, finalY + 8, { align: 'center' });
+  
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${totalValue.toFixed(2)} DH`, boxX + boxW / 2, finalY + 18, { align: 'center' });
+
+  doc.save(`Damaged_Goods_Report_${Date.now()}.pdf`);
+};
