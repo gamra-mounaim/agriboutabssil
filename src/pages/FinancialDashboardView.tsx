@@ -13,7 +13,8 @@ import {
   generateGlobalCustomerReportPDF,
   generateHistoryReportPDF,
   generateTransactionReceiptPDF,
-  generateStockReportPDF
+  generateStockReportPDF,
+  generateDamagesReportPDF
 } from '../services/invoiceService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
@@ -36,6 +37,17 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const yearlyProfit = stats?.yearlyProfit || 0;
   const totalSupplierDebt = stats?.supplierDebt || 0;
   const inventoryAssetValue = stats?.inventoryValue || 0;
+  const totalDamagesLoss = stats?.totalDamagesLoss || 0;
+
+  const handleExportDamages = async () => {
+    try {
+      const damages = await api.getDamagesReport();
+      generateDamagesReportPDF(damages, totalDamagesLoss, language, settings);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to export damages report");
+    }
+  };
 
   const lowStock = products.filter(p => p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
   const topProductsList = stats?.topProductsList || [];
@@ -192,8 +204,16 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     </div>
   );
 
-  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true }: any) => (
-    <div className={`${bg} p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]`}>
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-white", showCurrency = true, onClick, danger }: any) => (
+    <div 
+      onClick={onClick}
+      className={cn(
+        bg, 
+        "p-6 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center justify-between min-h-[180px] transition-all",
+        onClick ? "cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-accent/30" : "",
+        danger ? "border-red-500/30 bg-red-500/5" : "border-border-subtle"
+      )}
+    >
       <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
       <div className="flex flex-col items-center">
         <div className={`text-4xl font-black ${color}`}>{value}</div>
@@ -364,10 +384,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     permissions.financialsDebts, // Debtor Customers
     permissions.financialsProfits, // Expected Profit
     permissions.financialsInventory, // Inventory Value
+    permissions.financialsInventory, // Damaged Goods
     permissions.financialsSales // Total Revenue (Black Card)
   ].filter(Boolean).length;
 
   const gridColsClass = 
+    visibleCardsCount >= 6 ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-6" :
     visibleCardsCount === 5 ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-5" :
     visibleCardsCount === 4 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" :
     visibleCardsCount === 3 ? "grid-cols-1 md:grid-cols-3" :
@@ -442,11 +464,21 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             />
           )}
           {permissions.financialsInventory && (
-            <StatCard 
-              title={t.inventoryValue} 
-              value={formatNumber(inventoryAssetValue)} 
-              subtext={t.totalInventoryValue}
-            />
+            <>
+              <StatCard 
+                title={t.inventoryValue} 
+                value={formatNumber(inventoryAssetValue)} 
+                subtext={t.totalInventoryValue}
+              />
+              <StatCard 
+                title={language === 'ar' ? 'السلع التالفة' : 'Damaged Goods'} 
+                value={formatNumber(totalDamagesLoss)} 
+                subtext={language === 'ar' ? 'انقر لتصدير PDF' : 'Click to export PDF'} 
+                color={totalDamagesLoss > 0 ? "text-red-500" : "text-text-main"}
+                onClick={handleExportDamages}
+                danger={totalDamagesLoss > 0}
+              />
+            </>
           )}
                     {permissions.financialsSales && (
             /* Black Card */
