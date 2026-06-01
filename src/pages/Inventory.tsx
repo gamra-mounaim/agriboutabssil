@@ -416,24 +416,24 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 </select>
               </div>
             </div>
-            <div className={cn("grid gap-4", permissions.viewCostPrice ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3")}>
+            <div className={cn("grid gap-5", permissions.viewCostPrice ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3")}>
               {permissions.viewCostPrice && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.costPrice}</label>
-                  <input type="number" step="0.01" placeholder={t.costPrice} className="w-full bg-bg-base border border-border-subtle rounded-lg px-2.5 py-2.5 text-sm focus:border-accent outline-none" value={costPrice || ''} onChange={e => setCostPrice(e.target.value)} />
+                  <input type="number" step="0.01" placeholder={t.costPrice} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={costPrice || ''} onChange={e => setCostPrice(e.target.value)} />
                 </div>
               )}
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.price}</label>
-                <input type="number" step="0.01" placeholder={t.price} className="w-full bg-bg-base border border-border-subtle rounded-lg px-2.5 py-2.5 text-sm focus:border-accent outline-none" value={price || ''} onChange={e => setPrice(e.target.value)} />
+                <input type="number" step="0.01" placeholder={t.price} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={price || ''} onChange={e => setPrice(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.qty}</label>
-                <input type="number" placeholder={t.qty} disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-lg px-2.5 py-2.5 text-sm focus:border-accent outline-none disabled:opacity-50" value={qty || ''} onChange={e => setQty(e.target.value)} />
+                <input type="number" placeholder={t.qty} disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none disabled:opacity-50" value={qty || ''} onChange={e => setQty(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{language === 'ar' ? "تنبيه" : "Alert"}</label>
-                <input type="number" placeholder={language === 'ar' ? "تنبيه" : "Alert"} className="w-full bg-bg-base border border-border-subtle rounded-lg px-2.5 py-2.5 text-sm focus:border-accent outline-none" value={minStock || ''} onChange={e => setMinStock(e.target.value)} />
+                <input type="number" placeholder={language === 'ar' ? "تنبيه" : "Alert"} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={minStock || ''} onChange={e => setMinStock(e.target.value)} />
               </div>
             </div>
             <button type="submit" className="md:col-span-2 bg-accent text-white font-bold rounded-lg py-3 hover:opacity-90 transition-opacity text-sm uppercase tracking-widest shadow-md">
