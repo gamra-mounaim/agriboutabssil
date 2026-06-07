@@ -13,6 +13,7 @@ const handleResponse = async (response: Response) => {
     }
 
     if (response.status === 401) {
+      localStorage.removeItem('pos_user');
       useAuthStore.getState().logout();
       if (window.location.pathname !== '/') {
         window.location.href = '/';
@@ -31,17 +32,14 @@ const handleResponse = async (response: Response) => {
 const getAuthHeaders = () => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   try {
-    const stored = localStorage.getItem('pos_user');
-    if (stored && stored !== 'undefined') {
-      const user = JSON.parse(stored);
-      if (user?.token) {
-        headers['Authorization'] = `Bearer ${user.token}`;
-      } else if (user?.id) {
-        headers['Authorization'] = `Bearer ${user.id}:${user.sessionVersion || user.session_version}`;
-      }
+    const state = useAuthStore.getState();
+    if (state.token) {
+      headers['Authorization'] = `Bearer ${state.token}`;
+    } else if (state.user?.id) {
+      headers['Authorization'] = `Bearer ${state.user.id}:${state.user.sessionVersion || state.user.session_version}`;
     }
   } catch (e) {
-    console.warn("Failed to parse auth headers", e);
+    console.warn("Failed to get auth headers", e);
   }
   return headers;
 };
