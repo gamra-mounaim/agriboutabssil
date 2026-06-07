@@ -588,6 +588,9 @@ async function startServer() {
         res.status(400).json({ status: "error", message: result.reason || "Email not sent" });
       }
     } catch (err: any) {
+      if (err.message && err.message.includes('SMTP_AUTH_FAILED')) {
+        return res.status(400).json({ status: "error", message: err.message });
+      }
       res.status(500).json({ status: "error", message: err.message });
     }
   });
