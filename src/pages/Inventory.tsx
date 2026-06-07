@@ -552,7 +552,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                                  <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
                                  <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : "Qty"}: {p.qty}</div>
                                </div>
-                               {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"><Edit2 className="w-3.5 h-3.5" /></button>}
+                               {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>}
                              </div>
                           </div>
                         ))}
@@ -582,7 +582,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                                 <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
                                 <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : "Qty"}: {p.qty}</div>
                               </div>
-                              {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"><Edit2 className="w-3.5 h-3.5" /></button>}
+                              {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>}
                             </div>
                           </div>
                         ))}
@@ -681,7 +681,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                                 try { await api.deleteProduct(p.id); setMessage({ text: language === 'ar' ? "تم الحذف." : "Product removed.", type: 'success' }); onRefresh(); } 
                                 catch (err) { setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' }); }
                               }
-                            }} className="text-text-secondary hover:bg-danger/10 hover:text-danger p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                            }} className="text-text-secondary hover:bg-danger/10 hover:text-danger p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>

@@ -46,7 +46,20 @@ async function startServer() {
     console.error("CRITICAL: Database initialization failed:", dbError);
   }
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://apis.google.com", "https://www.gstatic.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "https://www.gstatic.com", "https://firebasestorage.googleapis.com"],
+        connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com", "wss://*.firebaseio.com"],
+        frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.firebaseio.com"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
   app.use(cors({
     origin: process.env.APP_URL || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
