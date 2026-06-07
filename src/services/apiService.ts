@@ -1,3 +1,5 @@
+import { useAuthStore } from '../store/useStore';
+
 const API_URL = '/api';
 
 const handleResponse = async (response: Response) => {
@@ -11,8 +13,10 @@ const handleResponse = async (response: Response) => {
     }
 
     if (response.status === 401) {
-      localStorage.removeItem('pos-auth-storage');
-      window.location.href = '/';
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     }
 
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
