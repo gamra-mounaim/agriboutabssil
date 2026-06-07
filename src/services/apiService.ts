@@ -9,6 +9,12 @@ const handleResponse = async (response: Response) => {
     } else {
       errorData = { message: await response.text() };
     }
+
+    if (response.status === 401) {
+      localStorage.removeItem('pos-auth-storage');
+      window.location.href = '/';
+    }
+
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
   if (contentType && contentType.includes("application/json")) {
