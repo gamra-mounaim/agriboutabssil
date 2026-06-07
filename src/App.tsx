@@ -295,6 +295,18 @@ export default function App() {
     }
   }, [profileReady, refreshData]);
 
+  useEffect(() => {
+    const handleForceLogout = () => {
+      localStorage.removeItem('pos_user');
+      setUser(null);
+      setProfileReady(false);
+      setCurrentUserRole('staff');
+      setMessage({ text: t.loginFailed || "Session expired", type: 'error' });
+    };
+    window.addEventListener('force_logout', handleForceLogout);
+    return () => window.removeEventListener('force_logout', handleForceLogout);
+  }, []);
+
   const handleTraditionalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (signingIn) return;
@@ -305,7 +317,6 @@ export default function App() {
       const result = await api.login(username, password);
       if (result.status === "success") {
         const userData = result.user;
-        // ✅ FIX: Store only essential session info (id, role, username) — not full profile
         const sessionData = {
           id: userData.id,
           uid: userData.uid,
@@ -315,6 +326,7 @@ export default function App() {
           email: userData.email,
           photoURL: userData.photoURL,
           sessionVersion: userData.sessionVersion || userData.session_version,
+          token: result.user.token // Ensure token is saved!
         };
         localStorage.setItem('pos_user', JSON.stringify(sessionData));
         setUser(userData);
