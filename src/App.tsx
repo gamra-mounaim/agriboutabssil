@@ -115,7 +115,7 @@ export default function App() {
   const [profileReady, setProfileReady] = useState(false);
   const [view, setView] = useState<View>('pos');
   const { products, categories, customers, suppliers, sales, checks, payments, activities, notifications, appUsers, settings, message, stats, latestBackup, setMessage, fetchData: refreshData, markNotificationRead: markAsRead } = useStore();
-  const { language, setLanguage: setAuthLanguage } = useAuthStore();
+  const { language, setLanguage: setAuthLanguage, setAuth, logout: authLogout } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
   const [backingUpToDrive, setBackingUpToDrive] = useState(false);
@@ -262,15 +262,18 @@ export default function App() {
               const verification = await api.verifySession(u.id, u.sessionVersion || u.session_version);
               if (verification && verification.status === 'invalid') {
                 localStorage.removeItem('pos_user');
+                authLogout();
               } else {
                 setUser(u);
                 setCurrentUserRole(u.role || 'staff');
+                setAuth(u, u.token || '');
                 setProfileReady(true);
               }
             } catch (verifErr) {
               console.warn("Session verification unreachable, keeping offline session:", verifErr);
               setUser(u);
               setCurrentUserRole(u.role || 'staff');
+              setAuth(u, u.token || '');
               setProfileReady(true);
             }
           } else {
@@ -301,6 +304,7 @@ export default function App() {
       setUser(null);
       setProfileReady(false);
       setCurrentUserRole('staff');
+      authLogout();
       setMessage({ text: t.loginFailed || "Session expired", type: 'error' });
     };
     window.addEventListener('force_logout', handleForceLogout);
@@ -331,6 +335,7 @@ export default function App() {
         localStorage.setItem('pos_user', JSON.stringify(sessionData));
         setUser(userData);
         setCurrentUserRole(userData.role);
+        setAuth(userData, result.user.token || '');
         setProfileReady(true);
         setMessage({ text: t.loginSuccess, type: 'success' });
       }
@@ -347,6 +352,7 @@ export default function App() {
     setUser(null);
     setProfileReady(false);
     setCurrentUserRole('staff');
+    authLogout();
   };
 
   if (loading) {
