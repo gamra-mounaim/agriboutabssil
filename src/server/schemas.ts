@@ -14,7 +14,7 @@ export const productSchema = z.object({
 
 export const saleSchema = z.object({
   items: z.array(z.object({
-    id: z.string(),
+    productId: z.string(),
     qty: z.number().int().min(1),
     price: z.number().min(0),
     name: z.string()
@@ -22,11 +22,10 @@ export const saleSchema = z.object({
   total: z.number().min(0),
   subtotal: z.number().min(0).optional(),
   discount: z.number().min(0).optional(),
-  amountPaid: z.number().min(0),
   paymentMethod: z.string(),
-  paymentStatus: z.string(),
   customerId: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
+  customerName: z.string().optional().nullable(),
+  staffId: z.string().optional().nullable(),
   checkNumber: z.string().optional().nullable(),
   checkOwner: z.string().optional().nullable(),
 });
