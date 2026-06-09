@@ -512,7 +512,7 @@ export default function POS() {
           {/* Payment Method Tabs */}
           <div className="grid grid-cols-4 gap-1 bg-white p-1 rounded-2xl border border-border-subtle shadow-inner">
             {(['cash', 'card', 'debt', 'check'] as const).map(method => (
-              <button
+               <button
                 key={method}
                 onClick={() => setPaymentMethod(method)}
                 className={cn(
@@ -526,89 +526,86 @@ export default function POS() {
           </div>
 
           <div className="space-y-4">
-             {/* Buyer Name Input for Walking Customers */}
-             {!selectedCustomerId && !isAddingNewCustomer && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.buyerName}</label>
-                  <div className="relative group">
-                    <User className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary opacity-50 transition-colors group-focus-within:text-accent", language === 'ar' ? "right-3.5" : "left-3.5")} />
-                    <input 
-                      placeholder={t.walkingCustomer}
-                      className={cn("w-full bg-white border border-border-subtle rounded-xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent outline-none shadow-sm", language === 'ar' && "text-right")}
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                    />
-                  </div>
-                </div>
-             )}
-
-             {paymentMethod === 'debt' && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                   <div className="flex items-center justify-between px-1">
-                     <label className="text-[10px] font-black uppercase text-text-secondary tracking-widest">{language === 'ar' ? "ملف الزبون" : "Customer Link"}</label>
-                     <button 
-                       onClick={() => setIsAddingNewCustomer(!isAddingNewCustomer)}
-                       className="text-[9px] font-black text-accent hover:underline uppercase tracking-widest flex items-center gap-1"
-                     >
-                       {isAddingNewCustomer ? (language === 'ar' ? "إلغاء" : "CANCEL") : (
-                         <>
-                           <UserPlus className="w-2.5 h-2.5" />
-                           {t.quickAdd}
-                         </>
-                       )}
-                     </button>
+             {/* Customer Selection (Always Visible) */}
+             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+               <div className="flex items-center justify-between px-1">
+                 <label className="text-[10px] font-black uppercase text-text-secondary tracking-widest">{language === 'ar' ? "ملف الزبون" : "Customer Link"}</label>
+                 <button 
+                   onClick={() => setIsAddingNewCustomer(!isAddingNewCustomer)}
+                   className="text-[9px] font-black text-accent hover:underline uppercase tracking-widest flex items-center gap-1"
+                 >
+                   {isAddingNewCustomer ? (language === 'ar' ? "إلغاء" : "CANCEL") : (
+                     <>
+                       <UserPlus className="w-2.5 h-2.5" />
+                       {t.quickAdd}
+                     </>
+                   )}
+                 </button>
+               </div>
+               
+               {isAddingNewCustomer ? (
+                 <div className="space-y-3 p-4 bg-bg-base/50 rounded-2xl border border-dashed border-accent/30 animate-in zoom-in-95 duration-200">
+                    <div className="space-y-1">
+                      <input 
+                        placeholder={t.customerName}
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
+                        value={newCustomerDetail.name}
+                        onChange={e => setNewCustomerDetail({...newCustomerDetail, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <input 
+                        placeholder={language === 'ar' ? "رقم الهاتف" : "Phone"}
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
+                        value={newCustomerDetail.phone}
+                        onChange={e => setNewCustomerDetail({...newCustomerDetail, phone: e.target.value})}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleQuickAddCustomer}
+                      disabled={!newCustomerDetail.name.trim()}
+                      className="w-full bg-accent text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                    >
+                      {t.save}
+                    </button>
+                 </div>
+               ) : (
+                 <div className="space-y-2">
+                   <div className="relative group">
+                      <Users className={cn(
+                        "absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary transition-colors group-focus-within:text-accent",
+                        language === 'ar' ? "right-3.5" : "left-3.5"
+                      )} />
+                      <select 
+                        className={cn(
+                          "w-full bg-white border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent focus:ring-4 focus:ring-accent/5 outline-none transition-all shadow-sm appearance-none",
+                          language === 'ar' && "text-right"
+                        )}
+                        value={selectedCustomerId} onChange={e => { setSelectedCustomerId(e.target.value); setCustomerName(''); }}
+                      >
+                        <option value="">{language === 'ar' ? "إختر زبون..." : "Link to Account..."}</option>
+                        {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.debt > 0 ? `(Debt: ${formatNumber(c.debt)})` : ''}</option>)}
+                      </select>
+                      <ChevronDown className={cn(
+                        "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50",
+                        language === 'ar' ? "left-3.5" : "right-3.5"
+                      )} />
                    </div>
                    
-                   {isAddingNewCustomer ? (
-                     <div className="space-y-3 p-4 bg-bg-base/50 rounded-2xl border border-dashed border-accent/30 animate-in zoom-in-95 duration-200">
-                        <div className="space-y-1">
-                          <input 
-                            placeholder={t.customerName}
-                            className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
-                            value={newCustomerDetail.name}
-                            onChange={e => setNewCustomerDetail({...newCustomerDetail, name: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <input 
-                            placeholder={language === 'ar' ? "رقم الهاتف" : "Phone"}
-                            className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
-                            value={newCustomerDetail.phone}
-                            onChange={e => setNewCustomerDetail({...newCustomerDetail, phone: e.target.value})}
-                          />
-                        </div>
-                        <button 
-                          onClick={handleQuickAddCustomer}
-                          disabled={!newCustomerDetail.name.trim()}
-                          className="w-full bg-accent text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
-                        >
-                          {t.save}
-                        </button>
-                     </div>
-                   ) : (
-                     <div className="relative group">
-                        <Users className={cn(
-                          "absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary transition-colors group-focus-within:text-accent",
-                          language === 'ar' ? "right-3.5" : "left-3.5"
-                        )} />
-                        <select 
-                          className={cn(
-                            "w-full bg-white border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent focus:ring-4 focus:ring-accent/5 outline-none transition-all shadow-sm appearance-none",
-                            language === 'ar' && "text-right"
-                          )}
-                          value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)}
-                        >
-                          <option value="">{language === 'ar' ? "إختر زبون..." : "Link to Account..."}</option>
-                          {customers.map(c => <option key={c.id} value={c.id}>{c.name} (Debt: {formatNumber(c.debt)})</option>)}
-                        </select>
-                        <ChevronDown className={cn(
-                          "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50",
-                          language === 'ar' ? "left-3.5" : "right-3.5"
-                        )} />
-                     </div>
+                   {!selectedCustomerId && (
+                      <div className="relative group animate-in fade-in slide-in-from-top-2 duration-300">
+                        <User className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary opacity-50 transition-colors group-focus-within:text-accent", language === 'ar' ? "right-3.5" : "left-3.5")} />
+                        <input 
+                          placeholder={t.walkingCustomer}
+                          className={cn("w-full bg-white border border-border-subtle rounded-xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent outline-none shadow-sm", language === 'ar' && "text-right")}
+                          value={customerName}
+                          onChange={e => setCustomerName(e.target.value)}
+                        />
+                      </div>
                    )}
-                </div>
-             )}
+                 </div>
+               )}
+             </div>
 
              {paymentMethod === 'cash' && (
                 <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
