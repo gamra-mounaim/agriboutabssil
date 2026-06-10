@@ -513,8 +513,8 @@ export default function CustomerList() {
                                    )}
                                  </div>
                                  <div className={cn("text-lg font-black tracking-tighter", 
-                                   item.type === 'PAYMENT' ? "text-success" : 
-                                   (item.type === 'SALE' && (item.payment_method || item.paymentMethod) !== 'DEBT' ? "text-blue-500" : "text-danger")
+                                   String(item.type).toUpperCase() === 'PAYMENT' ? "text-success" : 
+                                   (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-500" : "text-danger")
                                  )}>
                                     {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
                                  </div>
