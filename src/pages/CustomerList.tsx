@@ -512,7 +512,10 @@ export default function CustomerList() {
                                      </span>
                                    )}
                                  </div>
-                                 <div className={cn("text-lg font-black tracking-tighter", item.type === 'PAYMENT' ? "text-success" : "text-danger")}>
+                                 <div className={cn("text-lg font-black tracking-tighter", 
+                                   item.type === 'PAYMENT' ? "text-success" : 
+                                   (item.type === 'SALE' && (item.payment_method || item.paymentMethod) !== 'DEBT' ? "text-blue-500" : "text-danger")
+                                 )}>
                                     {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
                                  </div>
                                  <div className="text-[10px] font-bold text-text-secondary/70 mt-1 flex items-center gap-1.5">
