@@ -120,89 +120,84 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     };
   }, [sales]);
 
-  const renderPaymentMethodsWidget = () => (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
-          {(t as any).usedPaymentMethods}
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
-            3
-          </span>
+  const renderPaymentMethodsWidget = () => {
+    const paymentMethodsList = [
+      {
+        id: 'cash',
+        label: t.cash,
+        pct: paymentStats.cashPct,
+        amount: paymentStats.cash,
+        icon: '💰',
+        wrapperClass: 'hover:border-emerald-500/20',
+        iconClass: 'text-emerald-600',
+        amountClass: 'text-emerald-600',
+      },
+      {
+        id: 'card',
+        label: t.card,
+        pct: paymentStats.cardPct,
+        amount: paymentStats.card,
+        icon: '💳',
+        wrapperClass: 'hover:border-blue-500/20',
+        iconClass: 'text-blue-600',
+        amountClass: 'text-blue-600',
+      },
+      {
+        id: 'check',
+        label: (t as any).check,
+        pct: paymentStats.walletPct,
+        amount: paymentStats.wallet,
+        icon: '📝',
+        wrapperClass: 'hover:border-amber-500/20',
+        iconClass: 'text-amber-600',
+        amountClass: 'text-amber-600',
+      },
+      {
+        id: 'debt',
+        label: t.debt,
+        pct: paymentStats.debtPct,
+        amount: paymentStats.debt,
+        icon: '📒',
+        wrapperClass: 'hover:border-red-500/20',
+        iconClass: 'text-red-600',
+        amountClass: 'text-red-600',
+      }
+    ].sort((a, b) => b.amount - a.amount);
+
+    return (
+      <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
+            {(t as any).usedPaymentMethods}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
+              3
+            </span>
+          </div>
+        </div>
+        <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
+          {paymentMethodsList.map(method => (
+            <div key={method.id} className={`flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent transition-all ${method.wrapperClass}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center ${method.iconClass}`}>
+                  <span className="font-bold text-lg">{method.icon}</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-text-main">{method.label}</div>
+                  <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{method.pct}%</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className={`text-lg font-black ${method.amountClass}`}>{formatNumber(method.amount)}</div>
+                <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
-        {/* Cash */}
-        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-emerald-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-emerald-600">
-              <span className="font-bold text-lg">💰</span>
-            </div>
-            <div>
-              <div className="text-sm font-bold text-text-main">{t.cash}</div>
-              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.cashPct}%</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-black text-emerald-600">{formatNumber(paymentStats.cash)}</div>
-            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
-          </div>
-        </div>
-
-        {/* Card */}
-        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-blue-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-blue-600">
-              <span className="font-bold text-lg">💳</span>
-            </div>
-            <div>
-              <div className="text-sm font-bold text-text-main">{t.card}</div>
-              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.cardPct}%</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-black text-blue-600">{formatNumber(paymentStats.card)}</div>
-            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
-          </div>
-        </div>
-
-        {/* Check */}
-        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-amber-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-amber-600">
-              <span className="font-bold text-lg">📝</span>
-            </div>
-            <div>
-              <div className="text-sm font-bold text-text-main">{(t as any).check}</div>
-              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.walletPct}%</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-black text-amber-600">{formatNumber(paymentStats.wallet)}</div>
-            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
-          </div>
-        </div>
-
-        {/* Debt */}
-        <div className="flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent hover:border-red-500/20 transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center text-red-600">
-              <span className="font-bold text-lg">📒</span>
-            </div>
-            <div>
-              <div className="text-sm font-bold text-text-main">{t.debt}</div>
-              <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{paymentStats.debtPct}%</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-black text-red-600">{formatNumber(paymentStats.debt)}</div>
-            <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-white", showCurrency = true, onClick, danger }: any) => (
     <div 
