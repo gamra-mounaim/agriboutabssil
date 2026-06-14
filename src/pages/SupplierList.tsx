@@ -48,7 +48,7 @@ export default function SupplierList({ permissions }: { permissions: any }) {
 
   // ── List controls ──
   const [searchSupplier, setSearchSupplier] = useState('');
-  const [sortKey, setSortKey]               = useState<SortKey>('name_asc');
+  const [sortKey, setSortKey]               = useState<SortKey>('debt_desc');
   const [showSortMenu, setShowSortMenu]     = useState(false);
 
   // ── Supplier detail / edit ──

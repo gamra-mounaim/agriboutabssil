@@ -212,7 +212,7 @@ export default function CustomerList() {
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchCustomer.toLowerCase()) || 
     (c.phone && c.phone.includes(searchCustomer))
-  );
+  ).sort((a, b) => b.debt - a.debt);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
