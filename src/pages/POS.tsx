@@ -409,7 +409,7 @@ export default function POS() {
             {filteredProducts.length === 0 && (
               <div className="col-span-full py-20 flex flex-col items-center justify-center text-text-secondary opacity-40 grayscale">
                 <Search className="w-12 h-12 mb-4" />
-                <p className="text-xs font-black uppercase tracking-[0.3em]">{language === 'ar' ? "لا توجد نتائج" : "No matches found"}</p>
+                <p className="text-xs font-black uppercase tracking-[0.3em]">{language === 'ar' ? "لا توجد نتائج" : language === 'fr' ? "Aucun résultat" : "No matches found"}</p>
               </div>
             )}
           </div>
@@ -420,8 +420,8 @@ export default function POS() {
       <div className="w-full lg:w-[420px] h-full flex flex-col bg-card border border-border-subtle rounded-3xl shadow-2xl relative z-10">
         <div className="p-6 border-b border-border-subtle flex items-center justify-between bg-bg-base/20 rounded-t-3xl backdrop-blur-sm">
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">{language === 'ar' ? "فاتورة" : "Receipt"}</span>
-             <h3 className="text-sm font-bold text-text-main uppercase tracking-widest">{language === 'ar' ? "سلة التسوق" : "Current Cart"}</h3>
+             <span className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">{language === 'ar' ? "فاتورة" : language === 'fr' ? "TICKET" : "Receipt"}</span>
+             <h3 className="text-sm font-bold text-text-main uppercase tracking-widest">{language === 'ar' ? "سلة التسوق" : language === 'fr' ? "PANIER ACTUEL" : "Current Cart"}</h3>
            </div>
            <div className="flex items-center gap-3">
              <button 
@@ -502,7 +502,7 @@ export default function POS() {
                 <Package className="w-8 h-8 -rotate-12" />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
-                {language === 'ar' ? "أضف منتجات للبدء بالعملية" : "Ready for next transaction"}
+                {language === 'ar' ? "أضف منتجات للبدء بالعملية" : language === 'fr' ? "PRÊT POUR LA PROCHAINE TRANSACTION" : "Ready for next transaction"}
               </p>
             </div>
           )}
@@ -529,12 +529,12 @@ export default function POS() {
              {/* Customer Selection (Always Visible) */}
              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                <div className="flex items-center justify-between px-1">
-                 <label className="text-[10px] font-black uppercase text-text-secondary tracking-widest">{language === 'ar' ? "ملف الزبون" : "Customer Link"}</label>
+                 <label className="text-[10px] font-black uppercase text-text-secondary tracking-widest">{language === 'ar' ? "ملف الزبون" : language === 'fr' ? "LIEN CLIENT" : "Customer Link"}</label>
                  <button 
                    onClick={() => setIsAddingNewCustomer(!isAddingNewCustomer)}
                    className="text-[9px] font-black text-accent hover:underline uppercase tracking-widest flex items-center gap-1"
                  >
-                   {isAddingNewCustomer ? (language === 'ar' ? "إلغاء" : "CANCEL") : (
+                   {isAddingNewCustomer ? (language === 'ar' ? "إلغاء" : language === 'fr' ? "ANNULER" : "CANCEL") : (
                      <>
                        <UserPlus className="w-2.5 h-2.5" />
                        {t.quickAdd}
@@ -555,7 +555,7 @@ export default function POS() {
                     </div>
                     <div className="space-y-1">
                       <input 
-                        placeholder={language === 'ar' ? "رقم الهاتف" : "Phone"}
+                        placeholder={language === 'ar' ? "رقم الهاتف" : language === 'fr' ? "Téléphone" : "Phone"}
                         className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
                         value={newCustomerDetail.phone}
                         onChange={e => setNewCustomerDetail({...newCustomerDetail, phone: e.target.value})}
@@ -583,8 +583,8 @@ export default function POS() {
                         )}
                         value={selectedCustomerId} onChange={e => { setSelectedCustomerId(e.target.value); setCustomerName(''); }}
                       >
-                        <option value="">{language === 'ar' ? "إختر زبون..." : "Link to Account..."}</option>
-                        {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.debt > 0 ? `(Debt: ${formatNumber(c.debt)})` : ''}</option>)}
+                        <option value="">{language === 'ar' ? "إختر زبون..." : language === 'fr' ? "Lier à un compte..." : "Link to Account..."}</option>
+                        {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.debt > 0 ? `(${language === 'ar' ? 'دين' : language === 'fr' ? 'Dette' : 'Debt'}: ${formatNumber(c.debt)})` : ''}</option>)}
                       </select>
                       <ChevronDown className={cn(
                         "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50",
