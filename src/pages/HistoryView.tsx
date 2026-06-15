@@ -392,10 +392,10 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                   <tr key={p.id} className="group hover:bg-bg-base/30 transition-colors">
                     <td className="p-5">
                        <div className="font-bold text-text-main">{p.customerName || customers.find(c => c.id === p.customerId)?.name || 'Unknown'}</div>
-                       {p.paymentMethod === 'CHECK' && (
+                       {(p as any).paymentMethod === 'CHECK' && (
                          <div className="mt-2 inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-purple-100">
                            <CreditCard className="w-3 h-3" />
-                           {p.checkNumber} {p.checkOwner && `| ${p.checkOwner}`}
+                           {(p as any).checkNumber} {(p as any).checkOwner && `| ${(p as any).checkOwner}`}
                          </div>
                        )}
                     </td>

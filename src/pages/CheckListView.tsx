@@ -55,8 +55,8 @@ export default function CheckListView() {
       checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
     return matchesSearch && matchesType;
   }).sort((a, b) => {
-    const isAPending = a.checkStatus === "PENDING" || !a.checkStatus;
-    const isBPending = b.checkStatus === "PENDING" || !b.checkStatus;
+    const isAPending = (a as any).checkStatus === "PENDING" || !(a as any).checkStatus;
+    const isBPending = (b as any).checkStatus === "PENDING" || !(b as any).checkStatus;
     if (isAPending && !isBPending) return -1;
     if (!isAPending && isBPending) return 1;
     return 0;
@@ -94,14 +94,14 @@ export default function CheckListView() {
   const pendingTotal = useMemo(
     () =>
       filteredChecks
-        .filter((c) => c.checkStatus === "PENDING" || !c.checkStatus)
+        .filter((c) => (c as any).checkStatus === "PENDING" || !(c as any).checkStatus)
         .reduce((acc, c) => acc + c.total, 0),
     [filteredChecks],
   );
   const cashedTotal = useMemo(
     () =>
       filteredChecks
-        .filter((c) => c.checkStatus === "CASHED")
+        .filter((c) => (c as any).checkStatus === "CASHED")
         .reduce((acc, c) => acc + c.total, 0),
     [filteredChecks],
   );
