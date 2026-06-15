@@ -51,6 +51,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
   };
 
   const filteredSales = sales.filter(s => {
+    if (currentUserRole !== 'admin' && s.staffId !== currentUser?.id) return false;
     const d = new Date(s.date);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
     const matchesYear = d.getFullYear() === filterYear;
@@ -65,10 +66,12 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
   });
 
     const filteredPayments = payments.filter(p => {
+    if (currentUserRole !== 'admin' && p.staffId !== currentUser?.id) return false;
     const d = new Date(p.date);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
     const matchesYear = d.getFullYear() === filterYear;
-    const matchesSearch = (p.customerName || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
+    const cName = p.customerName || customers.find(c => c.id === p.customerId)?.name || '';
+    const matchesSearch = cName.toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (p.check_number || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
                          (p.check_owner || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesSearch;
@@ -146,7 +149,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
   };
 
   const filteredActivities = (activities || []).filter(a => {
-    if (currentUserRole !== 'admin' && (a.actorId === 'admin' || a.actorName === 'gamra')) {
+    if (currentUserRole !== 'admin' && a.actorId !== currentUser?.id) {
       return false;
     }
     const d = new Date(a.timestamp);
@@ -236,7 +239,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                     return {
                       date: item.date,
                       amount: subView === 'sales' ? (item as Sale).total : (item as Payment).amount,
-                      description: subView === 'sales' ? (customerMatch?.name || 'Walk-in') : (item as Payment).customerName
+                      description: subView === 'sales' ? (customerMatch?.name || 'Walk-in') : ((item as Payment).customerName || customers.find(c => c.id === (item as Payment).customerId)?.name || 'Unknown')
                     };
                   })
                 }, language, settings);
@@ -389,7 +392,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                 {filteredPayments.map(p => (
                   <tr key={p.id} className="group hover:bg-bg-base/30 transition-colors">
                     <td className="p-5">
-                       <div className="font-bold text-text-main">{p.customerName}</div>
+                       <div className="font-bold text-text-main">{p.customerName || customers.find(c => c.id === p.customerId)?.name || 'Unknown'}</div>
                        {p.payment_method === 'check' && (
                          <div className="mt-2 inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-purple-100">
                            <CreditCard className="w-3 h-3" />
