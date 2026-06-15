@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, useAuthStore } from '../store/useStore';
 import { AlertTriangle, Clock, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function GlobalAlerts() {
-  const { checks, customers, language } = useStore();
+  const { checks, customers } = useStore();
+  const { language } = useAuthStore();
 
   const checksDueSoon = useMemo(() => {
     const today = new Date();
