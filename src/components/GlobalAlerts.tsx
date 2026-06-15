@@ -57,10 +57,10 @@ export function GlobalAlerts() {
               </h3>
               <p className="text-red-600/80 dark:text-red-400/80 text-xs md:text-sm font-bold">
                 {language === 'ar' 
-                  ? `يوجد ${checksDueSoon.length} شيك(ات) موعد أدائها خلال يومين أو أقل! يرجى التحقق من القائمة.` 
+                  ? `يوجد ${checksDueSoon.length} شيك(ات) موعد أدائها خلال يومين أو أقل! (${checksDueSoon.map((c: any) => c.checkOwner || c.partyName).join(', ')})` 
                   : language === 'fr' 
-                  ? `Il y a ${checksDueSoon.length} chèque(s) dont l'échéance est dans 2 jours ou moins.` 
-                  : `There are ${checksDueSoon.length} check(s) due in 2 days or less.`}
+                  ? `Il y a ${checksDueSoon.length} chèque(s) dont l'échéance est dans 2 jours ou moins. (${checksDueSoon.map((c: any) => c.checkOwner || c.partyName).join(', ')})` 
+                  : `There are ${checksDueSoon.length} check(s) due in 2 days or less. (${checksDueSoon.map((c: any) => c.checkOwner || c.partyName).join(', ')})`}
               </p>
             </div>
           </div>

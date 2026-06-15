@@ -54,6 +54,12 @@ export default function CheckListView() {
     const matchesType =
       checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
     return matchesSearch && matchesType;
+  }).sort((a, b) => {
+    const isAPending = a.checkStatus === "PENDING" || !a.checkStatus;
+    const isBPending = b.checkStatus === "PENDING" || !b.checkStatus;
+    if (isAPending && !isBPending) return -1;
+    if (!isAPending && isBPending) return 1;
+    return 0;
   });
 
   
@@ -163,20 +169,6 @@ export default function CheckListView() {
         </div>
       </div>
 
-      
-      {checksDueSoon.length > 0 && (
-        <div className="bg-danger/10 border-2 border-danger rounded-3xl p-4 mb-4 flex items-center justify-between shadow-sm animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="bg-danger rounded-full p-2">
-              <AlertCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="font-black text-danger text-lg">{language === 'ar' ? 'تنبيه: شيكات اقترب موعد أدائها!' : 'Alert: Checks due soon!'}</p>
-              <p className="text-sm font-bold text-danger/80">{language === 'ar' ? `يوجد ${checksDueSoon.length} شيك(ات) موعد أدائها خلال يومين أو أقل.` : `There are ${checksDueSoon.length} check(s) due in 2 days or less.`}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white p-4 rounded-3xl border border-border-subtle shadow-sm flex items-center justify-between">
@@ -211,7 +203,7 @@ export default function CheckListView() {
                 {t.checkNumber}
               </th>
               <th className="p-5 text-[10px] font-black uppercase text-text-secondary tracking-widest">
-                {language === "ar" ? "البنك" : "Bank"}
+                {language === "ar" ? "البنك" : language === "fr" ? "Banque" : "Bank"}
               </th>
               <th className="p-5 text-[10px] font-black uppercase text-text-secondary tracking-widest">
                 {t.checkOwner}
@@ -226,10 +218,10 @@ export default function CheckListView() {
                 {t.amount}
               </th>
               <th className="p-5 text-[10px] font-black uppercase text-text-secondary tracking-widest">
-                {language === "ar" ? "تاريخ الاستحقاق" : "Due Date"}
+                {language === "ar" ? "تاريخ الاستحقاق" : language === "fr" ? "Échéance" : "Due Date"}
               </th>
               <th className="p-5 text-[10px] font-black uppercase text-text-secondary tracking-widest">
-                {language === "ar" ? "الحالة" : "Status"}
+                {language === "ar" ? "الحالة" : language === "fr" ? "Statut" : "Status"}
               </th>
               <th className="p-5 text-[10px] font-black uppercase text-text-secondary tracking-widest text-right"></th>
             </tr>
@@ -304,7 +296,7 @@ export default function CheckListView() {
                   <td className="p-5">
                     <div
                       className={cn(
-                        "inline-block px-3 py-1 rounded-full text-xs font-black",
+                        "inline-block px-3 py-1 rounded-full text-xs font-black whitespace-nowrap",
                         check.partyRole === "customer"
                           ? "bg-success/10 text-success"
                           : "bg-danger/10 text-danger",
@@ -333,9 +325,9 @@ export default function CheckListView() {
                       {(check as any).checkStatus === 'CASHED' ? <CheckCircle className="w-3 h-3" /> : 
                        (check as any).checkStatus === 'REJECTED' ? <XCircle className="w-3 h-3" /> : 
                        <Clock className="w-3 h-3" />}
-                      {(check as any).checkStatus === 'CASHED' ? (language === 'ar' ? 'تم الصرف' : 'Cashed') :
-                       (check as any).checkStatus === 'REJECTED' ? (language === 'ar' ? 'مرفوض' : 'Rejected') :
-                       (language === 'ar' ? 'في الانتظار' : 'Pending')}
+                      {(check as any).checkStatus === 'CASHED' ? (language === 'ar' ? 'تم الصرف' : language === 'fr' ? 'Encaissé' : 'Cashed') :
+                       (check as any).checkStatus === 'REJECTED' ? (language === 'ar' ? 'مرفوض' : language === 'fr' ? 'Rejeté' : 'Rejected') :
+                       (language === 'ar' ? 'في الانتظار' : language === 'fr' ? 'En attente' : 'Pending')}
                     </div>
                   </td>
                   <td className="p-5 text-right relative w-32">
@@ -345,12 +337,12 @@ export default function CheckListView() {
                       value={(check as any).checkStatus || 'PENDING'}
                       className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
                     >
-                      <option value="PENDING">{language === 'ar' ? 'في الانتظار' : 'Pending'}</option>
-                      <option value="CASHED">{language === 'ar' ? 'تم الصرف' : 'Cashed'}</option>
-                      <option value="REJECTED">{language === 'ar' ? 'مرفوض' : 'Rejected'}</option>
+                      <option value="PENDING">{language === 'ar' ? 'في الانتظار' : language === 'fr' ? 'En attente' : 'Pending'}</option>
+                      <option value="CASHED">{language === 'ar' ? 'تم الصرف' : language === 'fr' ? 'Encaissé' : 'Cashed'}</option>
+                      <option value="REJECTED">{language === 'ar' ? 'مرفوض' : language === 'fr' ? 'Rejeté' : 'Rejected'}</option>
                     </select>
                     <button className="bg-bg-base hover:bg-border-subtle text-text-main px-3 py-1.5 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-1 transition-colors relative z-0 w-full">
-                      {updatingId === check.id ? '...' : (language === 'ar' ? 'تغيير الحالة' : 'Status')}
+                      {updatingId === check.id ? '...' : (language === 'ar' ? 'تغيير الحالة' : language === 'fr' ? 'Statut' : 'Status')}
                       <ChevronDown className="w-3 h-3" />
                     </button>
                   </td>
