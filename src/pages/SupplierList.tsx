@@ -177,7 +177,8 @@ export default function SupplierList({ permissions }: { permissions: any }) {
         setMessage({ text: language === 'ar' ? 'تمت إضافة الدين.' : language === 'fr' ? 'Dette ajoutée.' : 'Debt added.', type: 'success' });
       }
       setAdjustModal(null); setAdjustAmount(''); setAdjustMethod('CASH');
-      setCheckNum(''); setCheckOwner(''); setCheckBankSupplier(''); setDueDate(''); setAdjustNote('');
+      setCheckNum('');
+      setDueDateModal(''); setCheckOwner(''); setCheckBankSupplier(''); setDueDate(''); setAdjustNote('');
       onRefresh();
     } catch { setMessage({ text: language === 'ar' ? 'فشلت العملية.' : language === 'fr' ? 'Opération échouée.' : 'Operation failed.', type: 'error' }); }
   };

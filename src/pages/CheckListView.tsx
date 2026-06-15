@@ -55,6 +55,35 @@ export default function CheckListView() {
     return matchesSearch && matchesType;
   });
 
+  
+  const checksDueSoon = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const twoDaysFromNow = new Date(today);
+    twoDaysFromNow.setDate(today.getDate() + 2);
+
+    return filteredChecks.filter(c => {
+      if ((c as any).checkStatus && (c as any).checkStatus !== 'PENDING') return false;
+      if (!(c as any).checkDueDate) return false;
+      const dueDate = new Date((c as any).checkDueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate <= twoDaysFromNow;
+    });
+  }, [filteredChecks]);
+
+  const handleDateChange = async (type: string, id: string, newDate: string) => {
+    setUpdatingId(id);
+    try {
+      await api.updateCheckDate(type, id, newDate);
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+
   const pendingTotal = useMemo(
     () =>
       filteredChecks
@@ -132,6 +161,21 @@ export default function CheckListView() {
           </div>
         </div>
       </div>
+
+      
+      {checksDueSoon.length > 0 && (
+        <div className="bg-danger/10 border-2 border-danger rounded-3xl p-4 mb-4 flex items-center justify-between shadow-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="bg-danger rounded-full p-2">
+              <AlertCircle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="font-black text-danger text-lg">{language === 'ar' ? 'تنبيه: شيكات اقترب موعد أدائها!' : 'Alert: Checks due soon!'}</p>
+              <p className="text-sm font-bold text-danger/80">{language === 'ar' ? `يوجد ${checksDueSoon.length} شيك(ات) موعد أدائها خلال يومين أو أقل.` : `There are ${checksDueSoon.length} check(s) due in 2 days or less.`}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white p-4 rounded-3xl border border-border-subtle shadow-sm flex items-center justify-between">
@@ -270,7 +314,13 @@ export default function CheckListView() {
                     </div>
                   </td>
                                     <td className="p-5">
-                    <div className="text-sm font-bold text-text-main">{(check as any).checkDueDate ? new Date((check as any).checkDueDate).toLocaleDateString() : '-'}</div>
+                    <input 
+                      type="date" 
+                      disabled={updatingId === check.id}
+                      className="bg-transparent border-b-2 border-border-subtle focus:border-accent outline-none text-sm font-bold text-text-main text-center w-full"
+                      value={(check as any).checkDueDate || ''}
+                      onChange={(e) => handleDateChange(check.type, check.id, e.target.value)}
+                    />
                     <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString()}</div>
                   </td>
                   <td className="p-5">
