@@ -114,7 +114,9 @@ export const useStore = create<AppState>((set, get) => ({
   activitiesPage: 1,
   fetchActivitiesPage: async (page: number) => {
     try {
-      const res = await api.getActivityLogs(page, 50) as any;
+      const user = useAuthStore.getState().user;
+      const userId = user?.role !== 'admin' ? user?.id : undefined;
+      const res = await api.getActivityLogs(page, 50, userId) as any;
       set({ activities: res.data || [], activitiesTotal: res.total || 0, activitiesPage: res.page || 1 });
     } catch (err) {
       console.error("Failed to fetch paginated activities", err);
@@ -122,6 +124,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   fetchData: async () => {
+    const user = useAuthStore.getState().user;
+    const userId = user?.role !== 'admin' ? user?.id : undefined;
     const fetchApi = async (fn: () => Promise<any>, fallback: any, name: string, retries = 3): Promise<any> => {
       try {
         return await fn();
@@ -155,7 +159,7 @@ export const useStore = create<AppState>((set, get) => ({
         fetchApi(api.getPayments, [], 'Payments'),
         fetchApi(api.getStats, null, 'Stats'),
         fetchApi(api.getUsers, [], 'Users'),
-        fetchApi(() => api.getActivityLogs(1, 50), { data: [], total: 0, page: 1 }, 'Activity'),
+        fetchApi(() => api.getActivityLogs(1, 50, userId), { data: [], total: 0, page: 1 }, 'Activity'),
         fetchApi(api.getSettings, null, 'Settings'),
         fetchApi(api.getNotifications, [], 'Notifications'),
         fetchApi(api.getLatestBackup, null, 'LatestBackup')

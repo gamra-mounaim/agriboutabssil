@@ -146,9 +146,14 @@ export const api = {
   getStats: async () => get(`${API_URL}/stats`),
 
   // Activity Logs
-  getActivityLogs: async (page?: number, limit?: number) => {
+  getActivityLogs: async (page?: number, limit?: number, userId?: string) => {
     let url = `${API_URL}/activity`;
-    if (page) url += `?page=${page}&limit=${limit || 50}`;
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    if (userId) params.append('userId', userId);
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
     return get(url);
   },
   

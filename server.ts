@@ -1494,8 +1494,17 @@ async function startServer() {
   });
 
   app.get("/api/activity", async (req, res) => {
+    const { userId } = req.query;
+    
     if (!req.query.page) {
-      const logs = await db.prepare('SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 100').all();
+      let query = 'SELECT * FROM activity_log';
+      const params = [];
+      if (userId) {
+        query += ' WHERE user_id = ?';
+        params.push(userId);
+      }
+      query += ' ORDER BY timestamp DESC LIMIT 100';
+      const logs = await db.prepare(query).all(...params);
       return res.json(toCamel(logs));
     }
     
@@ -1503,8 +1512,21 @@ async function startServer() {
     const limit = parseInt(req.query.limit as string) || 50;
     
     try {
-      const total = (await db.prepare('SELECT COUNT(*) as count FROM activity_log').get() as any).count;
-      const logs = await db.prepare('SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+      let countQuery = 'SELECT COUNT(*) as count FROM activity_log';
+      let dataQuery = 'SELECT * FROM activity_log';
+      const params = [];
+      
+      if (userId) {
+        countQuery += ' WHERE user_id = ?';
+        dataQuery += ' WHERE user_id = ?';
+        params.push(userId);
+      }
+      
+      dataQuery += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+      params.push(limit, (page - 1) * limit);
+
+      const total = (await db.prepare(countQuery).get(...(userId ? [userId] : [])) as any).count;
+      const logs = await db.prepare(dataQuery).all(...params);
       res.json({ data: toCamel(logs), total, page, limit });
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });
