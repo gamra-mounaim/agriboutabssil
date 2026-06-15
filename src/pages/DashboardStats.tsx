@@ -144,7 +144,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           danger={totalSupplierDebtValue > 0}
         />
         <StatCard 
-          label={language === 'ar' ? 'السلع التالفة' : 'Damaged Goods'} 
+          label={language === 'ar' ? 'المنتجات التالفة' : 'Damaged Goods'} 
           value={`${formatNumber(totalDamagesLoss)} ${t.currency}`} 
           sub={language === 'ar' ? 'انقر لتصدير PDF' : 'Click to export PDF'} 
           danger={totalDamagesLoss > 0}

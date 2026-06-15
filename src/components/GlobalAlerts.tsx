@@ -73,11 +73,11 @@ export function GlobalAlerts() {
             </div>
             <div className="flex-1 pt-1">
               <h3 className="text-amber-700 dark:text-amber-400 font-black text-sm md:text-base uppercase tracking-wider mb-1">
-                {language === 'ar' ? 'تنبيه استخلاص الديون' : language === 'fr' ? 'Alerte : Dettes clients' : 'Alert: Customer Debts'}
+                {language === 'ar' ? 'تنبيه أداء الديون' : language === 'fr' ? 'Alerte : Dettes clients' : 'Alert: Customer Debts'}
               </h3>
               <p className="text-amber-600/80 dark:text-amber-400/80 text-xs md:text-sm font-bold">
                 {language === 'ar' 
-                  ? `لقد حان أو اقترب موعد استخلاص الديون الخاصة بـ ${customersDueSoon.length} زبون(زبان). يرجى مراجعة القائمة.` 
+                  ? `لقد حان أو اقترب موعد أداء ديون ${customersDueSoon.length} زبون/زبناء. يرجى مراجعة القائمة.` 
                   : language === 'fr' 
                   ? `L'échéance de remboursement pour ${customersDueSoon.length} client(s) approche ou est dépassée.` 
                   : `The debt repayment deadline for ${customersDueSoon.length} customer(s) is approaching or past due.`}
