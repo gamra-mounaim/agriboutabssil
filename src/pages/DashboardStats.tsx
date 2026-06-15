@@ -171,7 +171,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                 <span className="text-xs font-bold uppercase tracking-widest">{language === 'ar' ? "لا توجد مبيعات" : "NO SALES"}</span>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
                 <AreaChart data={last7Days}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -247,7 +247,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                 <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
                 <PieChart>
                   <Pie
                     data={categoryValueData}
