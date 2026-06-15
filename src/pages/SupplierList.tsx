@@ -178,7 +178,7 @@ export default function SupplierList({ permissions }: { permissions: any }) {
       }
       setAdjustModal(null); setAdjustAmount(''); setAdjustMethod('CASH');
       setCheckNum('');
-      setDueDateModal(''); setCheckOwner(''); setCheckBankSupplier(''); setDueDate(''); setAdjustNote('');
+      setCheckOwner(''); setCheckBankSupplier(''); setDueDate(''); setAdjustNote('');
       onRefresh();
     } catch { setMessage({ text: language === 'ar' ? 'فشلت العملية.' : language === 'fr' ? 'Opération échouée.' : 'Operation failed.', type: 'error' }); }
   };

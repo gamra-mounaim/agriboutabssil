@@ -142,6 +142,8 @@ export interface CheckDoc {
   partyName: string;
   partyRole: 'customer' | 'supplier';
   type: 'sale' | 'payment' | 'supplier_payment';
+  checkStatus?: string | null;
+  checkDueDate?: string | null;
 }
 
 export interface Notification {
