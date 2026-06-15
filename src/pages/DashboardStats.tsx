@@ -7,7 +7,7 @@ import { Product, Category, Customer, Sale } from '../types';
 import { Language, translations } from '../translations';
 import { useStore, useAuthStore } from '../store/useStore';
 import { generateStockReportPDF, generateDamagesReportPDF } from '../services/invoiceService';
-import api from '../services/apiService';
+import { api } from '../services/apiService';
 
 export default // --- Component: Dashboard Highlights ---
 function DashboardStats({ products, categories, customers, sales, language, stats, permissions }: { products: Product[], categories: Category[], customers: Customer[], sales: Sale[], language: Language, stats: any, permissions: any }) {
