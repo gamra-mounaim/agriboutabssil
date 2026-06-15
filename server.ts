@@ -1192,6 +1192,8 @@ async function startServer() {
           s.total as total, 
           s.check_number, 
           s.check_owner, 
+          s.check_due_date,
+          s.check_status,
           s.date, 
           'sale' as type,
           COALESCE(s.customer_name, c.name) as party_name,
@@ -1207,6 +1209,8 @@ async function startServer() {
           p.amount as total, 
           p.check_number, 
           p.check_owner, 
+          p.check_due_date,
+          p.check_status,
           p.date, 
           'payment' as type,
           c.name as party_name,
@@ -1222,6 +1226,8 @@ async function startServer() {
           sh.amount as total,
           sh.check_number,
           sh.check_owner,
+          sh.check_due_date,
+          sh.check_status,
           sh.date,
           'supplier_payment' as type,
           sup.name as party_name,
@@ -1236,6 +1242,23 @@ async function startServer() {
     } catch (error) {
       console.error("Fetch checks error:", error);
       res.status(500).json({ error: "Failed to fetch checks" });
+    }
+  });
+
+  app.put("/api/checks/:type/:id/status", async (req, res) => {
+    try {
+      const { id, type } = req.params;
+      const { status } = req.body;
+      let tableName = '';
+      if (type === 'sale') tableName = 'sales';
+      else if (type === 'payment') tableName = 'payments';
+      else if (type === 'supplier_payment') tableName = 'supplier_history';
+      else return res.status(400).json({ status: "error", message: "Invalid check type" });
+
+      await db.prepare(`UPDATE ${tableName} SET check_status = $1 WHERE id = $2`).run(status, id);
+      res.json({ status: "success", message: "Status updated" });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
     }
   });
 
@@ -1278,7 +1301,7 @@ async function startServer() {
   });
 
   app.post("/api/sales", validate(schemas.saleSchema), async (req, res) => {
-    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner } = req.body;
+    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner, checkDueDate } = req.body;
     const saleId = uuidv4();
 
     const transaction = async () => {
@@ -1287,9 +1310,9 @@ async function startServer() {
 
       // 1. Create Sale Record
       await db.prepare(`
-        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner);
+        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner, check_due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner, checkDueDate || null);
 
       // 2. Create Items & Update Stock
       for (const item of items) {

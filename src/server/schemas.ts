@@ -28,6 +28,8 @@ export const saleSchema = z.object({
   staffId: z.string().optional().nullable(),
   checkNumber: z.string().optional().nullable(),
   checkOwner: z.string().optional().nullable(),
+  checkDueDate: z.string().optional().nullable(),
+  checkStatus: z.string().optional().nullable(),
 });
 
 export const categorySchema = z.object({

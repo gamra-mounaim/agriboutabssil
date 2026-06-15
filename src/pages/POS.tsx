@@ -37,6 +37,7 @@ export default function POS() {
   const [checkNumber, setCheckNumber] = useState('');
   const [checkOwner, setCheckOwner] = useState('');
   const [checkBank, setCheckBank] = useState('');
+  const [checkDueDate, setCheckDueDate] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -152,7 +153,8 @@ export default function POS() {
         staffId: user?.id || user?.uid || 'anonymous',
         items: cart,
         checkNumber: paymentMethod === 'check' ? checkNumber : null,
-        checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null
+        checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null,
+        checkDueDate: paymentMethod === 'check' ? checkDueDate : null
       });
 
       if (saleResult.status === 'success') {
@@ -656,6 +658,14 @@ export default function POS() {
                         value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الدفع' : 'Due Date'}</label>
+                    <input 
+                      type="date"
+                      className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                      value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
+                    />
                   </div>
                 </div>
              )}

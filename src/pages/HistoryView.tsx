@@ -321,10 +321,9 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                     <td className="p-5">
                        <div className="font-bold text-text-main text-sm">#{s.invoiceNumber}</div>
                        <div className="text-text-secondary text-[11px] mt-1 font-medium">{new Date(s.date).toLocaleDateString()} • {new Date(s.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                       {s.paymentMethod === 'check' && (
-                         <div className="mt-2 inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-blue-100">
-                           <CreditCard className="w-3 h-3" />
-                           {s.checkNumber} {s.checkOwner && `| ${s.checkOwner}`}
+                       {s.paymentMethod === 'CHECK' && (
+                         <div className="text-[10px] font-bold text-text-secondary mt-1">
+                           شيك: {s.checkNumber || '-'} | {s.checkOwner || '-'}
                          </div>
                        )}
                     </td>
@@ -393,10 +392,10 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                   <tr key={p.id} className="group hover:bg-bg-base/30 transition-colors">
                     <td className="p-5">
                        <div className="font-bold text-text-main">{p.customerName || customers.find(c => c.id === p.customerId)?.name || 'Unknown'}</div>
-                       {p.payment_method === 'check' && (
+                       {p.paymentMethod === 'CHECK' && (
                          <div className="mt-2 inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-purple-100">
                            <CreditCard className="w-3 h-3" />
-                           {p.check_number} {p.check_owner && `| ${p.check_owner}`}
+                           {p.checkNumber} {p.checkOwner && `| ${p.checkOwner}`}
                          </div>
                        )}
                     </td>

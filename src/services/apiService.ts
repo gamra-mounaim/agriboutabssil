@@ -134,6 +134,7 @@ export const api = {
   },
   getSaleItems: async (id) => get(`${API_URL}/sales/${id}/items`),
   getChecks: async () => get(`${API_URL}/checks`),
+  updateCheckStatus: async (type: string, id: string, status: string) => put(`${API_URL}/checks/${type}/${id}/status`, { status }),
   createSale: async (sale) => post(`${API_URL}/sales`, sale),
   deleteSale: async (id) => del(`${API_URL}/sales/${id}`),
 

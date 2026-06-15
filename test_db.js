@@ -1,0 +1,1 @@
+const Database = require('better-sqlite3'); const db = new Database('gamra.db'); console.log('payments:', db.prepare('SELECT payment_method FROM payments').all()); console.log('sales:', db.prepare('SELECT payment_method FROM sales').all());

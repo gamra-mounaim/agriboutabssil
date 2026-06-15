@@ -254,7 +254,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
       p.minStock || 5, 
       p.supplier ? `"${p.supplier}"` : ''
     ]);
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows.map(e => e.join(','))].join("\n");
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(';'), ...rows.map(e => e.join(';'))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -275,7 +275,8 @@ export default function Inventory({ permissions }: { permissions: any }) {
         const lines = text.split('\n');
         if (lines.length < 2) throw new Error("File empty or missing headers");
 
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const separator = lines[0].includes(';') ? ';' : ',';
+        const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
         const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('اسم'));
         const barcodeIdx = headers.findIndex(h => h.includes('barcode') || h.includes('باركود'));
         const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('ثمن'));
@@ -294,7 +295,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
           let inQuotes = false;
           for (let char of lines[i]) {
             if (char === '"') inQuotes = !inQuotes;
-            else if (char === ',' && !inQuotes) { cols.push(current); current = ''; }
+            else if (char === separator && !inQuotes) { cols.push(current); current = ''; }
             else current += char;
           }
           cols.push(current);

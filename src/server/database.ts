@@ -150,6 +150,8 @@ export async function initDb() {
       staff_id TEXT,
       check_number TEXT,
       check_owner TEXT,
+      check_due_date TIMESTAMP,
+      check_status TEXT DEFAULT 'PENDING',
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers (id),
@@ -176,6 +178,7 @@ export async function initDb() {
       check_number TEXT,
       check_due_date TIMESTAMP,
       check_owner TEXT,
+      check_status TEXT DEFAULT 'PENDING',
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers (id),
@@ -204,6 +207,7 @@ export async function initDb() {
       check_number TEXT,
       check_due_date TIMESTAMP,
       check_owner TEXT,
+      check_status TEXT DEFAULT 'PENDING',
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers (id)
     );
@@ -236,6 +240,7 @@ export async function initDb() {
       check_number TEXT,
       check_due_date TIMESTAMP,
       check_owner TEXT,
+      check_status TEXT DEFAULT 'PENDING',
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (supplier_id) REFERENCES suppliers (id)
     );
@@ -272,6 +277,25 @@ export async function initDb() {
 
   try {
     await db.prepare('ALTER TABLE stock_movements ADD COLUMN cost_price REAL DEFAULT 0').run();
+  } catch (e) {}
+
+  try {
+    await db.prepare("ALTER TABLE sales ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
+  } catch (e) {}
+  try {
+    await db.prepare('ALTER TABLE sales ADD COLUMN check_due_date TIMESTAMP').run();
+  } catch (e) {}
+
+  try {
+    await db.prepare("ALTER TABLE payments ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
+  } catch (e) {}
+
+  try {
+    await db.prepare("ALTER TABLE supplier_history ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
+  } catch (e) {}
+
+  try {
+    await db.prepare("ALTER TABLE customer_history ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
   } catch (e) {}
 
   // Initialize settings
