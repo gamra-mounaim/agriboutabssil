@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './components/Logo';
+import { GlobalAlerts } from './components/GlobalAlerts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { 
@@ -634,6 +635,7 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-auto px-12 py-4">
+          <GlobalAlerts />
           <AnimatePresence mode="wait">
             <motion.div
               key={view}
