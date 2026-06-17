@@ -1421,7 +1421,7 @@ async function startServer() {
         await db.prepare(`
           INSERT INTO customer_history (id, customer_id, type, amount, description)
           VALUES (?, ?, 'DEBT', ?, ?)
-        `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? \`Reste de la facture #\${nextInvoice} (Chèque)\` : \`Facture #\${nextInvoice} (Crédit)\`);
+        `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? `Reste de la facture #${nextInvoice} (Chèque)` : `Facture #${nextInvoice} (Crédit)`);
       }
 
       logActivity('SALE', 'create', `New sale #${saleId.slice(0, 8)} - Total: ${total}`, staffId, 'Staff');
