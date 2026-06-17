@@ -288,6 +288,31 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 22, { align: 'right' });
   }
 
+  // Display paid amount and remaining debt if a check amount is set
+  if (data.checkAmount !== undefined && data.checkAmount !== null && data.checkAmount < data.total) {
+    const finalRowY = finalY + (discountVal > 0 ? 55 : 35);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('PAYÉ PAR CHÈQUE:', boxX - 10, finalRowY);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${formatNumber(data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY, { align: 'right' });
+
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.setFont('helvetica', 'normal');
+    doc.text('RESTE À PAYER (CRÉDIT):', boxX - 10, finalRowY + 8);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(220, 38, 38); // Red color for debt
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${formatNumber(data.total - data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY + 8, { align: 'right' });
+  }
+
   if (data.paymentMethod) {
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
