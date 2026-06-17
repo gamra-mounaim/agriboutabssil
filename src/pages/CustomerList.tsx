@@ -20,7 +20,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function CustomerList() {
-  const { products, customers, sales, payments, settings, fetchData: onRefresh, setMessage } = useStore();
+  const { products, customers, sales, payments, checks, settings, fetchData: onRefresh, setMessage } = useStore();
   const { language, user } = useAuthStore();
 
   const t = translations[language];
@@ -349,20 +349,20 @@ export default function CustomerList() {
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
-            {payments.filter(p => p.payment_method === 'CHECK').length > 0 ? (
-              payments.filter(p => p.payment_method === 'CHECK').map(p => (
+            {checks && checks.filter(c => c.partyRole === 'customer').length > 0 ? (
+              checks.filter(c => c.partyRole === 'customer').map((p: any) => (
                 <div key={p.id} className="bg-white border-2 border-border-subtle rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-accent/40 transition-all shadow-sm group">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
                       <CreditCard className="w-6 h-6" />
                     </div>
                     <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
-                      <div className="text-sm font-black text-text-main group-hover:text-accent transition-colors">{p.customerName}</div>
+                      <div className="text-sm font-black text-text-main group-hover:text-accent transition-colors">{p.partyName || t.walkingCustomer}</div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-text-secondary uppercase tracking-wider">
-                        <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> #{p.check_number}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {p.check_owner}</span>
-                        <span className={cn("flex items-center gap-1", p.check_due_date && new Date(p.check_due_date) < new Date() ? "text-danger" : "text-amber-600")}>
-                          <CalendarClock className="w-3 h-3" /> {p.check_due_date ? new Date(p.check_due_date).toLocaleDateString() : '---'}
+                        <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> #{p.checkNumber || '---'}</span>
+                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {p.checkOwner ? (p.checkOwner.includes('|') ? p.checkOwner.split('|').join(' - ') : p.checkOwner) : '---'}</span>
+                        <span className={cn("flex items-center gap-1", p.checkDueDate && new Date(p.checkDueDate) < new Date() ? "text-danger" : "text-amber-600")}>
+                          <CalendarClock className="w-3 h-3" /> {p.checkDueDate ? new Date(p.checkDueDate).toLocaleDateString() : '---'}
                         </span>
                       </div>
                     </div>
@@ -372,7 +372,7 @@ export default function CustomerList() {
                       {formatNumber(p.amount)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
                     </div>
                     <div className="text-[10px] font-bold text-text-secondary opacity-60">
-                      {new Date(p.date).toLocaleString()}
+                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '---'}
                     </div>
                   </div>
                 </div>
