@@ -1287,7 +1287,6 @@ async function startServer() {
       
       await db.transaction(async () => {
         if (type === 'sale') {
-          try { await db.prepare('ALTER TABLE sales ADD COLUMN check_amount REAL').run(); } catch(e) {}
           const sale = await db.prepare('SELECT total, COALESCE(check_amount, total) as old_amount, customer_id FROM sales WHERE id = ?').get(id) as any;
           if (!sale) throw new Error("Sale not found");
           const diff = sale.old_amount - newAmount;

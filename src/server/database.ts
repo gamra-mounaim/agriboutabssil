@@ -142,6 +142,7 @@ export async function initDb() {
       id TEXT PRIMARY KEY,
       invoice_number INTEGER,
       total REAL,
+      check_amount REAL,
       subtotal REAL,
       discount REAL DEFAULT 0,
       payment_method TEXT,
