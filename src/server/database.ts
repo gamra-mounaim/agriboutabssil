@@ -281,9 +281,8 @@ export async function initDb() {
 
   try {
     await db.prepare("ALTER TABLE sales ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
-  } catch (e) {}
-  try {
     await db.prepare('ALTER TABLE sales ADD COLUMN check_due_date TIMESTAMP').run();
+    await db.prepare('ALTER TABLE sales ADD COLUMN check_amount REAL').run();
   } catch (e) {}
 
   try {
