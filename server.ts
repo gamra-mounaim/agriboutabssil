@@ -1285,46 +1285,45 @@ async function startServer() {
       const { amount } = req.body;
       const newAmount = Number(amount);
       
-      const transaction = db.transaction(() => {
+      await db.transaction(async () => {
         if (type === 'sale') {
-          try { db.prepare('ALTER TABLE sales ADD COLUMN check_amount REAL').run(); } catch(e) {}
-          const sale = db.prepare('SELECT total, COALESCE(check_amount, total) as old_amount, customer_id FROM sales WHERE id = ?').get(id) as any;
+          try { await db.prepare('ALTER TABLE sales ADD COLUMN check_amount REAL').run(); } catch(e) {}
+          const sale = await db.prepare('SELECT total, COALESCE(check_amount, total) as old_amount, customer_id FROM sales WHERE id = ?').get(id) as any;
           if (!sale) throw new Error("Sale not found");
           const diff = sale.old_amount - newAmount;
-          db.prepare('UPDATE sales SET check_amount = ? WHERE id = ?').run(newAmount, id);
+          await db.prepare('UPDATE sales SET check_amount = ? WHERE id = ?').run(newAmount, id);
           if (sale.customer_id && diff !== 0) {
-            db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(diff, sale.customer_id);
+            await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(diff, sale.customer_id);
             const desc = diff > 0 ? `Ajustement Chèque (Reste à payer)` : `Ajustement Chèque (Surplus)`;
             const historyType = diff > 0 ? 'DEBT' : 'PAYMENT';
-            db.prepare('INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), sale.customer_id, historyType, Math.abs(diff), desc);
+            await db.prepare('INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), sale.customer_id, historyType, Math.abs(diff), desc);
           }
         } else if (type === 'payment') {
-          const payment = db.prepare('SELECT amount as old_amount, customer_id FROM payments WHERE id = ?').get(id) as any;
+          const payment = await db.prepare('SELECT amount as old_amount, customer_id FROM payments WHERE id = ?').get(id) as any;
           if (!payment) throw new Error("Payment not found");
           const diff = payment.old_amount - newAmount;
-          db.prepare('UPDATE payments SET amount = ? WHERE id = ?').run(newAmount, id);
+          await db.prepare('UPDATE payments SET amount = ? WHERE id = ?').run(newAmount, id);
           if (payment.customer_id && diff !== 0) {
-            db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(diff, payment.customer_id);
+            await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(diff, payment.customer_id);
             const desc = diff > 0 ? `Ajustement Chèque (Reste à payer)` : `Ajustement Chèque (Surplus)`;
             const historyType = diff > 0 ? 'DEBT' : 'PAYMENT';
-            db.prepare('INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), payment.customer_id, historyType, Math.abs(diff), desc);
+            await db.prepare('INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), payment.customer_id, historyType, Math.abs(diff), desc);
           }
         } else if (type === 'supplier_payment') {
-          const payment = db.prepare('SELECT amount as old_amount, supplier_id FROM supplier_history WHERE id = ?').get(id) as any;
+          const payment = await db.prepare('SELECT amount as old_amount, supplier_id FROM supplier_history WHERE id = ?').get(id) as any;
           if (!payment) throw new Error("Payment not found");
           const diff = payment.old_amount - newAmount;
-          db.prepare('UPDATE supplier_history SET amount = ? WHERE id = ?').run(newAmount, id);
+          await db.prepare('UPDATE supplier_history SET amount = ? WHERE id = ?').run(newAmount, id);
           if (payment.supplier_id && diff !== 0) {
-            db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(diff, payment.supplier_id);
+            await db.prepare('UPDATE suppliers SET debt = debt + ? WHERE id = ?').run(diff, payment.supplier_id);
             const desc = diff > 0 ? `Ajustement Chèque (Reste à payer)` : `Ajustement Chèque (Surplus)`;
             const historyType = diff > 0 ? 'CHARGE' : 'PAYMENT';
-            db.prepare('INSERT INTO supplier_history (id, supplier_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), payment.supplier_id, historyType, Math.abs(diff), desc);
+            await db.prepare('INSERT INTO supplier_history (id, supplier_id, type, amount, description) VALUES (?, ?, ?, ?, ?)').run(uuidv4(), payment.supplier_id, historyType, Math.abs(diff), desc);
           }
         } else {
           throw new Error("Invalid check type");
         }
       });
-      transaction();
       res.json({ status: "success", message: "Amount updated" });
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
