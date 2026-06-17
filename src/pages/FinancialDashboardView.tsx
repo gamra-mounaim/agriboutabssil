@@ -105,11 +105,19 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
       const amount = s.total || 0;
       total += amount;
       const m = (s.paymentMethod || 'cash').toLowerCase();
-      if (m === 'cash') cash += amount;
-      else if (m === 'card') card += amount;
-      else if (m === 'debt') debt += amount;
-      else if (m === 'check') wallet += amount; // We'll map check/other to digital wallet/checks
-      else wallet += amount; 
+      
+      if (m === 'check') {
+        const checkAmt = s.checkAmount !== undefined && s.checkAmount !== null ? s.checkAmount : amount;
+        wallet += checkAmt;
+        if (checkAmt < amount) {
+          debt += (amount - checkAmt);
+        }
+      } else {
+        if (m === 'cash') cash += amount;
+        else if (m === 'card') card += amount;
+        else if (m === 'debt') debt += amount;
+        else wallet += amount; 
+      }
     });
     return {
       total,
