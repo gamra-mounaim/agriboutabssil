@@ -350,7 +350,7 @@ export default function CustomerList() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
             {checks && checks.filter(c => c.partyRole === 'customer').length > 0 ? (
-              checks.filter(c => c.partyRole === 'customer').map((p: any) => (
+              checks.filter(c => c.partyRole === 'customer').slice(0, 50).map((p: any) => (
                 <div key={p.id} className="bg-white border-2 border-border-subtle rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-accent/40 transition-all shadow-sm group">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
@@ -369,10 +369,10 @@ export default function CustomerList() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <div className="text-xl font-black text-text-main tracking-tighter">
-                      {formatNumber(p.amount)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
+                      {formatNumber(p.total)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
                     </div>
                     <div className="text-[10px] font-bold text-text-secondary opacity-60">
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '---'}
+                      {p.date ? new Date(p.date).toLocaleString() : '---'}
                     </div>
                   </div>
                 </div>
