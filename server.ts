@@ -1279,6 +1279,24 @@ async function startServer() {
     }
   });
 
+  app.put("/api/checks/:type/:id/amount", async (req, res) => {
+    try {
+      const { id, type } = req.params;
+      const { amount } = req.body;
+      let tableName = '';
+      let column = 'amount';
+      if (type === 'sale') { tableName = 'sales'; column = 'total'; }
+      else if (type === 'payment') tableName = 'payments';
+      else if (type === 'supplier_payment') tableName = 'supplier_history';
+      else return res.status(400).json({ status: "error", message: "Invalid check type" });
+
+      await db.prepare(`UPDATE ${tableName} SET ${column} = $1 WHERE id = $2`).run(amount, id);
+      res.json({ status: "success", message: "Amount updated" });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
       const today = new Date().toISOString().split('T')[0];

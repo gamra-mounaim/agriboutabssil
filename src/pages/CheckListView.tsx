@@ -90,6 +90,18 @@ export default function CheckListView() {
     }
   };
 
+  const handleAmountChange = async (type: string, id: string, newAmount: number) => {
+    setUpdatingId(id);
+    try {
+      await api.updateCheckAmount(type, id, newAmount);
+      await fetchData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
 
   const pendingTotal = useMemo(
     () =>
@@ -295,12 +307,22 @@ export default function CheckListView() {
                   </td>
                   <td className="p-5">
                     <div
+                      onClick={() => {
+                        const newAmountStr = window.prompt(language === "ar" ? "أدخل المبلغ الجديد:" : language === "fr" ? "Entrez le nouveau montant:" : "Enter new amount:", String(check.total));
+                        if (newAmountStr !== null) {
+                          const newAmount = parseFloat(newAmountStr);
+                          if (!isNaN(newAmount) && newAmount > 0) {
+                            handleAmountChange(check.type, check.id, newAmount);
+                          }
+                        }
+                      }}
                       className={cn(
-                        "inline-block px-3 py-1 rounded-full text-xs font-black whitespace-nowrap",
+                        "inline-block px-3 py-1 rounded-full text-xs font-black whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity",
                         check.partyRole === "customer"
                           ? "bg-success/10 text-success"
                           : "bg-danger/10 text-danger",
                       )}
+                      title={language === "ar" ? "انقر لتعديل المبلغ" : "Click to edit amount"}
                     >
                       {check.partyRole === "customer" ? "+" : "-"}
                       {formatNumber(check.total)} {t.currency}
