@@ -38,6 +38,7 @@ export default function POS() {
   const [checkOwner, setCheckOwner] = useState('');
   const [checkBank, setCheckBank] = useState('');
   const [checkDueDate, setCheckDueDate] = useState('');
+  const [checkAmount, setCheckAmount] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -154,7 +155,8 @@ export default function POS() {
         items: cart,
         checkNumber: paymentMethod === 'check' ? checkNumber : null,
         checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null,
-        checkDueDate: paymentMethod === 'check' ? checkDueDate : null
+        checkDueDate: paymentMethod === 'check' ? checkDueDate : null,
+        checkAmount: paymentMethod === 'check' && checkAmount ? parseFloat(checkAmount) : null
       });
 
       if (saleResult.status === 'success') {
@@ -172,7 +174,8 @@ export default function POS() {
           staffName: user?.email || user?.username || '',
           paymentMethod: paymentMethod.toUpperCase(),
           checkNumber: paymentMethod === 'check' ? checkNumber : undefined,
-          checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : undefined
+          checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : undefined,
+          checkAmount: paymentMethod === 'check' && checkAmount ? parseFloat(checkAmount) : undefined
         };
 
         setCart([]);
@@ -183,6 +186,7 @@ export default function POS() {
         setCheckNumber('');
         setCheckOwner('');
         setCheckBank('');
+        setCheckAmount('');
         setIsFlahActive(false);
         setOriginalPrices({});
         setShowSuccess(true);
@@ -659,13 +663,24 @@ export default function POS() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الدفع' : 'Due Date'}</label>
-                    <input 
-                      type="date"
-                      className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
-                      value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'المبلغ بالدرهم' : 'Montant du Chèque'}</label>
+                      <input 
+                        type="number"
+                        placeholder={total.toString()}
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        value={checkAmount || ''} onChange={e => setCheckAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الدفع' : 'Due Date'}</label>
+                      <input 
+                        type="date"
+                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
              )}

@@ -1368,7 +1368,7 @@ async function startServer() {
   });
 
   app.post("/api/sales", validate(schemas.saleSchema), async (req, res) => {
-    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner, checkDueDate } = req.body;
+    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner, checkDueDate, checkAmount } = req.body;
     const saleId = uuidv4();
 
     const transaction = async () => {
@@ -1377,9 +1377,9 @@ async function startServer() {
 
       // 1. Create Sale Record
       await db.prepare(`
-        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner, check_due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner, checkDueDate || null);
+        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner, check_due_date, check_amount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner, checkDueDate || null, paymentMethod === 'check' && checkAmount !== undefined && checkAmount !== null ? checkAmount : total);
 
       // 2. Create Items & Update Stock
       for (const item of items) {
@@ -1406,9 +1406,22 @@ async function startServer() {
         }
       }
 
-      // 3. Update Customer Debt if payment is 'debt'
-      if (paymentMethod === 'debt' && customerId) {
-        await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(total, customerId);
+      // 3. Update Customer Debt
+      let addedDebt = 0;
+      if (paymentMethod === 'debt') {
+        addedDebt = total;
+      } else if (paymentMethod === 'check' && req.body.checkAmount !== undefined && req.body.checkAmount !== null) {
+        if (req.body.checkAmount < total) {
+          addedDebt = total - req.body.checkAmount;
+        }
+      }
+
+      if (addedDebt > 0 && customerId) {
+        await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(addedDebt, customerId);
+        await db.prepare(`
+          INSERT INTO customer_history (id, customer_id, type, amount, description)
+          VALUES (?, ?, 'DEBT', ?, ?)
+        `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? \`Reste de la facture #\${nextInvoice} (Chèque)\` : \`Facture #\${nextInvoice} (Crédit)\`);
       }
 
       logActivity('SALE', 'create', `New sale #${saleId.slice(0, 8)} - Total: ${total}`, staffId, 'Staff');
