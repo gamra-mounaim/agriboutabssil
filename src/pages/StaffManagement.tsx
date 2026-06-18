@@ -211,7 +211,7 @@ export default function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted' | 'financialsPaymentMethods' | 'financialsTopProducts' | 'financialsTopDebtors') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted' | 'financialsPaymentMethods' | 'financialsTopProducts' | 'financialsTopDebtors' | 'manageInvoices') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -490,6 +490,7 @@ export default function StaffManagement({
                        <PermissionBadge label={t.permStock} active={getIsPermActive('stock')} onClick={() => togglePermission(u.id, 'stock')} language={language} />
                        <PermissionBadge label={t.permCustomers} active={getIsPermActive('customers')} onClick={() => togglePermission(u.id, 'customers')} language={language} />
                        <PermissionBadge label={t.permHistory} active={getIsPermActive('history')} onClick={() => togglePermission(u.id, 'history')} language={language} />
+                       <PermissionBadge label={(t as any).manageInvoices} active={getIsPermActive('manageInvoices')} onClick={() => togglePermission(u.id, 'manageInvoices')} language={language} />
                        <PermissionBadge label={t.canViewProfits} active={getIsPermActive('profits')} onClick={() => togglePermission(u.id, 'profits')} language={language} />
                        <PermissionBadge label={t.canViewCostPrice} active={getIsPermActive('viewCostPrice')} onClick={() => togglePermission(u.id, 'viewCostPrice')} language={language} />
                        <PermissionBadge label={t.canEditStock} active={getIsPermActive('editStock')} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
