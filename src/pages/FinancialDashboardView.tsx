@@ -226,6 +226,34 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     </div>
   );
 
+  const ProfitBreakdown = ({ breakdown }: { breakdown: any }) => {
+    if (!breakdown) return null;
+    return (
+      <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 gap-2 text-[10px] font-bold">
+        <div className="flex items-center justify-between text-emerald-600">
+          <span>{t.cash}</span>
+          <span>{formatNumber(breakdown.cash)}</span>
+        </div>
+        <div className="flex items-center justify-between text-blue-600">
+          <span>{t.card}</span>
+          <span>{formatNumber(breakdown.card)}</span>
+        </div>
+        <div className="flex items-center justify-between text-amber-600">
+          <span>{t.check}</span>
+          <span>{formatNumber(breakdown.check)}</span>
+        </div>
+        <div className="flex items-center justify-between text-red-600">
+          <span>{t.debt}</span>
+          <span>{formatNumber(breakdown.debt)}</span>
+        </div>
+        <div className="flex items-center justify-between text-indigo-600 col-span-2 pt-2 border-t border-border-subtle mt-1">
+          <span>{(t as any).remiseTotal || t.discount}</span>
+          <span>{formatNumber(breakdown.remise)}</span>
+        </div>
+      </div>
+    );
+  };
+
   // Check if no dashboard elements are permitted
   if (!permissions.financialsSales && !permissions.financialsDebts && !permissions.financialsProfits && !permissions.financialsInventory && !permissions.supplierDebt && !permissions.financialsRestricted && !permissions.financialsPaymentMethods) {
     return (
@@ -256,6 +284,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
               <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
             </div>
+            <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
           </div>
 
           {/* Debtor Customers Card */}
@@ -513,6 +542,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
+              <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
@@ -524,6 +554,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(weeklyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
+              <ProfitBreakdown breakdown={stats?.weeklyProfitBreakdown} />
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
@@ -535,6 +566,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(monthlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
+              <ProfitBreakdown breakdown={stats?.monthlyProfitBreakdown} />
             </div>
 
             <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
@@ -546,6 +578,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="text-3xl font-black text-emerald-600">{formatNumber(yearlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
+              <ProfitBreakdown breakdown={stats?.yearlyProfitBreakdown} />
             </div>
           </div>
         </div>

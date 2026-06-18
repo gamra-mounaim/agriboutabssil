@@ -245,6 +245,7 @@ export const translations = {
     discountAmount: "Discount Amount",
     discountUpdated: "Discount updated successfully.",
     cannotDiscountPaid: "Cannot add discount to a paid invoice.",
+    remiseTotal: "Total Discount",
   },
   fr: {
     appName: "AGRI BOUTABSSIL",
@@ -490,6 +491,7 @@ export const translations = {
     discountAmount: "Montant Remise",
     discountUpdated: "Remise mise à jour avec succès.",
     cannotDiscountPaid: "Impossible d'ajouter une remise à une facture payée.",
+    remiseTotal: "Remise Totale",
   },
   ar: {
     appName: "AGRI BOUTABSSIL",
@@ -735,5 +737,6 @@ export const translations = {
     discountAmount: "مبلغ الخصم",
     discountUpdated: "تم تحديث الخصم بنجاح.",
     cannotDiscountPaid: "لا يمكن إضافة خصم لفاتورة مدفوعة.",
+    remiseTotal: "إجمالي الخصم",
   }
 };

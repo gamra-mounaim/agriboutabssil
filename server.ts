@@ -1487,47 +1487,58 @@ async function startServer() {
     const outstandingDebt = ((await db.prepare('SELECT SUM(debt) as total FROM customers').get()) as any).total || 0;
     const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
 
-    const dailyProfitQuery = `
-      SELECT 
-        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
-         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
-         WHERE s.date >= CURRENT_DATE) 
-        - 
-        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= CURRENT_DATE) 
-      as profit
-    `;
-    const weeklyProfitQuery = `
-      SELECT 
-        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
-         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
-         WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)) 
-        - 
-        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('week', CURRENT_DATE)) 
-      as profit
-    `;
-    const monthlyProfitQuery = `
-      SELECT 
-        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
-         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
-         WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)) 
-        - 
-        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('month', CURRENT_DATE)) 
-      as profit
-    `;
-    const yearlyProfitQuery = `
-      SELECT 
-        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
-         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
-         WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)) 
-        - 
-        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('year', CURRENT_DATE)) 
-      as profit
-    `;
+    const getBreakdown = async (dateConditionItem: string, dateConditionSale: string) => {
+      const profitByMethod = await db.prepare(`
+        SELECT 
+          s.payment_method,
+          SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) as profit
+        FROM sale_items si 
+        JOIN sales s ON si.sale_id = s.id 
+        LEFT JOIN products p ON si.product_id = p.id 
+        ${dateConditionItem}
+        GROUP BY s.payment_method
+      `).all() as any[];
 
-    const dailyProfit = ((await db.prepare(dailyProfitQuery).get()) as any).profit || 0;
-    const weeklyProfit = ((await db.prepare(weeklyProfitQuery).get()) as any).profit || 0;
-    const monthlyProfit = ((await db.prepare(monthlyProfitQuery).get()) as any).profit || 0;
-    const yearlyProfit = ((await db.prepare(yearlyProfitQuery).get()) as any).profit || 0;
+      const discountByMethod = await db.prepare(`
+        SELECT 
+          payment_method,
+          SUM(discount) as discount
+        FROM sales
+        ${dateConditionSale}
+        GROUP BY payment_method
+      `).all() as any[];
+
+      const breakdown = { cash: 0, debt: 0, check: 0, card: 0, remise: 0, total: 0 };
+      
+      profitByMethod.forEach((row) => {
+        const method = (row.payment_method || 'cash').toLowerCase();
+        if (breakdown[method as keyof typeof breakdown] !== undefined) {
+          (breakdown[method as keyof typeof breakdown] as number) += row.profit || 0;
+        }
+      });
+
+      discountByMethod.forEach((row) => {
+        const method = (row.payment_method || 'cash').toLowerCase();
+        const discount = row.discount || 0;
+        breakdown.remise += discount;
+        if (breakdown[method as keyof typeof breakdown] !== undefined) {
+          (breakdown[method as keyof typeof breakdown] as number) -= discount;
+        }
+      });
+
+      breakdown.total = breakdown.cash + breakdown.debt + breakdown.check + breakdown.card;
+      return breakdown;
+    };
+
+    const dailyProfitBreakdown = await getBreakdown("WHERE s.date >= CURRENT_DATE", "WHERE date >= CURRENT_DATE");
+    const weeklyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('week', CURRENT_DATE)");
+    const monthlyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('month', CURRENT_DATE)");
+    const yearlyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('year', CURRENT_DATE)");
+
+    const dailyProfit = dailyProfitBreakdown.total;
+    const weeklyProfit = weeklyProfitBreakdown.total;
+    const monthlyProfit = monthlyProfitBreakdown.total;
+    const yearlyProfit = yearlyProfitBreakdown.total;
 
     // Last 7 days sales trend
     const last7DaysData = await db.prepare(`
@@ -1574,6 +1585,10 @@ async function startServer() {
       weeklyProfit,
       monthlyProfit,
       yearlyProfit,
+      dailyProfitBreakdown,
+      weeklyProfitBreakdown,
+      monthlyProfitBreakdown,
+      yearlyProfitBreakdown,
       last7Days: last7Days.reverse(),
       topProductsList
     }));
