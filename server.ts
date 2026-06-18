@@ -1437,6 +1437,44 @@ async function startServer() {
     }
   });
 
+  app.put("/api/sales/:id/discount", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { discount, staffId } = req.body;
+      
+      const sale = await db.prepare('SELECT * FROM sales WHERE id = ?').get(id) as any;
+      if (!sale) return res.status(404).json({ error: "Sale not found" });
+      
+      if (sale.payment_method !== 'debt') {
+         return res.status(400).json({ error: "Cannot discount a paid invoice" });
+      }
+
+      const oldDiscount = sale.discount || 0;
+      const discountDiff = discount - oldDiscount;
+      
+      if (discountDiff === 0) return res.json({ status: "success" });
+      
+      const newTotal = sale.total - discountDiff;
+      
+      await db.prepare('UPDATE sales SET discount = ?, total = ? WHERE id = ?').run(discount, newTotal, id);
+      
+      if (sale.customer_id) {
+        await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(discountDiff, sale.customer_id);
+        
+        await db.prepare(`
+          INSERT INTO customer_history (id, customer_id, type, amount, description)
+          VALUES (?, ?, 'PAYMENT', ?, ?)
+        `).run(uuidv4(), sale.customer_id, discountDiff, `Remise ajoutée sur la facture #${sale.invoice_number}`);
+      }
+      
+      logActivity('SALE', 'update', `Added discount of ${discountDiff} to sale #${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
+      
+      res.json({ status: "success" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
     // --- Stats API ---
   app.get("/api/stats", async (req, res) => {
     try {
@@ -1450,32 +1488,40 @@ async function startServer() {
     const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
 
     const dailyProfitQuery = `
-      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
-      FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      LEFT JOIN products p ON si.product_id = p.id
-      WHERE s.date >= CURRENT_DATE
+      SELECT 
+        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
+         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
+         WHERE s.date >= CURRENT_DATE) 
+        - 
+        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= CURRENT_DATE) 
+      as profit
     `;
     const weeklyProfitQuery = `
-      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
-      FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      LEFT JOIN products p ON si.product_id = p.id
-      WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)
+      SELECT 
+        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
+         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
+         WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)) 
+        - 
+        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('week', CURRENT_DATE)) 
+      as profit
     `;
     const monthlyProfitQuery = `
-      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
-      FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      LEFT JOIN products p ON si.product_id = p.id
-      WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)
+      SELECT 
+        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
+         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
+         WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)) 
+        - 
+        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('month', CURRENT_DATE)) 
+      as profit
     `;
     const yearlyProfitQuery = `
-      SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) as profit
-      FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      LEFT JOIN products p ON si.product_id = p.id
-      WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)
+      SELECT 
+        (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) 
+         FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id 
+         WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)) 
+        - 
+        (SELECT COALESCE(SUM(discount), 0) FROM sales WHERE date >= DATE_TRUNC('year', CURRENT_DATE)) 
+      as profit
     `;
 
     const dailyProfit = ((await db.prepare(dailyProfitQuery).get()) as any).profit || 0;

@@ -34,6 +34,8 @@ interface InvoiceData {
   notes?: string;
   checkNumber?: string;
   checkOwner?: string;
+  checkAmount?: number;
+  cashAmount?: number;
 }
 
 // Helper to render text (especially Arabic) to a high-quality data URL via canvas

@@ -39,6 +39,8 @@ export interface Sale {
   paymentMethod?: string;
   checkNumber?: string;
   checkOwner?: string;
+  checkAmount?: number;
+  cashAmount?: number;
 }
 
 export interface Customer {
@@ -85,6 +87,7 @@ export interface UserProfile {
     financialsPaymentMethods?: boolean;
     financialsTopProducts?: boolean;
     financialsTopDebtors?: boolean;
+    manageInvoices?: boolean;
   };
   createdAt: any;
 }
@@ -97,9 +100,10 @@ export interface Payment {
   date: string;
   staffId: string;
   payment_method?: string;
-  check_number?: string;
-  check_owner?: string;
-  check_due_date?: string;
+  checkNumber?: string;
+  checkOwner?: string;
+  checkAmount?: number;
+  cashAmount?: number;
 }
 
 export const moroccanBanks = [
@@ -113,7 +117,7 @@ export const moroccanBanks = [
   'بنك آخر...'
 ];
 
-export type View = 'inventory' | 'pos' | 'customers' | 'suppliers' | 'history' | 'settings' | 'checks' | 'financials' | 'users';
+export type View = 'pos' | 'inventory' | 'customers' | 'suppliers' | 'history' | 'financials' | 'users' | 'settings' | 'checks' | 'invoices';
 
 export interface TransactionRecord {
   id: string;

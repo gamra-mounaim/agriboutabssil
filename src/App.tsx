@@ -51,7 +51,8 @@ import {
   MapPin,
   Cloud,
   Key,
-  Lock
+  Lock,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './components/Logo';
@@ -96,6 +97,7 @@ import CustomerList from './pages/CustomerList';
 import POS from './pages/POS';
 import Inventory from './pages/Inventory';
 import FinancialDashboardView from './pages/FinancialDashboardView';
+import InvoicesView from './pages/InvoicesView';
 
 import { Product, Category, SaleItem, Sale, Customer, Supplier, UserProfile, Payment, moroccanBanks, View, TransactionRecord, ActivityLog, CheckDoc, Notification } from './types';
 
@@ -130,8 +132,8 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false };
+  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true, manageInvoices: true };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false, manageInvoices: false };
 
   const userPermissions = profile?.permissions 
     ? { 
@@ -150,6 +152,7 @@ export default function App() {
     if (targetView === 'customers' && userPermissions.customers) return true;
     if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
     if (targetView === 'history' && userPermissions.history) return true;
+    if (targetView === 'invoices' && userPermissions.manageInvoices) return true;
     if (targetView === 'users' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     
     return false;
@@ -475,6 +478,7 @@ export default function App() {
           {canAccess('users') && <NavItem icon={<UserPlus className="w-5 h-5" />} label={(t as any).staffNav} active={view === 'users'} onClick={() => setView('users')} />}
           {canAccess('settings') && <NavItem icon={<UserCog className="w-5 h-5" />} label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} />}
           {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
+          {canAccess('invoices') && <NavItem icon={<FileText className="w-5 h-5" />} label={(t as any).invoices} active={view === 'invoices'} onClick={() => setView('invoices')} />}
         </div>
         
         <div className="mx-4 my-2 p-3 bg-bg-base/80 border-2 border-accent/30 rounded-2xl shadow-inner text-center">
@@ -657,6 +661,7 @@ export default function App() {
                   {view === 'customers' && <CustomerList />}
                   {view === 'suppliers' && <SupplierList permissions={userPermissions} />}
                   {view === 'history' && <HistoryView permissions={userPermissions} currentUserRole={currentUserRole} />}
+                  {view === 'invoices' && <InvoicesView permissions={userPermissions} currentUserRole={currentUserRole} />}
                   {view === 'financials' && <FinancialDashboardView permissions={userPermissions} currency={t.currency} />}
                   {view === 'checks' && <CheckListView />}
                   {view === 'users' && <StaffManagement 

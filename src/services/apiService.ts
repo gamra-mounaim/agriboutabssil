@@ -139,6 +139,7 @@ export const api = {
   updateCheckAmount: async (type: string, id: string, amount: number) => put(`${API_URL}/checks/${type}/${id}/amount`, { amount }),
   createSale: async (sale) => post(`${API_URL}/sales`, sale),
   deleteSale: async (id) => del(`${API_URL}/sales/${id}`),
+  updateSaleDiscount: async (id: string, discount: number, staffId: string) => put(`${API_URL}/sales/${id}/discount`, { discount, staffId }),
 
   // Dashboard
   getDashboardStats: async () => get(`${API_URL}/dashboard/stats`),

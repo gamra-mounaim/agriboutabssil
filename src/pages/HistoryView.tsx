@@ -72,8 +72,8 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
     const matchesYear = d.getFullYear() === filterYear;
     const cName = p.customerName || customers.find(c => c.id === p.customerId)?.name || '';
     const matchesSearch = cName.toLowerCase().includes(searchHistory.toLowerCase()) ||
-                         (p.check_number || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
-                         (p.check_owner || '').toLowerCase().includes(searchHistory.toLowerCase());
+                         (p.checkNumber || '').toLowerCase().includes(searchHistory.toLowerCase()) ||
+                         (p.checkOwner || '').toLowerCase().includes(searchHistory.toLowerCase());
     return matchesMonth && matchesYear && matchesSearch;
   });
 
