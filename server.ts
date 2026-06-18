@@ -1037,6 +1037,13 @@ async function startServer() {
   app.post("/api/suppliers", validate(schemas.supplierSchema), async (req, res) => {
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
+
+    // Check for existing supplier with the same name (case-insensitive)
+    const existingSupplier = await db.prepare('SELECT id FROM suppliers WHERE LOWER(name) = LOWER(?)').get(name);
+    if (existingSupplier) {
+      return res.status(400).json({ status: "error", message: "A supplier with this name already exists / هذا المورد مسجل مسبقاً" });
+    }
+
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO suppliers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
@@ -1051,6 +1058,13 @@ async function startServer() {
     const { id } = req.params;
     const { name, email, phone, address, debt, due_date, dueDate } = req.body;
     const finalDueDate = due_date || dueDate || null;
+
+    // Check for existing supplier with the same name (case-insensitive) but different ID
+    const existingSupplier = await db.prepare('SELECT id FROM suppliers WHERE LOWER(name) = LOWER(?) AND id != ?').get(name, id);
+    if (existingSupplier) {
+      return res.status(400).json({ status: "error", message: "A supplier with this name already exists / هذا المورد مسجل مسبقاً" });
+    }
+
     try {
       const oldSupplier = await db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id) as any;
       await db.prepare(`
