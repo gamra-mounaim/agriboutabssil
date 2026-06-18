@@ -100,33 +100,28 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   });
 
   const paymentStats = useMemo(() => {
-    let cash = 0, card = 0, wallet = 0, debt = 0, total = 0;
-    sales.forEach(s => {
-      const amount = s.total || 0;
-      total += amount;
-      const m = (s.paymentMethod || 'cash').toLowerCase();
-      
-      if (m === 'check') {
-        const checkAmt = s.checkAmount !== undefined && s.checkAmount !== null ? s.checkAmount : amount;
-        wallet += checkAmt;
-        if (checkAmt < amount) {
-          debt += (amount - checkAmt);
-        }
-      } else {
-        if (m === 'cash') cash += amount;
-        else if (m === 'card') card += amount;
-        else if (m === 'debt') debt += amount;
-        else wallet += amount; 
-      }
-    });
+    if (stats?.paymentMethodsBreakdown) {
+      const b = stats.paymentMethodsBreakdown;
+      return {
+        total: b.total,
+        cash: b.cash,
+        cashPct: b.total > 0 ? Math.round((b.cash / b.total) * 100) : 0,
+        card: b.card,
+        cardPct: b.total > 0 ? Math.round((b.card / b.total) * 100) : 0,
+        wallet: b.check,
+        walletPct: b.total > 0 ? Math.round((b.check / b.total) * 100) : 0,
+        debt: b.debt,
+        debtPct: b.total > 0 ? Math.round((b.debt / b.total) * 100) : 0,
+      };
+    }
     return {
-      total,
-      cash, cashPct: total > 0 ? Math.round((cash / total) * 100) : 0,
-      card, cardPct: total > 0 ? Math.round((card / total) * 100) : 0,
-      wallet, walletPct: total > 0 ? Math.round((wallet / total) * 100) : 0,
-      debt, debtPct: total > 0 ? Math.round((debt / total) * 100) : 0,
+      total: 0,
+      cash: 0, cashPct: 0,
+      card: 0, cardPct: 0,
+      wallet: 0, walletPct: 0,
+      debt: 0, debtPct: 0,
     };
-  }, [sales]);
+  }, [stats]);
 
   const renderPaymentMethodsWidget = () => {
     const paymentMethodsList = [

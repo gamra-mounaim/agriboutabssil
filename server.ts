@@ -1585,7 +1585,34 @@ async function startServer() {
       ORDER BY qty DESC
       LIMIT 5
     `).all();
- 
+
+    // Global Payment Methods Breakdown
+    const paymentMethodsBreakdown = { cash: 0, card: 0, check: 0, debt: 0, total: 0 };
+    const salesOverview = await db.prepare(`SELECT payment_method, SUM(total) as amount, SUM(check_amount) as check_amount FROM sales GROUP BY payment_method`).all() as any[];
+    const paymentsOverview = await db.prepare(`SELECT payment_method, SUM(amount) as amount FROM payments GROUP BY payment_method`).all() as any[];
+
+    salesOverview.forEach((row) => {
+      const m = (row.payment_method || 'cash').toLowerCase();
+      if (m === 'check') {
+        const cAmt = row.check_amount !== null && row.check_amount !== undefined ? row.check_amount : row.amount;
+        paymentMethodsBreakdown.check += cAmt;
+      } else if (m === 'cash') paymentMethodsBreakdown.cash += row.amount;
+      else if (m === 'card') paymentMethodsBreakdown.card += row.amount;
+      else if (m !== 'debt') paymentMethodsBreakdown.check += row.amount; 
+    });
+
+    paymentsOverview.forEach((row) => {
+      const m = (row.payment_method || 'cash').toLowerCase();
+      const amt = row.amount || 0;
+      if (m === 'check') paymentMethodsBreakdown.check += amt;
+      else if (m === 'card') paymentMethodsBreakdown.card += amt;
+      else if (m === 'cash') paymentMethodsBreakdown.cash += amt;
+      else paymentMethodsBreakdown.check += amt;
+    });
+
+    paymentMethodsBreakdown.debt = outstandingDebt;
+    paymentMethodsBreakdown.total = paymentMethodsBreakdown.cash + paymentMethodsBreakdown.card + paymentMethodsBreakdown.check + paymentMethodsBreakdown.debt;
+
     res.json(toCamel({
       totalSales,
       transactions,
@@ -1603,6 +1630,7 @@ async function startServer() {
       weeklyProfitBreakdown,
       monthlyProfitBreakdown,
       yearlyProfitBreakdown,
+      paymentMethodsBreakdown,
       last7Days: last7Days.reverse(),
       topProductsList
     }));
