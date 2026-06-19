@@ -16,7 +16,7 @@ import {
   generateStockReportPDF,
   generateDamagesReportPDF
 } from '../services/invoiceService';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine } from 'recharts';
 
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
@@ -98,6 +98,11 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
       amount: total
     };
   });
+
+  const totalTrend7 = trendData.reduce((acc: number, d: any) => acc + d.amount, 0);
+  const avgTrend = trendData.length > 0 ? Math.round(totalTrend7 / trendData.length) : 0;
+  const prev7DaysTotal = stats?.prev7DaysTotal || 0;
+  const pctChange = prev7DaysTotal > 0 ? ((totalTrend7 - prev7DaysTotal) / prev7DaysTotal) * 100 : null;
 
   const paymentStats = useMemo(() => {
     if (stats?.paymentMethodsBreakdown) {
@@ -301,13 +306,29 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sales Trend Chart */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-accent" />
                 {t.salesTrend7Days}
               </h3>
-              <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
-                {formatNumber(trendData.reduce((acc: number, curr: any) => acc + curr.amount, 0))} {t.currency}
+              <div className="flex items-center gap-2">
+                {pctChange !== null && (
+                  <div className={cn(
+                    "flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full",
+                    pctChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"
+                  )}>
+                    {pctChange >= 0
+                      ? <ArrowUpRight className="w-3.5 h-3.5" />
+                      : <ArrowDownRight className="w-3.5 h-3.5" />}
+                    {Math.abs(pctChange).toFixed(1)}%
+                    <span className="opacity-60 font-medium">
+                      {language === 'ar' ? 'vs أسبوع' : language === 'fr' ? 'vs sem. préc.' : 'vs last wk'}
+                    </span>
+                  </div>
+                )}
+                <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                  {formatNumber(totalTrend7)} {t.currency}
+                </div>
               </div>
             </div>
             <div className="h-[250px] w-full">
@@ -318,35 +339,48 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
-                  <AreaChart data={trendData}>
+                  <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSalesRestricted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
-                      dy={10}
-                    />
-                    <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
-                    <ReChartsTooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                    <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} width={72} />
+                    <ReChartsTooltip
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
                       itemStyle={{ color: '#6366f1' }}
-                      formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'المبيعات' : 'Sales']}
+                      formatter={(value: number) => [
+                        `${formatNumber(value)} ${t.currency}`,
+                        language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales'
+                      ]}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="#6366f1" 
-                      strokeWidth={4}
-                      fillOpacity={1} 
-                      fill="url(#colorSalesRestricted)" 
-                      activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
+                    {avgTrend > 0 && (
+                      <ReferenceLine
+                        y={avgTrend}
+                        stroke="#94a3b8"
+                        strokeDasharray="6 3"
+                        strokeOpacity={0.6}
+                        label={{
+                          value: language === 'ar' ? `متوسط: ${formatNumber(avgTrend)}` : language === 'fr' ? `Moy: ${formatNumber(avgTrend)}` : `Avg: ${formatNumber(avgTrend)}`,
+                          position: 'insideTopRight',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          fill: '#94a3b8',
+                          dy: -6,
+                        }}
+                      />
+                    )}
+                    <Area
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#6366f1"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorSalesRestricted)"
+                      activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#6366f1' }}
                       dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
                     />
                   </AreaChart>
@@ -644,13 +678,29 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                {/* Sales Trend Chart */}
                {permissions.financialsSales && (
                  <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-6">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
                          {t.salesTrend7Days}
                        </h3>
-                       <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
-                         {formatNumber(trendData.reduce((acc: number, curr: any) => acc + curr.amount, 0))} {t.currency}
+                       <div className="flex items-center gap-2">
+                         {pctChange !== null && (
+                           <div className={cn(
+                             "flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full",
+                             pctChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"
+                           )}>
+                             {pctChange >= 0
+                               ? <ArrowUpRight className="w-3.5 h-3.5" />
+                               : <ArrowDownRight className="w-3.5 h-3.5" />}
+                             {Math.abs(pctChange).toFixed(1)}%
+                             <span className="opacity-60 font-medium">
+                               {language === 'ar' ? 'vs أسبوع' : language === 'fr' ? 'vs sem. préc.' : 'vs last wk'}
+                             </span>
+                           </div>
+                         )}
+                         <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                           {formatNumber(totalTrend7)} {t.currency}
+                         </div>
                        </div>
                     </div>
                     <div className="h-[250px] w-full">
@@ -661,35 +711,48 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
-                          <AreaChart data={trendData}>
+                          <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                             <defs>
                               <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
                                 <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="date" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
-                              dy={10}
-                            />
-                            <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} />
-                            <ReChartsTooltip 
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                            <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} width={72} />
+                            <ReChartsTooltip
+                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
                               itemStyle={{ color: '#6366f1' }}
-                              formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, (t as any).salesLabel]}
+                              formatter={(value: number) => [
+                                `${formatNumber(value)} ${t.currency}`,
+                                language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales'
+                              ]}
                             />
-                            <Area 
-                              type="monotone" 
-                              dataKey="amount" 
-                              stroke="#6366f1" 
-                              strokeWidth={4}
-                              fillOpacity={1} 
-                              fill="url(#colorSales)" 
-                              activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }}
+                            {avgTrend > 0 && (
+                              <ReferenceLine
+                                y={avgTrend}
+                                stroke="#94a3b8"
+                                strokeDasharray="6 3"
+                                strokeOpacity={0.6}
+                                label={{
+                                  value: language === 'ar' ? `متوسط: ${formatNumber(avgTrend)}` : language === 'fr' ? `Moy: ${formatNumber(avgTrend)}` : `Avg: ${formatNumber(avgTrend)}`,
+                                  position: 'insideTopRight',
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  fill: '#94a3b8',
+                                  dy: -6,
+                                }}
+                              />
+                            )}
+                            <Area
+                              type="monotone"
+                              dataKey="amount"
+                              stroke="#6366f1"
+                              strokeWidth={3}
+                              fillOpacity={1}
+                              fill="url(#colorSales)"
+                              activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#6366f1' }}
                               dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
                             />
                           </AreaChart>
