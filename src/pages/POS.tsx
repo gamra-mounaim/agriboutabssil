@@ -468,7 +468,7 @@ export default function POS() {
                   <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
                     <span className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors leading-tight">{item.name}</span>
                     <span className="text-[10px] font-bold text-text-secondary uppercase mt-0.5 tracking-wider">
-                      {formatNumber(item.price)} {t.currency} / unit
+                      {formatNumber(item.price)} {t.currency} / {(item as any).unitLabel || (language === 'ar' ? 'وحدة' : language === 'fr' ? 'unité' : 'unit')}
                     </span>
                   </div>
                   <div className="font-black text-[14px] text-text-main tracking-tight">

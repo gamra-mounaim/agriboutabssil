@@ -52,7 +52,8 @@ import {
   Cloud,
   Key,
   Lock,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './components/Logo';
@@ -98,6 +99,7 @@ import POS from './pages/POS';
 import Inventory from './pages/Inventory';
 import FinancialDashboardView from './pages/FinancialDashboardView';
 import InvoicesView from './pages/InvoicesView';
+import DamagesView from './pages/DamagesView';
 
 import { Product, Category, SaleItem, Sale, Customer, Supplier, UserProfile, Payment, moroccanBanks, View, TransactionRecord, ActivityLog, CheckDoc, Notification } from './types';
 
@@ -153,6 +155,7 @@ export default function App() {
     if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
     if (targetView === 'history' && userPermissions.history) return true;
     if (targetView === 'invoices' && userPermissions.manageInvoices) return true;
+    if (targetView === 'damages' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     if (targetView === 'users' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     
     return false;
@@ -479,6 +482,7 @@ export default function App() {
           {canAccess('settings') && <NavItem icon={<UserCog className="w-5 h-5" />} label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} />}
           {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
           {canAccess('invoices') && <NavItem icon={<FileText className="w-5 h-5" />} label={(t as any).invoices} active={view === 'invoices'} onClick={() => setView('invoices')} />}
+          {canAccess('damages') && <NavItem icon={<AlertTriangle className="w-5 h-5 text-red-500" />} label={(t as any).damages} active={view === 'damages'} onClick={() => setView('damages')} />}
         </div>
         
         <div className="mx-4 my-2 p-3 bg-bg-base/80 border-2 border-accent/30 rounded-2xl shadow-inner text-center">
@@ -664,6 +668,7 @@ export default function App() {
                   {view === 'invoices' && <InvoicesView permissions={userPermissions} currentUserRole={currentUserRole} />}
                   {view === 'financials' && <FinancialDashboardView permissions={userPermissions} currency={t.currency} />}
                   {view === 'checks' && <CheckListView />}
+                  {view === 'damages' && <DamagesView />}
                   {view === 'users' && <StaffManagement 
                     isDriveConnected={isDriveConnected} 
                     backingUpToDrive={backingUpToDrive} 

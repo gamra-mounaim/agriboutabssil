@@ -22,7 +22,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function FinancialDashboardView({ permissions, currency }: { permissions: any, currency?: string }) {
-  const { products, customers, suppliers, sales, payments, stats, settings } = useStore();
+  const { products, categories, customers, suppliers, sales, payments, stats, settings, setMessage } = useStore();
   const { language, user } = useAuthStore();
 
   const t = translations[language];
@@ -45,7 +45,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
       generateDamagesReportPDF(damages, totalDamagesLoss, language, settings);
     } catch (e) {
       console.error(e);
-      alert("Failed to export damages report");
+      setMessage({ text: language === 'ar' ? 'فشل تصدير تقرير التلف' : language === 'fr' ? "Échec de l'export du rapport" : 'Failed to export damages report', type: 'error' });
     }
   };
 
@@ -83,26 +83,22 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
   // Trend Data (Last 7 Days)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
-  });
-
-  const trendData = last7Days.map(date => {
-    const total = sales
-      .filter(s => s.date && typeof s.date === 'string' && s.date.startsWith(date))
-      .reduce((sum, s) => sum + s.total, 0);
-    return {
-      date: date.split('-').reverse().slice(0, 2).reverse().join('/'),
-      amount: total
-    };
-  });
-
+  const trendData = stats?.last7Days || [];
   const totalTrend7 = trendData.reduce((acc: number, d: any) => acc + d.amount, 0);
   const avgTrend = trendData.length > 0 ? Math.round(totalTrend7 / trendData.length) : 0;
   const prev7DaysTotal = stats?.prev7DaysTotal || 0;
   const pctChange = prev7DaysTotal > 0 ? ((totalTrend7 - prev7DaysTotal) / prev7DaysTotal) * 100 : null;
+
+  const categoryValueData = useMemo(() => {
+    return (categories || []).map(cat => {
+      const value = products
+        .filter(p => p.categoryId === cat.id)
+        .reduce((acc, p) => acc + ((p.costPrice || 0) * p.qty), 0);
+      return { name: cat.name, value };
+    }).filter(c => c.value > 0).sort((a, b) => b.value - a.value).slice(0, 5);
+  }, [categories, products]);
+
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   const paymentStats = useMemo(() => {
     if (stats?.paymentMethodsBreakdown) {
@@ -471,9 +467,21 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
               {t.upcomingDebtPayments}
             </p>
-            <p className="text-xs font-bold font-mono">
-               {upcomingDebts.map(c => `${c.name} (${c.dueDate || c.due_date})`).join(', ')}
-            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {upcomingDebts.map(c => {
+                const cDueDate = c.dueDate || c.due_date;
+                const isOverdue = new Date(cDueDate!) < new Date();
+                return (
+                  <div key={c.id} className={cn(
+                    "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
+                    isOverdue ? "bg-red-500 text-white border-red-600" : "bg-white border-border-subtle text-text-main"
+                  )}>
+                    <span>{c.name}</span>
+                    <span className="opacity-60">{cDueDate}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.div>
       )}
@@ -491,9 +499,21 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
               {t.upcomingSupplierDebtDueDates}
             </p>
-            <p className="text-xs font-bold font-mono">
-               {upcomingSupplierDebts.map(s => `${s.name} (${s.dueDate || s.due_date})`).join(', ')}
-            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {upcomingSupplierDebts.map(s => {
+                const sDueDate = s.dueDate || s.due_date;
+                const isOverdue = new Date(sDueDate!) < new Date();
+                return (
+                  <div key={s.id} className={cn(
+                    "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
+                    isOverdue ? "bg-amber-500 text-white border-amber-600" : "bg-white border-border-subtle text-text-main"
+                  )}>
+                    <span>{s.name}</span>
+                    <span className="opacity-60">{sDueDate}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.div>
       )}
@@ -616,68 +636,13 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Content Area */}
         <div className={cn(permissions.supplierDebt ? "lg:col-span-3" : "lg:col-span-4", "space-y-6")}>
-          {(permissions.financialsInventory || permissions.financialsSales) && (
+          {(permissions.financialsSales || permissions.financialsInventory) && (
             <div className={cn("grid grid-cols-1 gap-6", 
-              permissions.financialsInventory && permissions.financialsSales ? "md:grid-cols-2" : "grid-cols-1"
+              permissions.financialsSales && permissions.financialsInventory ? "lg:grid-cols-3" : "grid-cols-1"
             )}>
-               {/* Critical Stock Alerts */}
-               {permissions.financialsInventory && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
-                        <button 
-                          onClick={() => {
-                            const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
-                            generateStockReportPDF({
-                              items: criticalItems,
-                              generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US'),
-                              language: language
-                            });
-                          }}
-                          className="p-2 hover:bg-bg-base rounded-full transition-colors"
-                          title={language === 'ar' ? "تصدير" : "Export"}
-                        >
-                          <Download className="w-4 h-4 text-text-secondary" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
-                      {lowStock.length > 0 ? (
-                        lowStock.map(p => (
-                          <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
-                                <Package className="w-4 h-4" />
-                              </div>
-                              <div className="overflow-hidden">
-                                <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
-                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
-                              </div>
-                            </div>
-                            <div className="text-right pl-2 shrink-0">
-                              <div className="text-base font-black text-danger">{p.qty}</div>
-                              <div className="text-[8px] font-bold text-text-secondary uppercase">{t.inStock}</div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-                          <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
-                            <CheckCircle className="w-8 h-8 text-success" />
-                          </div>
-                          <p className="text-sm font-bold text-text-secondary">{t.noStockAlerts}</p>
-                        </div>
-                      )}
-                    </div>
-                 </div>
-               )}
-
                {/* Sales Trend Chart */}
                {permissions.financialsSales && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+                 <div className={cn(permissions.financialsInventory ? "lg:col-span-2" : "col-span-1", "bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group")}>
                     <div className="flex items-center justify-between mb-6">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
@@ -761,10 +726,105 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     </div>
                  </div>
                )}
+
+               {/* Category Distribution Pie Chart */}
+               {permissions.financialsInventory && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
+                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
+                     <LayoutGrid className="w-5 h-5 text-blue-500" />
+                     {t.inventoryValueByCategory}
+                   </h4>
+                   <div className="flex-1 w-full min-h-[220px]">
+                     {categoryValueData.length === 0 ? (
+                       <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                         <LayoutGrid className="w-8 h-8" />
+                         <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+                       </div>
+                     ) : (
+                       <ResponsiveContainer width="100%" height="100%" minHeight={220} minWidth={1}>
+                         <PieChart>
+                           <Pie
+                             data={categoryValueData}
+                             cx="50%"
+                             cy="45%"
+                             innerRadius={45}
+                             outerRadius={70}
+                             paddingAngle={5}
+                             dataKey="value"
+                           >
+                             {categoryValueData.map((entry, index) => (
+                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                             ))}
+                           </Pie>
+                           <ReChartsTooltip 
+                             formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : 'Value']}
+                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                             itemStyle={{ fontWeight: 'bold', color: 'var(--color-text-main)' }}
+                           />
+                           <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                         </PieChart>
+                       </ResponsiveContainer>
+                     )}
+                   </div>
+                 </div>
+               )}
             </div>
           )}
-          {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors) && (
+          {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors || permissions.financialsInventory) && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
+              {permissions.financialsInventory && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
+                        <button 
+                          onClick={() => {
+                            const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
+                            generateStockReportPDF({
+                              items: criticalItems,
+                              generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US'),
+                              language: language
+                            });
+                          }}
+                          className="p-2 hover:bg-bg-base rounded-full transition-colors"
+                          title={language === 'ar' ? "تصدير" : "Export"}
+                        >
+                          <Download className="w-4 h-4 text-text-secondary" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
+                      {lowStock.length > 0 ? (
+                        lowStock.map(p => (
+                          <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
+                                <Package className="w-4 h-4" />
+                              </div>
+                              <div className="overflow-hidden">
+                                <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
+                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
+                              </div>
+                            </div>
+                            <div className="text-right pl-2 shrink-0">
+                              <div className="text-base font-black text-danger">{p.qty}</div>
+                              <div className="text-[8px] font-bold text-text-secondary uppercase">{t.inStock}</div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                          <div className="w-16 h-16 rounded-3xl bg-success/10 flex items-center justify-center mb-4">
+                            <CheckCircle className="w-8 h-8 text-success" />
+                          </div>
+                          <p className="text-sm font-bold text-text-secondary">{t.noStockAlerts}</p>
+                        </div>
+                      )}
+                    </div>
+                 </div>
+              )}
               {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
               {permissions.financialsTopProducts && (
                  <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">

@@ -12,6 +12,7 @@ import { api } from '../services/apiService';
 export default // --- Component: Dashboard Highlights ---
 function DashboardStats({ products, categories, customers, sales, language, stats, permissions }: { products: Product[], categories: Category[], customers: Customer[], sales: Sale[], language: Language, stats: any, permissions: any }) {
   const t = translations[language];
+  const { setMessage } = useStore();
   
   const upcomingDebts = (customers || []).filter(c => {
     const cDueDate = c.dueDate || c.due_date;
@@ -42,7 +43,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
       generateDamagesReportPDF(damages, totalDamagesLoss, language, undefined);
     } catch (e) {
       console.error(e);
-      alert("Failed to export damages report");
+      setMessage({ text: language === 'ar' ? 'فشل تصدير تقرير التلف' : language === 'fr' ? "Échec de l'export du rapport" : 'Failed to export damages report', type: 'error' });
     }
   };
 

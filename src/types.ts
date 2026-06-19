@@ -117,7 +117,7 @@ export const moroccanBanks = [
   'بنك آخر...'
 ];
 
-export type View = 'pos' | 'inventory' | 'customers' | 'suppliers' | 'history' | 'financials' | 'users' | 'settings' | 'checks' | 'invoices';
+export type View = 'pos' | 'inventory' | 'customers' | 'suppliers' | 'history' | 'financials' | 'users' | 'settings' | 'checks' | 'invoices' | 'damages';
 
 export interface TransactionRecord {
   id: string;

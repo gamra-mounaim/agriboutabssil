@@ -169,9 +169,18 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const months = [
-    { v: 1, n: 'Jan' }, { v: 2, n: 'Feb' }, { v: 3, n: 'Mar' }, { v: 4, n: 'Apr' },
-    { v: 5, n: 'May' }, { v: 6, n: 'Jun' }, { v: 7, n: 'Jul' }, { v: 8, n: 'Aug' },
-    { v: 9, n: 'Sep' }, { v: 10, n: 'Oct' }, { v: 11, n: 'Nov' }, { v: 12, n: 'Dec' }
+    { v: 1, n: language === 'ar' ? 'يناير' : language === 'fr' ? 'Janv' : 'Jan' },
+    { v: 2, n: language === 'ar' ? 'فبراير' : language === 'fr' ? 'Févr' : 'Feb' },
+    { v: 3, n: language === 'ar' ? 'مارس' : language === 'fr' ? 'Mars' : 'Mar' },
+    { v: 4, n: language === 'ar' ? 'أبريل' : language === 'fr' ? 'Avr' : 'Apr' },
+    { v: 5, n: language === 'ar' ? 'مايو' : language === 'fr' ? 'Mai' : 'May' },
+    { v: 6, n: language === 'ar' ? 'يونيو' : language === 'fr' ? 'Juin' : 'Jun' },
+    { v: 7, n: language === 'ar' ? 'يوليو' : language === 'fr' ? 'Juil' : 'Jul' },
+    { v: 8, n: language === 'ar' ? 'أغسطس' : language === 'fr' ? 'Août' : 'Aug' },
+    { v: 9, n: language === 'ar' ? 'سبتمبر' : language === 'fr' ? 'Sept' : 'Sep' },
+    { v: 10, n: language === 'ar' ? 'أكتوبر' : language === 'fr' ? 'Oct' : 'Oct' },
+    { v: 11, n: language === 'ar' ? 'نوفمبر' : language === 'fr' ? 'Nov' : 'Nov' },
+    { v: 12, n: language === 'ar' ? 'ديسمبر' : language === 'fr' ? 'Déc' : 'Dec' },
   ];
 
   const getActivityIcon = (type: string) => {
@@ -218,7 +227,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
              <button 
               onClick={() => onRefresh()}
               className="p-2.5 rounded-xl border border-border-subtle hover:bg-bg-base text-text-secondary transition-colors"
-              title="Refresh"
+              title={language === 'ar' ? 'تحديث' : language === 'fr' ? 'Actualiser' : 'Refresh'}
             >
               <ArrowRightLeft className="w-4 h-4 rotate-90" />
             </button>
@@ -244,7 +253,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                     return {
                       date: item.date,
                       amount: subView === 'sales' ? (item as Sale).total : (item as Payment).amount,
-                      description: subView === 'sales' ? (customerMatch?.name || 'Walk-in') : ((item as Payment).customerName || customers.find(c => c.id === (item as Payment).customerId)?.name || 'Unknown')
+                      description: subView === 'sales' ? (customerMatch?.name || (language === 'ar' ? 'زبون عادي' : language === 'fr' ? 'Client passant' : 'Walk-in')) : ((item as Payment).customerName || customers.find(c => c.id === (item as Payment).customerId)?.name || (language === 'ar' ? 'غير معروف' : language === 'fr' ? 'Inconnu' : 'Unknown'))
                     };
                   })
                 }, language, settings);
@@ -252,7 +261,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
               className="flex-1 lg:flex-none flex items-center justify-center gap-2 text-[11px] font-black border border-border-subtle px-6 py-2.5 rounded-xl hover:border-accent transition-all bg-white shadow-sm hover:shadow-md"
             >
               <Printer className="w-4 h-4 text-accent" />
-              {language === 'ar' ? "تحميل التقرير" : "EXPORT REPORT"}
+              {language === 'ar' ? "تحميل التقرير" : language === 'fr' ? "EXPORTER" : "EXPORT REPORT"}
             </button>
           </div>
         </div>
@@ -261,7 +270,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
            <div className="md:col-span-12 lg:col-span-6 relative">
              <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4", language === 'ar' ? "right-4" : "left-4")} />
              <input 
-               placeholder={language === 'ar' ? "بحث في السجلات..." : "Search history records..."} 
+               placeholder={language === 'ar' ? "بحث في السجلات..." : language === 'fr' ? "Rechercher..." : "Search history records..."} 
                className={cn(
                  "w-full bg-bg-base border border-border-subtle rounded-xl py-3 text-sm focus:border-accent outline-none",
                  language === 'ar' ? "pr-12 pl-4 text-right" : "pl-12 pr-4"
@@ -275,7 +284,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                className={cn("w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-xs focus:border-accent outline-none font-bold", language === 'ar' && "text-right")}
                value={filterMonth} onChange={e => setFilterMonth(parseInt(e.target.value))}
              >
-               <option value={0}>{language === 'ar' ? "جميع الشهور" : "All Months"}</option>
+               <option value={0}>{language === 'ar' ? "جميع الشهور" : language === 'fr' ? "Tous les mois" : "All Months"}</option>
                {months.map(m => <option key={m.v} value={m.v}>{m.n}</option>)}
              </select>
            </div>
@@ -295,13 +304,19 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                  className={cn("w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-xs focus:border-accent outline-none font-bold", language === 'ar' && "text-right")}
                  value={filterActivityType} onChange={e => setFilterActivityType(e.target.value)}
                >
-                 <option value="all">{t.allCategories}</option>
-                 <option value="SALE">SALE</option>
-                 <option value="PAYMENT">PAYMENT</option>
-                 <option value="PRODUCT">PRODUCT</option>
-                 <option value="CUSTOMER">CUSTOMER</option>
-                 <option value="STAFF">STAFF</option>
-                 <option value="STOCK">STOCK</option>
+                  <option value="all">{t.allCategories}</option>
+                  <option value="SALE">{language === 'ar' ? 'بيع' : language === 'fr' ? 'Vente' : 'SALE'}</option>
+                  <option value="PAYMENT">{language === 'ar' ? 'دفعة' : language === 'fr' ? 'Paiement' : 'PAYMENT'}</option>
+                  <option value="PRODUCT">{language === 'ar' ? 'منتج' : language === 'fr' ? 'Produit' : 'PRODUCT'}</option>
+                  <option value="CUSTOMER">{language === 'ar' ? 'زبون' : language === 'fr' ? 'Client' : 'CUSTOMER'}</option>
+                  <option value="STAFF">{language === 'ar' ? 'موظف' : language === 'fr' ? 'Personnel' : 'STAFF'}</option>
+                  <option value="STOCK">{language === 'ar' ? 'مخزون' : language === 'fr' ? 'Stock' : 'STOCK'}</option>
+                  <option value="RETURN">{language === 'ar' ? 'مرتجع' : language === 'fr' ? 'Retour' : 'RETURN'}</option>
+                  <option value="SETTINGS">{language === 'ar' ? 'إعدادات' : language === 'fr' ? 'Paramètres' : 'SETTINGS'}</option>
+                  <option value="SYSTEM">{language === 'ar' ? 'نظام' : language === 'fr' ? 'Système' : 'SYSTEM'}</option>
+                  <option value="SUPPLIER">{language === 'ar' ? 'مورد' : language === 'fr' ? 'Fournisseur' : 'SUPPLIER'}</option>
+                  <option value="SUPPLIER_PAYMENT">{language === 'ar' ? 'دفعة مورد' : language === 'fr' ? 'Paiement fournisseur' : 'SUPPLIER_PAYMENT'}</option>
+                  <option value="CATEGORY">{language === 'ar' ? 'فئة' : language === 'fr' ? 'Catégorie' : 'CATEGORY'}</option>
                </select>
              </div>
            )}
@@ -328,7 +343,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                        <div className="text-text-secondary text-[11px] mt-1 font-medium">{new Date(s.date).toLocaleDateString()} • {new Date(s.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                        {s.paymentMethod === 'CHECK' && (
                          <div className="text-[10px] font-bold text-text-secondary mt-1">
-                           شيك: {s.checkNumber || '-'} | {s.checkOwner || '-'}
+                            {language === 'ar' ? 'شيك' : language === 'fr' ? 'Chèque' : 'Check'}: {s.checkNumber || '-'} | {s.checkOwner || '-'}
                          </div>
                        )}
                     </td>
@@ -361,7 +376,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
         {subView === 'sales' && salesTotal > 50 && (
           <div className="flex items-center justify-between p-5 border-t border-border-subtle bg-sidebar/30">
             <div className="text-xs font-black text-text-secondary uppercase tracking-widest">
-              {language === 'ar' ? `صفحة ${salesPage} من ${Math.ceil(salesTotal / 50)}` : `Page ${salesPage} of ${Math.ceil(salesTotal / 50)}`}
+              {language === 'ar' ? `صفحة ${salesPage} من ${Math.ceil(salesTotal / 50)}` : language === 'fr' ? `Page ${salesPage} sur ${Math.ceil(salesTotal / 50)}` : `Page ${salesPage} of ${Math.ceil(salesTotal / 50)}`}
             </div>
             <div className="flex items-center gap-2">
               <button 
@@ -369,14 +384,14 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                 onClick={() => fetchSalesPage(salesPage - 1)}
                 className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
               >
-                {language === 'ar' ? 'السابق' : 'Previous'}
+                {language === 'ar' ? 'السابق' : language === 'fr' ? 'Précédent' : 'Previous'}
               </button>
               <button 
                 disabled={salesPage >= Math.ceil(salesTotal / 50)}
                 onClick={() => fetchSalesPage(salesPage + 1)}
                 className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
               >
-                {language === 'ar' ? 'التالي' : 'Next'}
+                {language === 'ar' ? 'التالي' : language === 'fr' ? 'Suivant' : 'Next'}
               </button>
             </div>
           </div>
@@ -462,7 +477,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
         {subView === 'activity' && activitiesTotal > 50 && (
           <div className="flex items-center justify-between p-5 border-t border-border-subtle bg-sidebar/30">
             <div className="text-xs font-black text-text-secondary uppercase tracking-widest">
-              {language === 'ar' ? `صفحة ${activitiesPage} من ${Math.ceil(activitiesTotal / 50)}` : `Page ${activitiesPage} of ${Math.ceil(activitiesTotal / 50)}`}
+              {language === 'ar' ? `صفحة ${activitiesPage} من ${Math.ceil(activitiesTotal / 50)}` : language === 'fr' ? `Page ${activitiesPage} sur ${Math.ceil(activitiesTotal / 50)}` : `Page ${activitiesPage} of ${Math.ceil(activitiesTotal / 50)}`}
             </div>
             <div className="flex items-center gap-2">
               <button 
@@ -470,14 +485,14 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                 onClick={() => fetchActivitiesPage(activitiesPage - 1)}
                 className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
               >
-                {language === 'ar' ? 'السابق' : 'Previous'}
+                {language === 'ar' ? 'السابق' : language === 'fr' ? 'Précédent' : 'Previous'}
               </button>
               <button 
                 disabled={activitiesPage >= Math.ceil(activitiesTotal / 50)}
                 onClick={() => fetchActivitiesPage(activitiesPage + 1)}
                 className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
               >
-                {language === 'ar' ? 'التالي' : 'Next'}
+                {language === 'ar' ? 'التالي' : language === 'fr' ? 'Suivant' : 'Next'}
               </button>
             </div>
           </div>

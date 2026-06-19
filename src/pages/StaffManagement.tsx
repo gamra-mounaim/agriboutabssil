@@ -59,7 +59,7 @@ export default function StaffManagement({
         password: newPasswordVal.trim()
       });
       setMessage({ 
-        text: language === 'ar' ? "تم تغيير كلمة المرور بنجاح." : "Password changed successfully.", 
+        text: language === 'ar' ? "تم تغيير كلمة المرور بنجاح." : language === 'fr' ? "Mot de passe modifié avec succès." : "Password changed successfully.", 
         type: 'success' 
       });
       setChangingPasswordUser(null);
@@ -68,7 +68,7 @@ export default function StaffManagement({
     } catch (err: any) {
       console.error(err);
       setMessage({ 
-        text: language === 'ar' ? "فشل تغيير كلمة المرور." : "Failed to change password.", 
+        text: language === 'ar' ? "فشل تغيير كلمة المرور." : language === 'fr' ? "Échec de la modification du mot de passe." : "Failed to change password.", 
         type: 'error' 
       });
     } finally {
@@ -79,27 +79,27 @@ export default function StaffManagement({
   const handleDeleteUser = async (userId: string) => {
     if (userId === currentUser?.id || userId === currentUser?.uid) {
       setMessage({ 
-        text: language === 'ar' ? "لا يمكنك حذف حسابك الشخصي." : "Cannot delete your own account.", 
+        text: language === 'ar' ? "لا يمكنك حذف حسابك الشخصي." : language === 'fr' ? "Vous ne pouvez pas supprimer votre propre compte." : "Cannot delete your own account.", 
         type: 'error' 
       });
       return;
     }
 
-    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذا الموظف نهائياً؟" : "Are you sure you want to permanently delete this staff member?")) {
+    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذا الموظف نهائياً؟" : language === 'fr' ? "Êtes-vous sûr de vouloir supprimer définitivement cet employé ?" : "Are you sure you want to permanently delete this staff member?")) {
       return;
     }
 
     try {
       await api.deleteUser(userId);
       setMessage({ 
-        text: language === 'ar' ? "تم حذف حساب الموظف نهائياً." : "Staff member account permanently deleted.", 
+        text: language === 'ar' ? "تم حذف حساب الموظف نهائياً." : language === 'fr' ? "Compte employé supprimé définitivement." : "Staff member account permanently deleted.", 
         type: 'success' 
       });
       onRefresh();
     } catch (err: any) {
       console.error(err);
       setMessage({ 
-        text: language === 'ar' ? "فشل حذف حساب الموظف." : "Failed to delete staff member.", 
+        text: language === 'ar' ? "فشل حذف حساب الموظف." : language === 'fr' ? "Échec de la suppression de l'employé." : "Failed to delete staff member.", 
         type: 'error' 
       });
     }
@@ -108,7 +108,7 @@ export default function StaffManagement({
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPassword) {
-      setMessage({ text: language === 'ar' ? "يرجى ملء كافة الخانات." : "Please fill all fields.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "يرجى ملء كافة الخانات." : language === 'fr' ? "Veuillez remplir tous les champs." : "Please fill all fields.", type: 'error' });
       return;
     }
 
@@ -119,7 +119,7 @@ export default function StaffManagement({
       const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true } : newPerms);
       
       if (result.status === "success") {
-        setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : "Staff member registered successfully.", type: 'success' });
+        setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : language === 'fr' ? "Employé enregistré avec succès." : "Staff member registered successfully.", type: 'success' });
         setNewUsername('');
         setNewPassword('');
         setNewPerms({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false });
@@ -149,7 +149,7 @@ export default function StaffManagement({
         linkElement.setAttribute('download', exportFileDefaultName);
         linkElement.click();
         
-        setMessage({ text: language === 'ar' ? "تم تحميل النسخة الاحتياطية بنجاح." : "Backup downloaded successfully.", type: 'success' });
+        setMessage({ text: language === 'ar' ? "تم تحميل النسخة الاحتياطية بنجاح." : language === 'fr' ? "Sauvegarde téléchargée avec succès." : "Backup downloaded successfully.", type: 'success' });
       }
     } catch (err: any) {
       console.error(err);
@@ -158,7 +158,7 @@ export default function StaffManagement({
   };
 
   const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!window.confirm(language === 'ar' ? "تحذير: سيتم مسح كافة البيانات الحالية وتعويضها بالنسخة الاحتياطية. هل أنت متأكد؟" : "WARNING: This will overwrite all current data. Are you sure?")) {
+    if (!window.confirm(language === 'ar' ? "تحذير: سيتم مسح كافة البيانات الحالية وتعويضها بالنسخة الاحتياطية. هل أنت متأكد؟" : language === 'fr' ? "ATTENTION : Cela écrasera toutes les données actuelles. Êtes-vous sûr ?" : "WARNING: This will overwrite all current data. Are you sure?")) {
       return;
     }
 
@@ -188,7 +188,7 @@ export default function StaffManagement({
 
   const toggleRole = async (userId: string, currentRole: 'admin' | 'staff' | 'manager') => {
     if (userId === currentUser?.id || userId === currentUser?.uid) {
-      setMessage({ text: language === 'ar' ? "لا يمكنك تغيير رتبتك." : "Cannot change your own role.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "لا يمكنك تغيير رتبتك." : language === 'fr' ? "Vous ne pouvez pas modifier votre propre rôle." : "Cannot change your own role.", type: 'error' });
       return;
     }
     const targetUser = users.find(u => u.id === userId);
@@ -203,11 +203,11 @@ export default function StaffManagement({
       await api.updateUser(userId, {
         role: nextRole
       });
-      setMessage({ text: language === 'ar' ? "تم تحديث الرتبة." : "User role updated.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم تحديث الرتبة." : language === 'fr' ? "Rôle mis à jour." : "User role updated.", type: 'success' });
       onRefresh();
     } catch (err: any) {
       console.error(err);
-      setMessage({ text: language === 'ar' ? "فشل التحديث." : "Update failed.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "فشل التحديث." : language === 'fr' ? "Échec de la mise à jour." : "Update failed.", type: 'error' });
     }
   };
 
@@ -220,30 +220,30 @@ export default function StaffManagement({
       await api.updateUser(userId, {
         permissions: { ...currentPerms, [permission]: !currentPerms[permission] }
       });
-      setMessage({ text: language === 'ar' ? "تم تحديث الصلاحيات بنجاح." : "Permissions updated successfully.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم تحديث الصلاحيات بنجاح." : language === 'fr' ? "Permissions mises à jour avec succès." : "Permissions updated successfully.", type: 'success' });
       onRefresh();
     } catch (err: any) {
       console.error(err);
-      setMessage({ text: language === 'ar' ? "فشل التحديث." : "Update failed.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "فشل التحديث." : language === 'fr' ? "Échec de la mise à jour." : "Update failed.", type: 'error' });
     }
   };
 
   const handleForceLogoutAllDevices = async (userId: string) => {
-    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من تسجيل خروج هذا الحساب من جميع الأجهزة والمتصفحات؟" : "Are you sure you want to force logout this account from all devices and browsers?")) {
+    if (!window.confirm(language === 'ar' ? "هل أنت متأكد من تسجيل خروج هذا الحساب من جميع الأجهزة والمتصفحات؟" : language === 'fr' ? "Êtes-vous sûr de vouloir déconnecter ce compte de tous les appareils ?" : "Are you sure you want to force logout this account from all devices and browsers?")) {
       return;
     }
 
     try {
       await api.logoutAllDevices(userId);
       setMessage({ 
-        text: language === 'ar' ? "تم تسجيل خروج الحساب من جميع الأجهزة بنجاح." : "Account successfully logged out from all devices.", 
+        text: language === 'ar' ? "تم تسجيل خروج الحساب من جميع الأجهزة بنجاح." : language === 'fr' ? "Compte déconnecté de tous les appareils avec succès." : "Account successfully logged out from all devices.", 
         type: 'success' 
       });
       onRefresh();
     } catch (err: any) {
       console.error(err);
       setMessage({ 
-        text: language === 'ar' ? "فشل تسجيل الخروج من الأجهزة." : "Failed to force logout from devices.", 
+        text: language === 'ar' ? "فشل تسجيل الخروج من الأجهزة." : language === 'fr' ? "Échec de la déconnexion forcée." : "Failed to force logout from devices.", 
         type: 'error' 
       });
     }
@@ -254,7 +254,7 @@ export default function StaffManagement({
       <div className={cn("flex flex-col md:flex-row md:items-end justify-between gap-4", language === 'ar' && "md:flex-row-reverse")}>
         <div className={cn(language === 'ar' && "text-right")}>
           <h3 className="text-3xl font-black tracking-tighter mb-1 uppercase italic font-serif opacity-90">{t.staff}</h3>
-          <p className="text-text-secondary text-xs font-mono uppercase tracking-widest">{language === 'ar' ? "إدارة الأدوار وصلاحيات الوصول" : "IDENTITY & ACCESS MANAGEMENT"}</p>
+          <p className="text-text-secondary text-xs font-mono uppercase tracking-widest">{language === 'ar' ? "إدارة الأدوار وصلاحيات الوصول" : language === 'fr' ? "GESTION DES ACCÈS" : "IDENTITY & ACCESS MANAGEMENT"}</p>
         </div>
       </div>
 
@@ -263,14 +263,14 @@ export default function StaffManagement({
         <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity" />
         <h4 className={cn("font-bold text-sm mb-6 flex items-center gap-2", language === 'ar' && "flex-row-reverse")}>
           <UserPlus className="w-4 h-4 text-accent" />
-          {language === 'ar' ? "إضافة موظف جديد" : "REGISTER NEW STAFF"}
+          {language === 'ar' ? "إضافة موظف جديد" : language === 'fr' ? "ENREGISTRER UN EMPLOYÉ" : "REGISTER NEW STAFF"}
         </h4>
         <form onSubmit={handleAddUser} className="space-y-6">
           <div className={cn("grid grid-cols-1 md:grid-cols-3 gap-4", language === 'ar' && "md:flex-row-reverse")}>
             <div className="flex-1">
               <input 
                 type="text" 
-                placeholder={language === 'ar' ? "اسم المستخدم" : "Username"}
+                placeholder={language === 'ar' ? "اسم المستخدم" : language === 'fr' ? "Nom d'utilisateur" : "Username"}
                 value={newUsername}
                 onChange={e => setNewUsername(e.target.value)}
                 className={cn("w-full bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-medium transition-all", language === 'ar' && "text-right")}
@@ -280,7 +280,7 @@ export default function StaffManagement({
             <div className="flex-1">
               <input 
                 type="password" 
-                placeholder={language === 'ar' ? "كلمة المرور" : "Password"}
+                placeholder={language === 'ar' ? "كلمة المرور" : language === 'fr' ? "Mot de passe" : "Password"}
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 className={cn("w-full bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-medium transition-all", language === 'ar' && "text-right")}
@@ -336,15 +336,15 @@ export default function StaffManagement({
               }}
               className={cn("bg-bg-base border-2 border-border-subtle rounded-xl px-4 py-3 text-sm focus:border-accent outline-none font-bold", language === 'ar' && "text-right")}
             >
-              <option value="staff">{language === 'ar' ? "موظف مبيعات" : "SALES STAFF"}</option>
-              <option value="manager">{language === 'ar' ? "مسؤول (بدون إدارة الموظفين)" : "MANAGER (NO STAFF MGMT)"}</option>
-              <option value="admin">{language === 'ar' ? "مدير نظام" : "ADMINISTRATOR"}</option>
+              <option value="staff">{language === 'ar' ? "موظف مبيعات" : language === 'fr' ? "VENDEUR" : "SALES STAFF"}</option>
+              <option value="manager">{language === 'ar' ? "مسؤول (بدون إدارة الموظفين)" : language === 'fr' ? "RESPONSABLE (SANS GESTION RH)" : "MANAGER (NO STAFF MGMT)"}</option>
+              <option value="admin">{language === 'ar' ? "مدير نظام" : language === 'fr' ? "ADMINISTRATEUR" : "ADMINISTRATOR"}</option>
             </select>
           </div>
 
           {(newRole === 'staff' || newRole === 'manager') && (
             <div className={cn("p-4 bg-bg-base rounded-xl border border-border-subtle", language === 'ar' && "text-right")}>
-              <p className="text-[10px] font-black tracking-widest text-text-secondary uppercase mb-3 px-1">{language === 'ar' ? "تحديد الصلاحيات الإضافية" : "ASSIGN MODULE PERMISSIONS"}</p>
+              <p className="text-[10px] font-black tracking-widest text-text-secondary uppercase mb-3 px-1">{language === 'ar' ? "تحديد الصلاحيات الإضافية" : language === 'fr' ? "ATTRIBUER LES PERMISSIONS" : "ASSIGN MODULE PERMISSIONS"}</p>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <input type="checkbox" checked={newPerms.stock} onChange={e => setNewPerms({...newPerms, stock: e.target.checked})} className="w-4 h-4 accent-accent" />
@@ -425,7 +425,7 @@ export default function StaffManagement({
               className="bg-accent text-white px-10 py-3.5 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50 shadow-lg shadow-accent/20"
             >
               <UserPlus className="w-4 h-4" />
-              {isSubmitting ? '...' : (language === 'ar' ? 'إنشاء حساب الموظف' : 'CREATE STAFF ACCOUNT')}
+              {isSubmitting ? '...' : (language === 'ar' ? 'إنشاء حساب الموظف' : language === 'fr' ? 'CRÉER UN COMPTE' : 'CREATE STAFF ACCOUNT')}
             </button>
           </div>
         </form>
@@ -435,10 +435,10 @@ export default function StaffManagement({
         <table className="w-full text-left">
           <thead>
             <tr className="bg-[#fafafa] border-b border-border-subtle">
-              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest">{language === 'ar' ? "الهوية" : "IDENTITY"}</th>
-              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "الدور" : "ACCESS ROLE"}</th>
-              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "صلاحيات الوصول" : "MODULE ACCESS"}</th>
-              <th className={cn("p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest", language === 'ar' ? "text-left" : "text-right")}>{language === 'ar' ? "الإجراءات" : "ACTIONS"}</th>
+              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest">{language === 'ar' ? "الهوية" : language === 'fr' ? "IDENTITÉ" : "IDENTITY"}</th>
+              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "الدور" : language === 'fr' ? "RÔLE" : "ACCESS ROLE"}</th>
+              <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "صلاحيات الوصول" : language === 'fr' ? "ACCÈS MODULES" : "MODULE ACCESS"}</th>
+              <th className={cn("p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest", language === 'ar' ? "text-left" : "text-right")}>{language === 'ar' ? "الإجراءات" : language === 'fr' ? "ACTIONS" : "ACTIONS"}</th>
             </tr>
           </thead>
           <tbody>
@@ -461,13 +461,13 @@ export default function StaffManagement({
                         {(u as any).username || u.email}
                         {(u.id === currentUser?.id || u.id === currentUser?.uid) && (
                           <span className="not-italic text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-black tracking-tighter uppercase border border-accent/20">
-                            {language === 'ar' ? 'أنت' : 'YOU'}
+                            {language === 'ar' ? 'أنت' : language === 'fr' ? 'VOUS' : 'YOU'}
                           </span>
                         )}
                       </span>
                       {u.createdAt && (
                         <span className="text-[10px] text-text-secondary">
-                          {language === 'ar' ? 'منذ: ' : 'SINCE: '}
+                          {language === 'ar' ? 'منذ: ' : language === 'fr' ? 'DEPUIS: ' : 'SINCE: '}
                           {new Date(u.createdAt.seconds ? u.createdAt.seconds * 1000 : u.createdAt).toLocaleDateString()}
                         </span>
                       )}
@@ -480,9 +480,9 @@ export default function StaffManagement({
                       u.role === 'manager' ? "bg-emerald-500/5 border-emerald-500 text-emerald-600" :
                       "bg-bg-base border-border-subtle text-text-secondary"
                     )}>
-                      {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : 'admin') : 
-                       u.role === 'manager' ? (language === 'ar' ? 'مسؤول (بدون موظفين)' : 'manager') : 
-                       (language === 'ar' ? 'موظف' : 'staff')}
+                      {u.role === 'admin' ? (language === 'ar' ? 'مسؤول' : language === 'fr' ? 'Admin' : 'admin') : 
+                       u.role === 'manager' ? (language === 'ar' ? 'مسؤول (بدون موظفين)' : language === 'fr' ? 'Responsable' : 'manager') : 
+                       (language === 'ar' ? 'موظف' : language === 'fr' ? 'Vendeur' : 'staff')}
                     </span>
                   </td>
                   <td className="p-4">
@@ -514,13 +514,13 @@ export default function StaffManagement({
                         disabled={u.id === currentUser?.id || u.id === currentUser?.uid}
                         onClick={() => toggleRole(u.id, u.role as any)}
                         className="text-[10px] font-black tracking-widest text-text-main/60 hover:text-accent hover:border-accent border border-border-subtle rounded px-2.5 py-1.5 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={language === 'ar' ? 'تغيير الرتبة' : 'CHANGE ROLE'}
+                        title={language === 'ar' ? 'تغيير الرتبة' : language === 'fr' ? 'CHANGER LE RÔLE' : 'CHANGE ROLE'}
                       >
                         {u.role === 'admin' 
-                          ? (language === 'ar' ? 'مسؤول 🔄' : 'ADMIN 🔄') 
+                          ? (language === 'ar' ? 'مسؤول 🔄' : language === 'fr' ? 'ADMIN 🔄' : 'ADMIN 🔄') 
                           : u.role === 'manager'
-                          ? (language === 'ar' ? 'مسؤول (بدون موظفين) 🔄' : 'MANAGER 🔄')
-                          : (language === 'ar' ? 'موظف 🔄' : 'STAFF 🔄')
+                          ? (language === 'ar' ? 'مسؤول (بدون موظفين) 🔄' : language === 'fr' ? 'RESPONSABLE 🔄' : 'MANAGER 🔄')
+                          : (language === 'ar' ? 'موظف 🔄' : language === 'fr' ? 'VENDEUR 🔄' : 'STAFF 🔄')
                         }
                       </button>
 
@@ -528,7 +528,7 @@ export default function StaffManagement({
                       <button 
                         onClick={() => setChangingPasswordUser(u)}
                         className="p-1.5 hover:bg-accent/10 hover:text-accent text-text-secondary border border-border-subtle rounded transition-all"
-                        title={language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                        title={language === 'ar' ? 'تغيير كلمة المرور' : language === 'fr' ? 'Changer le mot de passe' : 'Change Password'}
                       >
                         <Key className="w-4 h-4" />
                       </button>
@@ -537,7 +537,7 @@ export default function StaffManagement({
                       <button 
                         onClick={() => handleForceLogoutAllDevices(u.id)}
                         className="p-1.5 hover:bg-amber-500/10 hover:text-amber-500 text-text-secondary border border-border-subtle rounded transition-all"
-                        title={language === 'ar' ? 'تسجيل الخروج من كافة الأجهزة' : 'Force Logout from all devices'}
+                        title={language === 'ar' ? 'تسجيل الخروج من كافة الأجهزة' : language === 'fr' ? 'Déconnexion forcée de tous les appareils' : 'Force Logout from all devices'}
                       >
                         <ShieldAlert className="w-4 h-4" />
                       </button>
@@ -547,7 +547,7 @@ export default function StaffManagement({
                         disabled={u.id === currentUser?.id || u.id === currentUser?.uid}
                         onClick={() => handleDeleteUser(u.id)}
                         className="p-1.5 hover:bg-danger/10 hover:text-danger text-text-secondary border border-border-subtle rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
+                        title={language === 'ar' ? 'حذف الحساب' : language === 'fr' ? 'Supprimer le compte' : 'Delete Account'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -565,10 +565,12 @@ export default function StaffManagement({
           <ShieldCheck className="w-5 h-5 text-accent" />
         </div>
         <div className={cn(language === 'ar' && "text-right")}>
-          <h4 className="font-bold text-xs uppercase tracking-widest mb-1">{language === 'ar' ? "بروتوكول الوصول" : "ACCESS PROTOCOL"}</h4>
+          <h4 className="font-bold text-xs uppercase tracking-widest mb-1">{language === 'ar' ? "بروتوكول الوصول" : language === 'fr' ? "PROTOCOLE D'ACCÈS" : "ACCESS PROTOCOL"}</h4>
           <p className="text-[11px] text-text-secondary leading-relaxed font-medium">
             {language === 'ar' 
               ? "يتم تأمين كافة العمليات عبر تشفير Google Auth. يمكن للمسؤولين فقط تعديل الرتب أو الوصول لبيانات النظام الحساسة. يتم تسجيل كل تعديل في سجلات النظام."
+              : language === 'fr'
+              ? "La sécurité du système est assurée via Google Authentication. Seuls les administrateurs peuvent modifier les rôles ou accéder à l'infrastructure sensible. Toutes les transitions de rôle sont enregistrées."
               : "System security is enforced via Google Authentication. Only administrators can modify roles or access sensitive infrastructure. All role transitions are cryptographically logged."
             }
           </p>
@@ -603,7 +605,7 @@ export default function StaffManagement({
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-text-main">
-                      {language === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                      {language === 'ar' ? 'تغيير كلمة المرور' : language === 'fr' ? 'Changer le mot de passe' : 'Change Password'}
                     </h3>
                     <p className="text-xs text-text-secondary font-mono uppercase tracking-wider">
                       {changingPasswordUser.username || changingPasswordUser.email}
@@ -614,7 +616,7 @@ export default function StaffManagement({
                 <form onSubmit={handleSavePassword} className="space-y-4 pt-4">
                   <div>
                     <label className="block text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-2">
-                      {language === 'ar' ? 'كلمة المرور الجديدة' : 'NEW PASSWORD'}
+                      {language === 'ar' ? 'كلمة المرور الجديدة' : language === 'fr' ? 'NOUVEAU MOT DE PASSE' : 'NEW PASSWORD'}
                     </label>
                     <input 
                       type="password"
@@ -635,14 +637,14 @@ export default function StaffManagement({
                       }}
                       className="bg-bg-base hover:bg-border-subtle/50 text-text-main px-6 py-3 rounded-xl font-bold text-sm transition-all"
                     >
-                      {language === 'ar' ? 'إلغاء' : 'CANCEL'}
+                      {language === 'ar' ? 'إلغاء' : language === 'fr' ? 'ANNULER' : 'CANCEL'}
                     </button>
                     <button 
                       type="submit"
                       disabled={updatingPassword}
                       className="bg-accent text-white px-8 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all disabled:opacity-50"
                     >
-                      {updatingPassword ? '...' : (language === 'ar' ? 'حفظ' : 'SAVE')}
+                      {updatingPassword ? '...' : (language === 'ar' ? 'حفظ' : language === 'fr' ? 'ENREGISTRER' : 'SAVE')}
                     </button>
                   </div>
                 </form>
