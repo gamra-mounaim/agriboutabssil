@@ -112,6 +112,9 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
       d = d.replace(/Initial Debt:/i, 'الديون الأولية:');
       d = d.replace(/Qty:/g, 'الكمية:');
       d = d.replace(/units/i, 'وحدات');
+      d = d.replace(/New sale #(.*?) - Total:/i, 'عملية بيع جديدة - فاتورة رقم $1 - الإجمالي:');
+      d = d.replace(/Added discount of (.*?) to sale #(.*?)$/i, 'إضافة خصم بقيمة $1 للبيع رقم $2');
+      d = d.replace(/Nouvelle vente Facture N° /i, 'عملية بيع جديدة - فاتورة رقم ');
     } else if (language === 'fr') {
       d = d.replace(/User logged in:/i, 'Utilisateur connecté :');
       d = d.replace(/Admin login:/i, 'Connexion admin :');
@@ -144,6 +147,8 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
       d = d.replace(/Initial Debt:/i, 'Dette initiale :');
       d = d.replace(/Qty:/g, 'Qté :');
       d = d.replace(/units/i, 'unités');
+      d = d.replace(/New sale #(.*?) - Total:/i, 'Nouvelle vente - Facture N° $1 - Total :');
+      d = d.replace(/Added discount of (.*?) to sale #(.*?)$/i, 'Remise de $1 ajoutée à la facture N° $2');
     }
     return d;
   };
@@ -429,7 +434,10 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-base border border-border-subtle rounded text-[9px] font-black text-text-secondary uppercase tracking-tighter">
                       <UserCog className="w-2.5 h-2.5" />
-                      {a.actorName || 'System'}
+                      {a.actorName === 'System' ? (language === 'ar' ? 'النظام' : 'Système') : 
+                       a.actorName === 'Staff' ? (language === 'ar' ? 'الموظف' : 'Personnel') : 
+                       a.actorName === 'Admin' ? (language === 'ar' ? 'المسؤول' : 'Administrateur') : 
+                       a.actorName || (language === 'ar' ? 'النظام' : 'Système')}
                     </div>
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
@@ -437,7 +445,12 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                       a.action === 'update' ? "bg-accent/10 text-accent" : 
                       a.action === 'delete' ? "bg-danger/10 text-danger" : "bg-sidebar text-text-secondary"
                     )}>
-                      {a.action}
+                      {a.action === 'create' ? (language === 'ar' ? 'إنشاء' : 'CRÉATION') : 
+                       a.action === 'update' ? (language === 'ar' ? 'تعديل' : 'MODIFICATION') : 
+                       a.action === 'delete' ? (language === 'ar' ? 'حذف' : 'SUPPRESSION') : 
+                       a.action === 'login' ? (language === 'ar' ? 'دخول' : 'CONNEXION') : 
+                       a.action === 'backup' ? (language === 'ar' ? 'نسخ احتياطي' : 'SAUVEGARDE') : 
+                       a.action === 'import' ? (language === 'ar' ? 'استيراد' : 'IMPORTATION') : a.action}
                     </span>
                   </div>
                 </div>

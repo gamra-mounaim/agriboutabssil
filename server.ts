@@ -233,7 +233,7 @@ async function startServer() {
           const sessionVersion = userWithoutPassword.session_version || 1;
           const token = jwt.sign({ userId: userWithoutPassword.id, sessionVersion }, JWT_SECRET, { expiresIn: '7d' });
           
-          logActivity('STAFF', 'login', `User logged in: ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
+          logActivity('STAFF', 'login', `Utilisateur connecté : ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
           return res.json({ 
             status: "success", 
             user: {
@@ -288,7 +288,7 @@ async function startServer() {
 
     try {
       await db.prepare('UPDATE users SET session_version = COALESCE(session_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1').run(userId);
-      logActivity('STAFF', 'login', `Forced logout from all devices for user: ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
+      logActivity('STAFF', 'login', `Déconnexion forcée de tous les appareils pour l'utilisateur : ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
       return res.json({ status: "success", message: "All sessions logged out successfully" });
     } catch (error: any) {
       console.error("Logout-all error:", error);
@@ -312,7 +312,7 @@ async function startServer() {
         VALUES (?, ?, ?, ?, ?)
       `).run(usernameLower, usernameLower, hashedPassword, role, JSON.stringify(permissions));
       
-      logActivity('STAFF', 'create', `Created new user: ${usernameLower} (${role})`, 'system', 'System');
+      logActivity('STAFF', 'create', `Nouvel utilisateur créé : ${usernameLower} (${role})`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -357,7 +357,7 @@ async function startServer() {
     const { id } = req.params;
     try {
       await db.prepare('DELETE FROM users WHERE id = ?').run(id);
-      logActivity('STAFF', 'delete', `Deleted user account: ${id}`, 'system', 'System');
+      logActivity('STAFF', 'delete', `Compte utilisateur supprimé : ${id}`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -645,7 +645,7 @@ async function startServer() {
         `).run(uuidv4(), supplierId, costAmount, `Initial stock: ${name} (${qty} units)`);
       }
 
-      logActivity('PRODUCT', 'create', `Added product: ${name} (Qty: ${qty})`, 'system', 'System');
+      logActivity('PRODUCT', 'create', `Produit ajouté : ${name} (Qté : ${qty})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -664,7 +664,7 @@ async function startServer() {
         WHERE id = ?
       `).run(name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, id);
       
-      let details = `Updated product: ${name}`;
+      let details = `Produit mis à jour : ${name}`;
       if (oldProduct) {
         let changes = [];
         if (String(oldProduct.name) !== String(name)) changes.push(`Name: ${oldProduct.name}->${name}`);
@@ -751,7 +751,7 @@ async function startServer() {
         `).run(uuidv4(), supplierId, costAmount, `Returned to Supplier: ${product.name} (${quantity} units @ ${unitCost})`);
       }
 
-      logActivity('STOCK', 'update', `Stock ${type}: ${product.name} (${quantity} units)${supplierId ? ' via Supplier' : ''}`, actor || 'system', actor || 'System');
+      logActivity('STOCK', 'update', `Stock ${type}: ${product.name} (${quantity} unités)${supplierId ? ' via Fournisseur' : ''}`, actor || 'system', actor || 'System');
     };
 
     try {
@@ -773,7 +773,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO categories (id, name) VALUES (?, ?)').run(id, name);
-      logActivity('CATEGORY', 'create', `Created category: ${name}`, 'system', 'System');
+      logActivity('CATEGORY', 'create', `Catégorie créée : ${name}`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -836,7 +836,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO customers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
-      logActivity('CUSTOMER', 'create', `Added customer: ${name} (Initial Debt: ${debt || 0})`, 'system', 'System');
+      logActivity('CUSTOMER', 'create', `Client ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -861,7 +861,7 @@ async function startServer() {
         VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
       `).run(paymentId, id, amount, payment_method || 'CASH', check_number || null, check_due_date || null, check_owner || null);
 
-      logActivity('PAYMENT', 'create', `Payment of ${amount} from ${customer?.name || 'Customer'} (${payment_method || 'CASH'})`, 'system', 'System');
+      logActivity('PAYMENT', 'create', `Paiement de ${amount} de ${customer?.name || 'Client'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
     };
 
     try {
@@ -939,7 +939,7 @@ async function startServer() {
         `).run(returnId, id, `Retour Cash: ${qty} x ${product.name} (Remboursé ${totalValue} DH)`);
       }
 
-      logActivity('RETURN', 'create', `Return of ${qty}x ${product.name} from ${customerName} (Value: ${totalValue})`, 'system', 'System');
+      logActivity('RETURN', 'create', `Retour de ${qty}x ${product.name} par ${customerName} (Valeur : ${totalValue})`, 'system', 'System');
     };
 
     try {
@@ -1013,7 +1013,7 @@ async function startServer() {
         WHERE id = ?
       `).run(name, email, phone, address, debt, finalDueDate, id);
       
-      let details = `Updated customer: ${name}`;
+      let details = `Client mis à jour : ${name}`;
       if (oldCustomer) {
         let changes = [];
         if (oldCustomer.name != name) changes.push(`Name: ${oldCustomer.name}->${name}`);
@@ -1047,7 +1047,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO suppliers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
-      logActivity('SUPPLIER', 'create', `Added supplier: ${name} (Initial Debt: ${debt || 0})`, 'system', 'System');
+      logActivity('SUPPLIER', 'create', `Fournisseur ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1073,7 +1073,7 @@ async function startServer() {
         WHERE id = ?
       `).run(name, email, phone, address, debt, finalDueDate, id);
 
-      let details = `Updated supplier: ${name}`;
+      let details = `Fournisseur mis à jour : ${name}`;
       if (oldSupplier) {
         let changes = [];
         if (oldSupplier.name != name) changes.push(`Name: ${oldSupplier.name}->${name}`);
@@ -1108,7 +1108,7 @@ async function startServer() {
         VALUES (?, ?, 'PAYMENT', ?, 'Payment to Supplier', ?, ?, ?, ?)
       `).run(historyId, id, amount, payment_method || 'CASH', check_number || null, check_due_date || null, check_owner || null);
       
-      logActivity('SUPPLIER_PAYMENT', 'create', `Paid ${amount} to ${supplier?.name || 'Supplier'} (${payment_method || 'CASH'})`, 'system', 'System');
+      logActivity('SUPPLIER_PAYMENT', 'create', `Paiement de ${amount} à ${supplier?.name || 'Fournisseur'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
     };
 
     try {
@@ -1438,7 +1438,7 @@ async function startServer() {
         `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? `Reste de la facture #${nextInvoice} (Chèque)` : `Facture #${nextInvoice} (Crédit)`);
       }
 
-      logActivity('SALE', 'create', `New sale #${saleId.slice(0, 8)} - Total: ${total}`, staffId, 'Staff');
+      logActivity('SALE', 'create', `Nouvelle vente - Facture N° ${saleId.slice(0, 8)} - Total : ${total}`, staffId, 'Staff');
     };
 
     try {
@@ -1481,7 +1481,7 @@ async function startServer() {
         `).run(uuidv4(), sale.customer_id, discountDiff, `Remise ajoutée sur la facture #${sale.invoice_number}`);
       }
       
-      logActivity('SALE', 'update', `Added discount of ${discountDiff} to sale #${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
+      logActivity('SALE', 'update', `Remise de ${discountDiff} ajoutée à la facture N° ${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
       
       res.json({ status: "success" });
     } catch (e: any) {
@@ -1735,7 +1735,7 @@ async function startServer() {
         WHERE id = ?
       `).run(shopName, shopAddress, shopPhone, 'main');
       
-      logActivity('SETTINGS', 'update', `Shop settings updated: ${shopName}`, 'admin', 'Admin');
+      logActivity('SETTINGS', 'update', `Paramètres de la boutique mis à jour : ${shopName}`, 'admin', 'Admin');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1869,7 +1869,7 @@ async function startServer() {
         fields: 'id',
       });
 
-      logActivity('SYSTEM', 'backup', `Database backed up to Google Drive: ${fileName}`, 'system', 'System');
+      logActivity('SYSTEM', 'backup', `Base de données sauvegardée sur Google Drive : ${fileName}`, 'system', 'System');
       res.json({ status: "success", fileId: response.data.id });
     } catch (e: any) {
       console.error("Drive upload failed:", e);
@@ -1947,7 +1947,7 @@ async function startServer() {
       await transaction();
       // Re-initialize DB to ensure defaults exist if they were missing in the backup
       await initDb();
-      logActivity('SYSTEM', 'import', 'Database restored from backup', 'system', 'System');
+      logActivity('SYSTEM', 'import', 'Base de données restaurée à partir d\'une sauvegarde', 'system', 'System');
       res.json({ status: "success", message: "Backup restored successfully" });
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });
