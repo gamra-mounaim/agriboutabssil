@@ -1556,11 +1556,11 @@ async function startServer() {
 
     // Last 7 days sales trend
     const last7DaysData = await db.prepare(`
-      SELECT DATE(date) as date, SUM(total) as amount
+      SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(total) as amount
       FROM sales
       WHERE date >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY DATE(date)
-      ORDER BY DATE(date) ASC
+      GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
+      ORDER BY date ASC
     `).all() as any[];
     
     // Create an array with all 7 days (even if amount is 0)
