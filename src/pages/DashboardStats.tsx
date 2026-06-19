@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Package, Users, Wallet, AlertTriangle, TrendingUp, PieChart as PieChartIcon, Calendar, DollarSign, Activity, CreditCard, ShoppingCart, LayoutGrid, Download, ShieldCheck, AlertCircle } from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Customer, Sale } from '../types';
@@ -63,6 +63,12 @@ function DashboardStats({ products, categories, customers, sales, language, stat
 
   const last7Days = stats?.last7Days || [];
   const topProductsList = stats?.topProductsList || [];
+
+  // Week-over-week change
+  const totalLast7 = last7Days.reduce((acc: number, d: any) => acc + d.amount, 0);
+  const avgLast7 = last7Days.length > 0 ? Math.round(totalLast7 / last7Days.length) : 0;
+  const totalPrev7Days = stats?.prev7DaysTotal || 0;
+  const pctChange = totalPrev7Days > 0 ? ((totalLast7 - totalPrev7Days) / totalPrev7Days) * 100 : null;
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -155,46 +161,83 @@ function DashboardStats({ products, categories, customers, sales, language, stat
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Trend */}
         <div className="lg:col-span-2 bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden group h-[350px] flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h4 className="text-xs font-bold text-text-main flex items-center gap-2 uppercase tracking-widest">
               <TrendingUp className="w-4 h-4 text-accent" />
               {t.salesTrend7Days}
             </h4>
-            <div className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">
-              {formatNumber(last7Days.reduce((acc, curr) => acc + curr.amount, 0))} {t.currency}
+            <div className="flex items-center gap-2">
+              {pctChange !== null && (
+                <div className={cn(
+                  "flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full",
+                  pctChange >= 0
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-red-500/10 text-red-500"
+                )}>
+                  {pctChange >= 0
+                    ? <ArrowUpRight className="w-3.5 h-3.5" />
+                    : <ArrowDownRight className="w-3.5 h-3.5" />}
+                  {Math.abs(pctChange).toFixed(1)}%
+                  <span className="opacity-60 font-medium">
+                    {language === 'ar' ? 'vs أسبوع' : language === 'fr' ? 'vs sem. préc.' : 'vs last wk'}
+                  </span>
+                </div>
+              )}
+              <div className="text-xs font-black text-accent bg-accent/10 px-3 py-1 rounded-full">
+                {formatNumber(totalLast7)} {t.currency}
+              </div>
             </div>
           </div>
           <div className="flex-1 w-full min-h-0">
-            {last7Days.every(d => d.amount === 0) ? (
+            {last7Days.every((d: any) => d.amount === 0) ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
                 <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
                 <span className="text-xs font-bold uppercase tracking-widest">{language === 'ar' ? "لا توجد مبيعات" : "NO SALES"}</span>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%" minHeight={300} minWidth={1}>
-                <AreaChart data={last7Days}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={260} minWidth={1}>
+                <AreaChart data={last7Days} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
+                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.35}/>
                       <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" strokeOpacity={0.5} />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--color-text-secondary)' }} dy={10} />
-                  <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--color-text-secondary)' }} tickFormatter={(val) => formatNumber(val)} />
-                  <ReChartsTooltip 
+                  <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--color-text-secondary)' }} tickFormatter={(val) => formatNumber(val)} width={72} />
+                  <ReChartsTooltip
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--color-border-subtle)', background: 'var(--color-card)', backdropFilter: 'blur(12px)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.15)', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-text-main)' }}
                     itemStyle={{ color: 'var(--color-accent)' }}
-                    formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'المبيعات' : 'Sales']}
+                    formatter={(value: number) => [
+                      `${formatNumber(value)} ${t.currency}`,
+                      language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales'
+                    ]}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="var(--color-accent)" 
-                    strokeWidth={4} 
-                    fillOpacity={1} 
-                    fill="url(#colorSales)" 
-                    activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--color-accent)' }}
+                  {avgLast7 > 0 && (
+                    <ReferenceLine
+                      y={avgLast7}
+                      stroke="var(--color-text-secondary)"
+                      strokeDasharray="6 3"
+                      strokeOpacity={0.5}
+                      label={{
+                        value: language === 'ar' ? `متوسط: ${formatNumber(avgLast7)}` : language === 'fr' ? `Moy: ${formatNumber(avgLast7)}` : `Avg: ${formatNumber(avgLast7)}`,
+                        position: 'insideTopRight',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        fill: 'var(--color-text-secondary)',
+                        dy: -6,
+                      }}
+                    />
+                  )}
+                  <Area
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="var(--color-accent)"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorSales)"
+                    activeDot={{ r: 7, strokeWidth: 2, stroke: 'var(--color-card)', fill: 'var(--color-accent)' }}
                     dot={{ r: 3, fill: 'var(--color-bg-base)', stroke: 'var(--color-accent)', strokeWidth: 2 }}
                   />
                 </AreaChart>

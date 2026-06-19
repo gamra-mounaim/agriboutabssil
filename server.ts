@@ -1576,6 +1576,15 @@ async function startServer() {
       });
     }
 
+    // Previous 7 days total (for week-over-week comparison)
+    const prev7DaysRow = await db.prepare(`
+      SELECT COALESCE(SUM(total), 0) as total
+      FROM sales
+      WHERE date >= CURRENT_DATE - INTERVAL '13 days'
+        AND date < CURRENT_DATE - INTERVAL '6 days'
+    `).get() as any;
+    const prev7DaysTotal = prev7DaysRow?.total || 0;
+
     // Top Selling Products
     const topProductsList = await db.prepare(`
       SELECT p.id, p.name, SUM(si.qty) as qty, MAX(p.price) as price
@@ -1632,7 +1641,8 @@ async function startServer() {
       yearlyProfitBreakdown,
       paymentMethodsBreakdown,
       last7Days: last7Days.reverse(),
-      topProductsList
+      topProductsList,
+      prev7DaysTotal
     }));
     } catch (err: any) {
       console.error("Stats API error:", err);
