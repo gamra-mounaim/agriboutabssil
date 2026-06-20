@@ -755,8 +755,8 @@ async function startServer() {
       // Check if there is a 'create' or initial movement
       const hasCreate = history.some(item => item.type === 'create');
       if (!hasCreate) {
-        // Fetch product created_at to append a virtual creation log
-        const product = await db.prepare('SELECT created_at, supplier, qty FROM products WHERE id = ?').get(id) as any;
+        // Fetch product details to append a virtual creation log
+        const product = await db.prepare('SELECT created_at, updated_at, name, supplier, qty FROM products WHERE id = ?').get(id) as any;
         if (product) {
           // Calculate sum of deltas to backtrack the initial quantity
           let sumDeltas = 0;
@@ -768,13 +768,62 @@ async function startServer() {
               sumDeltas += item.quantity;
             }
           }
-          const initialQty = Math.max(0, product.qty - sumDeltas);
+
+          let initialQty = 0;
+          let initialTimestamp = product.created_at;
+          let foundInLog = false;
+
+          // Try to search activity_log for initial creation log
+          try {
+            const creations = await db.prepare(`
+              SELECT details, timestamp FROM activity_log 
+              WHERE type = 'PRODUCT' AND action = 'create' 
+              ORDER BY timestamp DESC
+            `).all() as any[];
+
+            const normalizeName = (str: string) => str.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, '');
+            const prodNorm = normalizeName(product.name);
+            const matchedAct = creations.find(act => {
+              const detailsNorm = normalizeName(act.details);
+              return detailsNorm.includes(prodNorm) || prodNorm.includes(detailsNorm);
+            });
+
+            if (matchedAct) {
+              const qtyMatch = matchedAct.details.match(/(?:Qté\s*:\s*|Qty\s*:\s*|Quantité\s*:\s*|quantité\s*:\s*|qté\s*:\s*)(\d+)/i);
+              if (qtyMatch) {
+                initialQty = parseInt(qtyMatch[1], 10);
+                initialTimestamp = matchedAct.timestamp;
+                foundInLog = true;
+              }
+            }
+          } catch (e) {
+            console.error("Failed to query activity log for creation:", e);
+          }
+
+          if (!foundInLog) {
+            initialQty = Math.max(0, product.qty - sumDeltas);
+          } else {
+            // If found in log, check if there is an unlogged discrepancy
+            const diff = product.qty - (initialQty + sumDeltas);
+            if (diff !== 0) {
+              history.push({
+                type: 'update',
+                quantity: diff,
+                customer_name: null,
+                timestamp: product.updated_at || product.created_at,
+                employee_name: 'System',
+                reason: diff > 0 
+                  ? 'Ajustement de stock (historique) / تعديل المخزون (سابق)' 
+                  : 'Ajustement de stock (historique) / تعديل المخزون (سابق)'
+              });
+            }
+          }
 
           history.push({
             type: 'create',
             quantity: initialQty,
             customer_name: null,
-            timestamp: product.created_at,
+            timestamp: initialTimestamp,
             employee_name: 'System',
             reason: product.supplier 
               ? `Création initiale (Fournisseur: ${product.supplier})` 
