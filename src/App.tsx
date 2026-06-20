@@ -155,7 +155,7 @@ export default function App() {
     if (targetView === 'suppliers' && userPermissions.supplierDebt) return true;
     if (targetView === 'history' && userPermissions.history) return true;
     if (targetView === 'invoices' && userPermissions.manageInvoices) return true;
-    if (targetView === 'damages' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
+    if (targetView === 'damages') return true;
     if (targetView === 'users' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     
     return false;

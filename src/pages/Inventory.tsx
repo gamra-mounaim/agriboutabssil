@@ -16,46 +16,75 @@ type SortConfig = { key: SortKey; direction: 'asc' | 'desc' } | null;
 
 const historyTranslations = {
   en: {
-    productHistory: "Product Stock Reductions History",
-    quantityReduced: "Qty Reduced",
-    soldTo: "Sold To",
+    productHistory: "Product Stock History",
+    quantityReduced: "Quantity Change",
+    soldTo: "Sold To / Ref",
     date: "Date",
     employee: "Staff",
-    reason: "Reason/Reference",
-    noHistory: "No stock reductions found for this product.",
+    reason: "Details / Reason",
+    noHistory: "No movement history found for this product.",
     type: "Type",
     sale: "Sale",
-    adjustment: "Adjustment",
+    stockIn: "Stock In",
+    stockOut: "Stock Out",
+    create: "Initial Stock",
+    update: "Modification",
   },
   fr: {
-    productHistory: "Historique des Réductions de Stock",
-    quantityReduced: "Qté Réduite",
-    soldTo: "Vendu À",
+    productHistory: "Historique des mouvements du produit",
+    quantityReduced: "Variation Qté",
+    soldTo: "Vendu À / Réf",
     date: "Date",
     employee: "Employé",
-    reason: "Raison/Référence",
-    noHistory: "Aucune réduction de stock trouvée pour ce produit.",
+    reason: "Détails / Raison",
+    noHistory: "Aucun historique trouvé pour ce produit.",
     type: "Type",
     sale: "Vente",
-    adjustment: "Ajustement",
+    stockIn: "Entrée",
+    stockOut: "Sortie",
+    create: "Stock Initial",
+    update: "Modification",
   },
   ar: {
-    productHistory: "سجل تخفيضات مخزون المنتج",
-    quantityReduced: "الكمية المخفضة",
-    soldTo: "بيعت لـ",
+    productHistory: "سجل حركات المنتج",
+    quantityReduced: "تغير الكمية",
+    soldTo: "بيع لـ / المرجع",
     date: "التاريخ",
     employee: "الموظف",
-    reason: "السبب/المرجع",
-    noHistory: "لم يتم العثور على أي تخفيضات في المخزون لهذا المنتج.",
+    reason: "التفاصيل / السبب",
+    noHistory: "لم يتم العثور على أي حركات لهذا المنتج.",
     type: "النوع",
     sale: "بيع",
-    adjustment: "تعديل",
+    stockIn: "إدخال مخزون",
+    stockOut: "إخراج مخزون",
+    create: "مخزون أولي",
+    update: "تعديل",
   }
+};
+
+const getTypeLabel = (type: string, lang: 'en' | 'fr' | 'ar') => {
+  const t = historyTranslations[lang];
+  const typeLower = type.toLowerCase();
+  if (typeLower === 'sale') return t.sale;
+  if (typeLower === 'in') return t.stockIn;
+  if (typeLower === 'out') return t.stockOut;
+  if (typeLower === 'create') return t.create;
+  if (typeLower === 'update') return t.update;
+  return type;
+};
+
+const getTypeBadgeClass = (type: string) => {
+  const typeLower = type.toLowerCase();
+  if (typeLower === 'sale') return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800";
+  if (typeLower === 'in' || typeLower === 'create') return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800";
+  if (typeLower === 'out') return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800";
+  if (typeLower === 'update') return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800";
+  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:border-slate-800";
 };
 
 export default function Inventory({ permissions }: { permissions: any }) {
   const { products, categories, suppliers, fetchData: onRefresh, setMessage } = useStore();
-  const { language } = useAuthStore();
+  const { language, user } = useAuthStore();
   const t = translations[language];
 
   // --- Add/Edit Product State ---
@@ -183,7 +212,8 @@ export default function Inventory({ permissions }: { permissions: any }) {
         barcode: barcode || null,
         categoryId: categoryId || null,
         supplier: supplier || null,
-        supplierId: suppliers.find(s => s.name === supplier)?.id || null
+        supplierId: suppliers.find(s => s.name === supplier)?.id || null,
+        actor: user?.username || 'system'
       });
       setName(''); setPrice(''); setCostPrice(''); setQty(''); setBarcode(''); setMinStock('5'); setCategoryId(''); setSupplier('');
       setMessage({ text: language === 'ar' ? "تمت إضافة المنتج." : "Product added to inventory.", type: 'success' });
@@ -219,7 +249,8 @@ export default function Inventory({ permissions }: { permissions: any }) {
         barcode: editForm.barcode || null,
         categoryId: editForm.categoryId || null,
         supplier: editForm.supplier || null,
-        supplierId: suppliers.find(s => s.name === editForm.supplier)?.id || null
+        supplierId: suppliers.find(s => s.name === editForm.supplier)?.id || null,
+        actor: user?.username || 'system'
       });
       setEditingProduct(null);
       setMessage({ text: language === 'ar' ? "تم تحديث المنتج." : "Product updated.", type: 'success' });
@@ -974,15 +1005,24 @@ export default function Inventory({ permissions }: { permissions: any }) {
                           <td className="p-4">
                             <span className={cn(
                               "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter border",
-                              item.type === 'sale' 
-                                ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
-                                : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800"
+                              getTypeBadgeClass(item.type)
                             )}>
-                              {item.type === 'sale' ? historyTranslations[language].sale : historyTranslations[language].adjustment}
+                              {getTypeLabel(item.type, language)}
                             </span>
                           </td>
-                          <td className="p-4 text-center font-black text-danger">
-                            -{item.quantity}
+                          <td className={cn(
+                            "p-4 text-center font-black",
+                            (item.type.toLowerCase() === 'sale' || item.type.toLowerCase() === 'out' || (item.type.toLowerCase() === 'update' && item.quantity < 0))
+                              ? "text-danger"
+                              : (item.type.toLowerCase() === 'in' || item.type.toLowerCase() === 'create' || (item.type.toLowerCase() === 'update' && item.quantity > 0))
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-text-secondary"
+                          )}>
+                            {(item.type.toLowerCase() === 'sale' || item.type.toLowerCase() === 'out' || (item.type.toLowerCase() === 'update' && item.quantity < 0))
+                              ? `-${Math.abs(item.quantity)}`
+                              : (item.type.toLowerCase() === 'in' || item.type.toLowerCase() === 'create' || (item.type.toLowerCase() === 'update' && item.quantity > 0))
+                                ? `+${item.quantity}`
+                                : '0'}
                           </td>
                           <td className="p-4 font-bold">
                             {item.customer_name || '-'}

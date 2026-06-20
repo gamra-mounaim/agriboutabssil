@@ -627,7 +627,7 @@ async function startServer() {
   });
 
   app.post("/api/products", validate(schemas.productSchema), async (req, res) => {
-    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId } = req.body;
+    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor } = req.body;
     const id = uuidv4();
     try {
       await db.prepare(`
@@ -635,6 +635,12 @@ async function startServer() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(id, name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId);
       
+      // Record initial stock movement
+      await db.prepare(`
+        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+        VALUES (?, ?, ?, 'create', ?, 'Stock Initial / مخزون أولي', ?, ?)
+      `).run(uuidv4(), id, name, qty, actor || 'System', costPrice || 0);
+
       // Update supplier debt if qty > 0 and supplierId provided
       if (qty > 0 && supplierId && costPrice > 0) {
         const costAmount = (costPrice || 0) * qty;
@@ -654,7 +660,7 @@ async function startServer() {
 
   app.put("/api/products/:id", validate(schemas.productSchema), async (req, res) => {
     const { id } = req.params;
-    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId } = req.body;
+    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor } = req.body;
     try {
       const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
       
@@ -664,21 +670,27 @@ async function startServer() {
         WHERE id = ?
       `).run(name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, id);
       
-      let details = `Produit mis à jour : ${name}`;
+      let details = `Modification / Update`;
       if (oldProduct) {
         let changes = [];
-        if (String(oldProduct.name) !== String(name)) changes.push(`Name: ${oldProduct.name}->${name}`);
-        if (String(oldProduct.price) !== String(price)) changes.push(`Price: ${oldProduct.price}->${price}`);
-        if (String(oldProduct.cost_price) !== String(costPrice)) changes.push(`Cost: ${oldProduct.cost_price}->${costPrice}`);
-        if (String(oldProduct.qty) !== String(qty)) changes.push(`Qty: ${oldProduct.qty}->${qty}`);
+        if (String(oldProduct.name) !== String(name)) changes.push(`Nom: ${oldProduct.name}->${name}`);
+        if (String(oldProduct.price) !== String(price)) changes.push(`Prix: ${oldProduct.price}->${price}`);
+        if (String(oldProduct.cost_price) !== String(costPrice)) changes.push(`Coût: ${oldProduct.cost_price}->${costPrice}`);
+        if (String(oldProduct.qty) !== String(qty)) changes.push(`Qté: ${oldProduct.qty}->${qty}`);
         if (String(oldProduct.min_stock) !== String(minStock)) changes.push(`MinStock: ${oldProduct.min_stock}->${minStock}`);
-        if (String(oldProduct.barcode || '') !== String(barcode || '')) changes.push(`Barcode: ${oldProduct.barcode || 'none'}->${barcode || 'none'}`);
-        if (String(oldProduct.category_id || '') !== String(categoryId || '')) changes.push(`Category: Changed`);
-        if (String(oldProduct.supplier || '') !== String(supplier || '')) changes.push(`Supplier: ${oldProduct.supplier || 'none'}->${supplier || 'none'}`);
+        if (String(oldProduct.barcode || '') !== String(barcode || '')) changes.push(`Code-barres: ${oldProduct.barcode || 'aucun'}->${barcode || 'aucun'}`);
+        if (String(oldProduct.category_id || '') !== String(categoryId || '')) changes.push(`Catégorie: Changée`);
+        if (String(oldProduct.supplier || '') !== String(supplier || '')) changes.push(`Fournisseur: ${oldProduct.supplier || 'aucun'}->${supplier || 'aucun'}`);
         if (changes.length > 0) {
-            details += ` | Changes: ${changes.join(', ')}`;
+            details += `: ${changes.join(', ')}`;
         }
       }
+      
+      const qtyDiff = qty - (oldProduct?.qty || 0);
+      await db.prepare(`
+        INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+        VALUES (?, ?, ?, 'update', ?, ?, ?, ?)
+      `).run(uuidv4(), id, name, qtyDiff, details, actor || 'System', costPrice || 0);
       
       logActivity('PRODUCT', 'update', details, 'system', 'System');
       res.json({ status: "success" });
@@ -726,14 +738,15 @@ async function startServer() {
         UNION ALL
         
         SELECT 
-          'adjustment' AS type,
+          sm.type AS type,
           sm.quantity AS quantity,
           NULL AS customer_name,
           sm.timestamp AS timestamp,
-          sm.actor AS employee_name,
+          COALESCE(u.username, sm.actor) AS employee_name,
           sm.reason AS reason
         FROM stock_movements sm
-        WHERE sm.product_id = ? AND sm.type = 'out'
+        LEFT JOIN users u ON sm.actor = u.id
+        WHERE sm.product_id = ? AND sm.type != 'sale'
         
         ORDER BY timestamp DESC
       `;
@@ -1720,7 +1733,7 @@ async function startServer() {
       const client = twilio(sid, token);
       await client.messages.create({ from, to: `whatsapp:${to}`, body, mediaUrl: mediaUrl ? [mediaUrl] : undefined });
       res.json({ status: "success" });
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
     }
   });
@@ -1732,7 +1745,7 @@ async function startServer() {
       let query = 'SELECT * FROM activity_log';
       const params = [];
       if (userId) {
-        query += ' WHERE user_id = ?';
+        query += ' WHERE actor_id = ?';
         params.push(userId);
       }
       query += ' ORDER BY timestamp DESC LIMIT 100';
@@ -1749,14 +1762,14 @@ async function startServer() {
       const params = [];
       
       if (userId) {
-        countQuery += ' WHERE user_id = ?';
-        dataQuery += ' WHERE user_id = ?';
+        countQuery += ' WHERE actor_id = ?';
+        dataQuery += ' WHERE actor_id = ?';
         params.push(userId);
       }
       
       dataQuery += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
       params.push(limit, (page - 1) * limit);
-
+ 
       const total = (await db.prepare(countQuery).get(...(userId ? [userId] : [])) as any).count;
       const logs = await db.prepare(dataQuery).all(...params);
       res.json({ data: toCamel(logs), total, page, limit });
