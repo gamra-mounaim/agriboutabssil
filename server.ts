@@ -750,7 +750,30 @@ async function startServer() {
         
         ORDER BY timestamp DESC
       `;
-      const history = await db.prepare(query).all(id, id);
+      let history = await db.prepare(query).all(id, id);
+      
+      // Check if there is a 'create' or initial movement
+      const hasCreate = history.some(item => item.type === 'create');
+      if (!hasCreate) {
+        // Fetch product created_at to append a virtual creation log
+        const product = await db.prepare('SELECT created_at, supplier, qty FROM products WHERE id = ?').get(id) as any;
+        if (product) {
+          history.push({
+            type: 'create',
+            quantity: product.qty,
+            customer_name: null,
+            timestamp: product.created_at,
+            employee_name: 'System',
+            reason: product.supplier 
+              ? `Création initiale (Fournisseur: ${product.supplier})` 
+              : 'Création initiale du produit / الإنشاء الأول للمنتج'
+          });
+          
+          // Re-sort history by timestamp desc
+          history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }
+      }
+      
       res.json(history);
     } catch (error: any) {
       console.error("Error fetching product history:", error);
