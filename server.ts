@@ -758,9 +758,21 @@ async function startServer() {
         // Fetch product created_at to append a virtual creation log
         const product = await db.prepare('SELECT created_at, supplier, qty FROM products WHERE id = ?').get(id) as any;
         if (product) {
+          // Calculate sum of deltas to backtrack the initial quantity
+          let sumDeltas = 0;
+          for (const item of history) {
+            const typeLower = item.type.toLowerCase();
+            if (typeLower === 'sale' || typeLower === 'out') {
+              sumDeltas -= item.quantity;
+            } else if (typeLower === 'in' || typeLower === 'create' || typeLower === 'update') {
+              sumDeltas += item.quantity;
+            }
+          }
+          const initialQty = Math.max(0, product.qty - sumDeltas);
+
           history.push({
             type: 'create',
-            quantity: product.qty,
+            quantity: initialQty,
             customer_name: null,
             timestamp: product.created_at,
             employee_name: 'System',
