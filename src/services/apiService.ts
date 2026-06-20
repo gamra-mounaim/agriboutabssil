@@ -85,6 +85,7 @@ export const api = {
   updateProduct: async (id, product) => put(`${API_URL}/products/${id}`, product),
   adjustStock: async (id, data) => post(`${API_URL}/products/${id}/adjust`, data),
   deleteProduct: async (id) => del(`${API_URL}/products/${id}`),
+  getProductHistory: async (id) => get(`${API_URL}/products/${id}/history`),
 
   // Categories
   getCategories: async () => get(`${API_URL}/categories`),

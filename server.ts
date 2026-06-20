@@ -706,6 +706,45 @@ async function startServer() {
     }
   });
 
+  app.get("/api/products/:id/history", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const query = `
+        SELECT 
+          'sale' AS type,
+          si.qty AS quantity,
+          COALESCE(s.customer_name, c.name, 'Client de passage / زبون عابر') AS customer_name,
+          s.date AS timestamp,
+          u.username AS employee_name,
+          ('Facture #' || s.invoice_number) AS reason
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        LEFT JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN users u ON s.staff_id = u.id
+        WHERE si.product_id = ?
+        
+        UNION ALL
+        
+        SELECT 
+          'adjustment' AS type,
+          sm.quantity AS quantity,
+          NULL AS customer_name,
+          sm.timestamp AS timestamp,
+          sm.actor AS employee_name,
+          sm.reason AS reason
+        FROM stock_movements sm
+        WHERE sm.product_id = ? AND sm.type = 'out'
+        
+        ORDER BY timestamp DESC
+      `;
+      const history = await db.prepare(query).all(id, id);
+      res.json(history);
+    } catch (error: any) {
+      console.error("Error fetching product history:", error);
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
   app.post("/api/products/:id/adjust", async (req, res) => {
     const { id } = req.params;
     const { type, quantity, reason, actor, supplierId, costPrice } = req.body;
@@ -1974,6 +2013,17 @@ async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));

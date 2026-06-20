@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Archive, ArrowRightLeft, FolderOpen, Plus, Edit2, Trash2, 
-  AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown
+  AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown,
+  History
 } from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Supplier } from '../types';
@@ -12,6 +13,45 @@ import { api } from '../services/apiService';
 
 type SortKey = 'name' | 'price' | 'costPrice' | 'qty' | 'supplier';
 type SortConfig = { key: SortKey; direction: 'asc' | 'desc' } | null;
+
+const historyTranslations = {
+  en: {
+    productHistory: "Product Stock Reductions History",
+    quantityReduced: "Qty Reduced",
+    soldTo: "Sold To",
+    date: "Date",
+    employee: "Staff",
+    reason: "Reason/Reference",
+    noHistory: "No stock reductions found for this product.",
+    type: "Type",
+    sale: "Sale",
+    adjustment: "Adjustment",
+  },
+  fr: {
+    productHistory: "Historique des Réductions de Stock",
+    quantityReduced: "Qté Réduite",
+    soldTo: "Vendu À",
+    date: "Date",
+    employee: "Employé",
+    reason: "Raison/Référence",
+    noHistory: "Aucune réduction de stock trouvée pour ce produit.",
+    type: "Type",
+    sale: "Vente",
+    adjustment: "Ajustement",
+  },
+  ar: {
+    productHistory: "سجل تخفيضات مخزون المنتج",
+    quantityReduced: "الكمية المخفضة",
+    soldTo: "بيعت لـ",
+    date: "التاريخ",
+    employee: "الموظف",
+    reason: "السبب/المرجع",
+    noHistory: "لم يتم العثور على أي تخفيضات في المخزون لهذا المنتج.",
+    type: "النوع",
+    sale: "بيع",
+    adjustment: "تعديل",
+  }
+};
 
 export default function Inventory({ permissions }: { permissions: any }) {
   const { products, categories, suppliers, fetchData: onRefresh, setMessage } = useStore();
@@ -55,6 +95,12 @@ export default function Inventory({ permissions }: { permissions: any }) {
   const [editForm, setEditForm] = useState({
     name: '', price: '', costPrice: '', qty: '', minStock: '', barcode: '', categoryId: '', supplier: ''
   });
+
+  // --- Product History State ---
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [productHistory, setProductHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // --- CSV Import/Export ---
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -225,6 +271,20 @@ export default function Inventory({ permissions }: { permissions: any }) {
       onRefresh();
     } catch (err) {
       setMessage({ text: "Adjustment failed.", type: 'error' });
+    }
+  };
+
+  const viewProductHistory = async (p: Product) => {
+    setHistoryProduct(p);
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+    try {
+      const data = await api.getProductHistory(p.id);
+      setProductHistory(data);
+    } catch (err) {
+      setMessage({ text: language === 'ar' ? "فشل تحميل تاريخ المنتج." : "Failed to load product history.", type: 'error' });
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -676,6 +736,13 @@ export default function Inventory({ permissions }: { permissions: any }) {
                         <td className="p-4 text-[11px] font-bold text-text-secondary">{p.supplier || '-'}</td>
                         <td className="p-4 text-right">
                           <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => viewProductHistory(p)} 
+                              className="text-text-secondary hover:bg-accent/10 hover:text-accent p-2 rounded-lg transition-colors" 
+                              title={language === 'ar' ? 'سجل المنتج' : 'Product History'}
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
                             <button onClick={() => startEditing(p)} className="text-accent hover:bg-accent/10 p-2 rounded-lg transition-colors" title={language === 'ar' ? 'تعديل' : 'Edit'}><Edit2 className="w-4 h-4" /></button>
                             <button onClick={async () => {
                               if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : 'Remove product from inventory?')) {
@@ -846,6 +913,101 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   <button type="submit" className="flex-1 bg-accent text-white py-4 rounded-2xl font-black text-xs tracking-widest shadow-xl shadow-accent/20 active:scale-95 transition-all uppercase">{t.save}</button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Product History Modal */}
+        {showHistoryModal && historyProduct && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 10 }} 
+              className="bg-card border border-border-subtle rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-text-main tracking-tight flex items-center gap-2">
+                  <History className="w-5 h-5 text-accent" />
+                  {historyTranslations[language].productHistory}
+                </h3>
+                <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
+              </div>
+
+              <div className="mb-6 p-4 bg-bg-base/50 rounded-2xl border border-border-subtle">
+                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1">{language === 'ar' ? 'المنتج' : 'Product'}</div>
+                <div className="font-bold text-text-main text-lg">{historyProduct.name}</div>
+                <div className="text-xs text-text-secondary mt-1">{language === 'ar' ? 'المخزون الحالي:' : 'Current Stock:'} <span className="font-black text-text-main">{historyProduct.qty}</span></div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto min-h-[200px] border border-border-subtle rounded-2xl bg-bg-base/30">
+                {loadingHistory ? (
+                  <div className="flex flex-col items-center justify-center h-48 gap-3">
+                    <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+                    <div className="text-xs font-bold text-text-secondary">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                  </div>
+                ) : productHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-text-secondary text-xs font-bold">
+                    {historyTranslations[language].noHistory}
+                  </div>
+                ) : (
+                  <table className="w-full text-start border-collapse">
+                    <thead>
+                      <tr className="border-b border-border-subtle bg-bg-base/50 text-[10px] uppercase tracking-wider text-text-secondary font-black">
+                        <th className="p-4">{historyTranslations[language].date}</th>
+                        <th className="p-4">{historyTranslations[language].type}</th>
+                        <th className="p-4 text-center">{historyTranslations[language].quantityReduced}</th>
+                        <th className="p-4">{historyTranslations[language].soldTo}</th>
+                        <th className="p-4">{historyTranslations[language].employee}</th>
+                        <th className="p-4">{historyTranslations[language].reason}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productHistory.map((item, idx) => (
+                        <tr key={idx} className="border-b border-border-subtle hover:bg-bg-base/20 transition-colors text-xs text-text-main">
+                          <td className="p-4 font-bold text-[11px] text-text-secondary">
+                            {new Date(item.timestamp).toLocaleString(language === 'ar' ? 'ar-EG' : 'fr-FR', {
+                              year: 'numeric', month: 'short', day: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="p-4">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter border",
+                              item.type === 'sale' 
+                                ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                                : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800"
+                            )}>
+                              {item.type === 'sale' ? historyTranslations[language].sale : historyTranslations[language].adjustment}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center font-black text-danger">
+                            -{item.quantity}
+                          </td>
+                          <td className="p-4 font-bold">
+                            {item.customer_name || '-'}
+                          </td>
+                          <td className="p-4 font-bold text-text-secondary">
+                            {item.employee_name || 'System'}
+                          </td>
+                          <td className="p-4 text-[11px] text-text-secondary font-bold">
+                            {item.reason || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={() => setShowHistoryModal(false)}
+                  className="bg-bg-base hover:bg-bg-base-hover border border-border-subtle text-text-main font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm text-sm"
+                >
+                  {language === 'ar' ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
