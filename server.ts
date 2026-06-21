@@ -367,7 +367,20 @@ async function startServer() {
   // --- Products API ---
   app.get("/api/products", async (req, res) => {
     try {
-      const products = await db.prepare('SELECT p.*, c.name as categoryName FROM products p LEFT JOIN categories c ON p.category_id = c.id').all();
+      const query = `
+        SELECT 
+          p.*, 
+          c.name as categoryName,
+          COALESCE(sales.sold_qty, 0) as sold_qty
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN (
+          SELECT product_id, SUM(qty) as sold_qty 
+          FROM sale_items 
+          GROUP BY product_id
+        ) sales ON p.id = sales.product_id
+      `;
+      const products = await db.prepare(query).all();
       res.json(toCamel(products));
     } catch (err: any) {
       console.error("Error in GET /api/products:", err);

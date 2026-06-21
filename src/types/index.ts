@@ -10,6 +10,7 @@ export interface Product {
   supplier?: string;
   supplierId?: string;
   updatedAt?: any;
+  soldQty?: number;
 }
 
 export interface Category {

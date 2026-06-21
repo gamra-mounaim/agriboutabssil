@@ -11,7 +11,7 @@ import { translations } from '../translations';
 import { useStore, useAuthStore } from '../store/useStore';
 import { api } from '../services/apiService';
 
-type SortKey = 'name' | 'price' | 'costPrice' | 'qty' | 'supplier';
+type SortKey = 'name' | 'price' | 'costPrice' | 'qty' | 'supplier' | 'soldQty';
 type SortConfig = { key: SortKey; direction: 'asc' | 'desc' } | null;
 
 const historyTranslations = {
@@ -460,6 +460,9 @@ export default function Inventory({ permissions }: { permissions: any }) {
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
+    } else {
+      // Default: sort by soldQty descending
+      result.sort((a, b) => (b.soldQty || 0) - (a.soldQty || 0));
     }
 
     return result;
@@ -702,7 +705,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
                       {t.price} {getSortIcon('price')}
                     </th>
                     <th onClick={() => handleSort('qty')} className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest cursor-pointer hover:bg-bg-base transition-colors select-none">
-                      {t.inventory} {getSortIcon('qty')}
+                      {t.qty} {getSortIcon('qty')}
+                    </th>
+                    <th onClick={() => handleSort('soldQty')} className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest cursor-pointer hover:bg-bg-base transition-colors select-none">
+                      {t.soldQty} {getSortIcon('soldQty')}
                     </th>
                     <th onClick={() => handleSort('supplier')} className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest cursor-pointer hover:bg-bg-base transition-colors select-none">
                       {t.supplier} {getSortIcon('supplier')}
@@ -713,7 +719,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 <tbody>
                   {processedProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-12 text-center text-text-secondary">
+                      <td colSpan={8} className="p-12 text-center text-text-secondary">
                         <Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
                         <p className="font-bold text-sm">{language === 'ar' ? "لا يوجد منتجات" : "No products found"}</p>
                       </td>
@@ -763,6 +769,9 @@ export default function Inventory({ permissions }: { permissions: any }) {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="p-4 font-bold text-text-main">
+                          {p.soldQty || 0}
                         </td>
                         <td className="p-4 text-[11px] font-bold text-text-secondary">{p.supplier || '-'}</td>
                         <td className="p-4 text-right">
@@ -895,7 +904,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.inventory}</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.qty}</label>
                     <input required type="number" disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent disabled:opacity-50" value={editForm.qty || ''} onChange={e => setEditForm({...editForm, qty: e.target.value})} />
                   </div>
                   <div className="space-y-1.5">
