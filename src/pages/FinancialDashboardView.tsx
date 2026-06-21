@@ -552,9 +552,9 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 subtext={t.totalInventoryValue}
               />
               <StatCard 
-                title={language === 'ar' ? 'السلع التالفة' : 'Damaged Goods'} 
+                title={t.damages} 
                 value={formatNumber(totalDamagesLoss)} 
-                subtext={language === 'ar' ? 'انقر لتصدير PDF' : 'Click to export PDF'} 
+                subtext={language === 'ar' ? 'انقر لتصدير PDF' : language === 'fr' ? 'Cliquez pour exporter le PDF' : 'Click to export PDF'} 
                 color={totalDamagesLoss > 0 ? "text-red-500" : "text-text-main"}
                 onClick={handleExportDamages}
                 danger={totalDamagesLoss > 0}
@@ -757,7 +757,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                              ))}
                            </Pie>
                            <ReChartsTooltip 
-                             formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : 'Value']}
+                             formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : language === 'fr' ? 'Valeur' : 'Value']}
                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
                              itemStyle={{ fontWeight: 'bold', color: 'var(--color-text-main)' }}
                            />
@@ -783,12 +783,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                             const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
                             generateStockReportPDF({
                               items: criticalItems,
-                              generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US'),
+                              generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : language === 'fr' ? 'fr-FR' : 'en-US'),
                               language: language
                             });
                           }}
                           className="p-2 hover:bg-bg-base rounded-full transition-colors"
-                          title={language === 'ar' ? "تصدير" : "Export"}
+                          title={language === 'ar' ? "تصدير" : language === 'fr' ? "Exporter" : "Export"}
                         >
                           <Download className="w-4 h-4 text-text-secondary" />
                         </button>

@@ -145,10 +145,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
     try {
       await api.addCategory(newCategoryName.trim());
       setNewCategoryName('');
-      setMessage({ text: language === 'ar' ? "تمت إضافة الفئة." : "Category added.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تمت إضافة الفئة." : language === 'fr' ? "Catégorie ajoutée." : "Category added.", type: 'success' });
       onRefresh();
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "فشل إضافة الفئة." : "Failed to add category.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "فشل إضافة الفئة." : language === 'fr' ? "Échec de l'ajout de la catégorie." : "Failed to add category.", type: 'error' });
     }
   };
 
@@ -160,7 +160,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
       setSupplier(quickSupplierName.trim());
       setQuickSupplierName('');
       setShowQuickSupplierModal(false);
-      setMessage({ text: language === 'ar' ? "تمت إضافة المورد بنجاح." : "Supplier added successfully.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تمت إضافة المورد بنجاح." : language === 'fr' ? "Fournisseur ajouté avec succès." : "Supplier added successfully.", type: 'success' });
       onRefresh();
     } catch (err) {
       setMessage({ text: "Failed to add supplier.", type: 'error' });
@@ -182,20 +182,20 @@ export default function Inventory({ permissions }: { permissions: any }) {
         }
       }
       onRefresh();
-      setMessage({ text: language === 'ar' ? "تم تحديث الفئات الافتراضية." : "Default categories seeded.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم تحديث الفئات الافتراضية." : language === 'fr' ? "Catégories par défaut configurées." : "Default categories seeded.", type: 'success' });
     } catch (err) {
       setMessage({ text: "Error seeding categories.", type: 'error' });
     }
   };
 
   const deleteCategory = async (id: string) => {
-    if(!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذه الفئة؟" : "Delete this category?")) return;
+    if(!window.confirm(language === 'ar' ? "هل أنت متأكد من حذف هذه الفئة؟" : language === 'fr' ? "Voulez-vous supprimer cette catégorie ?" : "Delete this category?")) return;
     try {
       await api.deleteCategory(id);
       onRefresh();
-      setMessage({ text: language === 'ar' ? "تم حذف الفئة." : "Category deleted.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم حذف الفئة." : language === 'fr' ? "Catégorie supprimée." : "Category deleted.", type: 'success' });
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "فشل الحذف." : language === 'fr' ? "Échec de la suppression." : "Delete failed.", type: 'error' });
     }
   };
 
@@ -216,10 +216,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
         actor: user?.username || 'system'
       });
       setName(''); setPrice(''); setCostPrice(''); setQty(''); setBarcode(''); setMinStock('5'); setCategoryId(''); setSupplier('');
-      setMessage({ text: language === 'ar' ? "تمت إضافة المنتج." : "Product added to inventory.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تمت إضافة المنتج." : language === 'fr' ? "Produit ajouté au stock." : "Product added to inventory.", type: 'success' });
       onRefresh();
     } catch (err: any) {
-      setMessage({ text: `${language === 'ar' ? 'فشل' : 'Failed'}: ${err.message}`, type: 'error' });
+      setMessage({ text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message}`, type: 'error' });
     }
   };
 
@@ -231,7 +231,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
       await api.updateProduct(id, { ...p, qty: newQty });
       onRefresh();
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "تم رفض التعديل." : "Adjustment rejected.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "تم رفض التعديل." : language === 'fr' ? "Ajustement rejeté." : "Adjustment rejected.", type: 'error' });
     }
   };
 
@@ -253,10 +253,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
         actor: user?.username || 'system'
       });
       setEditingProduct(null);
-      setMessage({ text: language === 'ar' ? "تم تحديث المنتج." : "Product updated.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم تحديث المنتج." : language === 'fr' ? "Produit mis à jour." : "Product updated.", type: 'success' });
       onRefresh();
     } catch (err: any) {
-      setMessage({ text: `${language === 'ar' ? 'فشل' : 'Failed'}: ${err.message}`, type: 'error' });
+      setMessage({ text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message}`, type: 'error' });
     }
   };
 
@@ -298,7 +298,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
       });
       setShowAdjModal(false);
       setAdjQty(''); setAdjReason(''); setAdjSupplierId('');
-      setMessage({ text: language === 'ar' ? "تم تعديل المخزون." : "Stock adjusted successfully.", type: 'success' });
+      setMessage({ text: language === 'ar' ? "تم تعديل المخزون." : language === 'fr' ? "Stock ajusté avec succès." : "Stock adjusted successfully.", type: 'success' });
       onRefresh();
     } catch (err) {
       setMessage({ text: "Adjustment failed.", type: 'error' });
@@ -313,7 +313,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
       const data = await api.getProductHistory(p.id);
       setProductHistory(data);
     } catch (err) {
-      setMessage({ text: language === 'ar' ? "فشل تحميل تاريخ المنتج." : "Failed to load product history.", type: 'error' });
+      setMessage({ text: language === 'ar' ? "فشل تحميل تاريخ المنتج." : language === 'fr' ? "Échec du chargement de l'historique." : "Failed to load product history.", type: 'error' });
     } finally {
       setLoadingHistory(false);
     }
@@ -332,7 +332,9 @@ export default function Inventory({ permissions }: { permissions: any }) {
 
   const exportToCSV = () => {
     const headers = language === 'ar' 
-      ? ['الاسم', 'الباركود', 'الفئة', 'الثمن', 'التكلفة', 'الكمية', 'التنبيه', 'المورد']
+      ? ['الاسم', 'الباركود', 'الفئة', 'سعر البيع', 'سعر الشراء', 'الكمية', 'التنبيه', 'المورد']
+      : language === 'fr'
+      ? ['Nom', 'Code-barres', 'Catégorie', 'Prix de Vente', "Prix d'Achat", 'Quantité', 'Stock Min', 'Fournisseur']
       : ['Name', 'Barcode', 'Category', 'Price', 'Cost Price', 'Qty', 'Min Stock', 'Supplier'];
     
     const rows = processedProducts.map(p => [
@@ -368,13 +370,13 @@ export default function Inventory({ permissions }: { permissions: any }) {
 
         const separator = lines[0].includes(';') ? ';' : ',';
         const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
-        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('اسم'));
-        const barcodeIdx = headers.findIndex(h => h.includes('barcode') || h.includes('باركود'));
-        const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('ثمن'));
-        const costIdx = headers.findIndex(h => h.includes('cost') || h.includes('تكلفة'));
-        const qtyIdx = headers.findIndex(h => h.includes('qty') || h.includes('كمية'));
+        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('اسم') || h.includes('nom'));
+        const barcodeIdx = headers.findIndex(h => h.includes('barcode') || h.includes('باركود') || h.includes('code-barres'));
+        const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('ثمن') || h.includes('prix'));
+        const costIdx = headers.findIndex(h => h.includes('cost') || h.includes('تكلفة') || h.includes('achat'));
+        const qtyIdx = headers.findIndex(h => h.includes('qty') || h.includes('كمية') || h.includes('quantité'));
         const minStockIdx = headers.findIndex(h => h.includes('min') || h.includes('تنبيه'));
-        const supplierIdx = headers.findIndex(h => h.includes('supplier') || h.includes('مورد'));
+        const supplierIdx = headers.findIndex(h => h.includes('supplier') || h.includes('مورد') || h.includes('fournisseur'));
         
         let importedCount = 0;
         for (let i = 1; i < lines.length; i++) {
@@ -406,10 +408,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
           });
           importedCount++;
         }
-        setMessage({ text: language === 'ar' ? `تم استيراد ${importedCount} منتج.` : `Imported ${importedCount} products.`, type: 'success' });
+        setMessage({ text: language === 'ar' ? `تم استيراد ${importedCount} منتج.` : language === 'fr' ? `${importedCount} produits importés.` : `Imported ${importedCount} products.`, type: 'success' });
         onRefresh();
       } catch (err) {
-        setMessage({ text: language === 'ar' ? "فشل الاستيراد." : "Import failed.", type: 'error' });
+        setMessage({ text: language === 'ar' ? "فشل الاستيراد." : language === 'fr' ? "Échec de l'importation." : "Import failed.", type: 'error' });
       } finally {
         setIsImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -503,10 +505,10 @@ export default function Inventory({ permissions }: { permissions: any }) {
               <div className="space-y-1.5 overflow-visible">
                 <label className="text-[10px] uppercase font-bold text-text-secondary px-1 flex justify-between items-center">
                   <span>{t.supplier}</span>
-                  <button type="button" onClick={() => setShowQuickSupplierModal(true)} className="text-accent hover:underline text-[9px] font-black">+ {language === 'ar' ? "مورد جديد" : "NEW"}</button>
+                  <button type="button" onClick={() => setShowQuickSupplierModal(true)} className="text-accent hover:underline text-[9px] font-black">+ {language === 'ar' ? "مورد جديد" : language === 'fr' ? "NOUVEAU" : "NEW"}</button>
                 </label>
                 <select className={cn("w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none", language === 'ar' && "text-right")} value={supplier || ''} onChange={e => setSupplier(e.target.value)}>
-                  <option value="">{language === 'ar' ? "اختر مورد" : "Select Supplier"}</option>
+                  <option value="">{language === 'ar' ? "اختر مورد" : language === 'fr' ? "Sélectionner Fournisseur" : "Select Supplier"}</option>
                   {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
               </div>
@@ -527,8 +529,8 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 <input type="number" placeholder={t.qty} disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none disabled:opacity-50" value={qty || ''} onChange={e => setQty(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{language === 'ar' ? "تنبيه" : "Alert"}</label>
-                <input type="number" placeholder={language === 'ar' ? "تنبيه" : "Alert"} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={minStock || ''} onChange={e => setMinStock(e.target.value)} />
+                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{language === 'ar' ? "تنبيه" : language === 'fr' ? "Alerte" : "Alert"}</label>
+                <input type="number" placeholder={language === 'ar' ? "تنبيه" : language === 'fr' ? "Alerte" : "Alert"} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={minStock || ''} onChange={e => setMinStock(e.target.value)} />
               </div>
             </div>
             <button type="submit" className="md:col-span-2 bg-accent text-white font-bold rounded-lg py-3 hover:opacity-90 transition-opacity text-sm uppercase tracking-widest shadow-md">
@@ -557,7 +559,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest">{t.categories}</h4>
               <button onClick={seedDefaults} className="text-[9px] font-black text-accent hover:underline uppercase tracking-widest flex items-center gap-1">
-                <Plus className="w-2.5 h-2.5" />{language === 'ar' ? "إعداد افتراضي" : "SETUP DEFAULTS"}
+                <Plus className="w-2.5 h-2.5" />{language === 'ar' ? "إعداد افتراضي" : language === 'fr' ? "CONFIG PAR DÉFAUT" : "SETUP DEFAULTS"}
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -567,7 +569,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   <button onClick={() => deleteCategory(c.id)} className="text-text-secondary hover:text-danger opacity-0 group-hover/cat:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
                 </div>
               ))}
-              {categories.length === 0 && <div className="text-[11px] text-text-secondary italic">{language === 'ar' ? "لا توجد فئات حالياً" : "No categories yet"}</div>}
+              {categories.length === 0 && <div className="text-[11px] text-text-secondary italic">{language === 'ar' ? "لا توجد فئات حالياً" : language === 'fr' ? "Aucune catégorie pour le moment" : "No categories yet"}</div>}
             </div>
           </div>
         </section>
@@ -583,7 +585,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary", language === 'ar' ? 'right-3' : 'left-3')} />
               <input 
                 type="text"
-                placeholder={language === 'ar' ? "بحث باسم، باركود، مورد..." : "Search name, barcode, supplier..."}
+                placeholder={language === 'ar' ? "بحث باسم، باركود، مورد..." : language === 'fr' ? "Rechercher par nom, code-barres, fournisseur..." : "Search name, barcode, supplier..."}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className={cn("w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-2.5 text-sm font-bold focus:border-accent outline-none transition-all shadow-sm", language === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4')}
@@ -595,17 +597,17 @@ export default function Inventory({ permissions }: { permissions: any }) {
             {/* Export / Import CSV */}
             <div className="flex bg-card border border-border-subtle rounded-lg overflow-hidden shadow-sm">
                <button onClick={exportToCSV} className="px-4 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors border-r border-border-subtle">
-                 <Download className="w-3.5 h-3.5 text-emerald-500" /> {language === 'ar' ? "تصدير" : "Export"}
+                 <Download className="w-3.5 h-3.5 text-emerald-500" /> {language === 'ar' ? "تصدير" : language === 'fr' ? "Exporter" : "Export"}
                </button>
                <label className={cn("px-4 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors cursor-pointer", isImporting && "opacity-50 pointer-events-none")}>
-                 <Upload className="w-3.5 h-3.5 text-accent" /> {isImporting ? "..." : (language === 'ar' ? "استيراد" : "Import")}
+                 <Upload className="w-3.5 h-3.5 text-accent" /> {isImporting ? "..." : (language === 'ar' ? "استيراد" : language === 'fr' ? "Importer" : "Import")}
                  <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImportCSV} />
                </label>
             </div>
 
             <button onClick={() => setShowGrouped(!showGrouped)} className={cn("px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all border shadow-sm flex items-center gap-2", showGrouped ? "bg-accent text-white border-accent" : "bg-card text-text-secondary border-border-subtle hover:bg-bg-base")}>
               <LayoutGrid className="w-3.5 h-3.5" />
-              {language === 'ar' ? "عرض حسب الفئة" : "Show By Category"}
+              {language === 'ar' ? "عرض حسب الفئة" : language === 'fr' ? "Afficher par catégorie" : "Show By Category"}
             </button>
             <div className="flex items-center gap-2">
               <select className={cn("bg-card border border-border-subtle rounded-lg px-4 py-2.5 text-xs focus:border-accent outline-none font-bold shadow-sm", language === 'ar' && "text-right")} value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}>
@@ -614,7 +616,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <select className={cn("bg-card border border-border-subtle rounded-lg px-4 py-2.5 text-xs focus:border-accent outline-none font-bold shadow-sm", language === 'ar' && "text-right")} value={filterStockStatus} onChange={e => setFilterStockStatus(e.target.value as any)}>
-                <option value="all">{language === 'ar' ? "كل الحالات" : "All Status"}</option>
+                <option value="all">{language === 'ar' ? "كل الحالات" : language === 'fr' ? "Tous les statuts" : "All Status"}</option>
                 <option value="inStock">{t.inStock}</option>
                 <option value="lowStock">{t.lowStock}</option>
                 <option value="outOfStock">{t.outOfStock}</option>
@@ -645,7 +647,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                             <div className="flex items-center gap-2">
                                <div className="text-right">
                                  <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
-                                 <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : "Qty"}: {p.qty}</div>
+                                 <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : language === 'fr' ? "Qté" : "Qty"}: {p.qty}</div>
                                </div>
                                {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>}
                              </div>
@@ -675,7 +677,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                             <div className="flex items-center gap-2">
                               <div className="text-right">
                                 <div className="text-[12px] font-bold text-text-main">{formatNumber(p.price)} {t.currency}</div>
-                                <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : "Qty"}: {p.qty}</div>
+                                <div className={cn("text-[10px] font-black uppercase", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary")}>{language === 'ar' ? "الكمية" : language === 'fr' ? "Qté" : "Qty"}: {p.qty}</div>
                               </div>
                               {permissions.editStock && <button onClick={() => startEditing(p)} className="p-1.5 text-accent hover:bg-accent/10 rounded-md transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>}
                             </div>
@@ -694,7 +696,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 <thead>
                   <tr className="bg-[#fafafa] dark:bg-slate-800/50 border-b border-border-subtle">
                     <th onClick={() => handleSort('name')} className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest cursor-pointer hover:bg-bg-base transition-colors select-none">
-                      {language === 'ar' ? 'المنتج' : 'Product'} {getSortIcon('name')}
+                      {language === 'ar' ? 'المنتج' : language === 'fr' ? 'Produit' : 'Product'} {getSortIcon('name')}
                     </th>
                     {permissions.viewCostPrice && (
                       <th onClick={() => handleSort('costPrice')} className="p-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest cursor-pointer hover:bg-bg-base transition-colors select-none">
@@ -721,7 +723,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                     <tr>
                       <td colSpan={8} className="p-12 text-center text-text-secondary">
                         <Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p className="font-bold text-sm">{language === 'ar' ? "لا يوجد منتجات" : "No products found"}</p>
+                        <p className="font-bold text-sm">{language === 'ar' ? "لا يوجد منتجات" : language === 'fr' ? "Aucun produit trouvé" : "No products found"}</p>
                       </td>
                     </tr>
                   ) : processedProducts.map(p => {
@@ -765,7 +767,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                             )}
                             {p.qty <= (p.minStock ?? 5) && (
                               <span className={cn("text-[9px] ml-2 font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border", p.qty === 0 ? "bg-red-100 text-danger border-red-200 dark:bg-red-900/30" : "bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-900/30")}>
-                                {p.qty === 0 ? (language === 'ar' ? 'نفذت' : 'Out') : (language === 'ar' ? 'منخفض' : 'Low')}
+                                {p.qty === 0 ? (language === 'ar' ? 'نفذت' : language === 'fr' ? 'Rupture' : 'Out') : (language === 'ar' ? 'منخفض' : language === 'fr' ? 'Faible' : 'Low')}
                               </span>
                             )}
                           </div>
@@ -779,13 +781,13 @@ export default function Inventory({ permissions }: { permissions: any }) {
                             <button 
                               onClick={() => viewProductHistory(p)} 
                               className="text-text-secondary hover:bg-accent/10 hover:text-accent p-2 rounded-lg transition-colors" 
-                              title={language === 'ar' ? 'سجل المنتج' : 'Product History'}
+                              title={language === 'ar' ? 'سجل المنتج' : language === 'fr' ? 'Historique du produit' : 'Product History'}
                             >
                               <History className="w-4 h-4" />
                             </button>
-                            <button onClick={() => startEditing(p)} className="text-accent hover:bg-accent/10 p-2 rounded-lg transition-colors" title={language === 'ar' ? 'تعديل' : 'Edit'}><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => startEditing(p)} className="text-accent hover:bg-accent/10 p-2 rounded-lg transition-colors" title={language === 'ar' ? 'تعديل' : language === 'fr' ? 'Modifier' : 'Edit'}><Edit2 className="w-4 h-4" /></button>
                             <button onClick={async () => {
-                              if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : 'Remove product from inventory?')) {
+                              if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : language === 'fr' ? 'Supprimer ce produit du stock ?' : 'Remove product from inventory?')) {
                                 try { await api.deleteProduct(p.id); setMessage({ text: language === 'ar' ? "تم الحذف." : "Product removed.", type: 'success' }); onRefresh(); } 
                                 catch (err) { setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' }); }
                               }
@@ -828,11 +830,11 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   <div className="grid grid-cols-2 gap-3 mb-2">
                     <button type="button" onClick={() => setAdjOutReason('damage')} className={cn("py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2", adjOutReason === 'damage' ? "bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800" : "bg-bg-base border-border-subtle text-text-secondary hover:border-text-secondary/30")}>
                       <AlertTriangle className="w-4 h-4" />
-                      {language === 'ar' ? 'تالف / ضياع' : 'Damage / Loss'}
+                      {language === 'ar' ? 'تالف / ضياع' : language === 'fr' ? 'Endommagé / Perte' : 'Damage / Loss'}
                     </button>
                     <button type="button" onClick={() => setAdjOutReason('return')} className={cn("py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex flex-col items-center justify-center gap-2", adjOutReason === 'return' ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-800" : "bg-bg-base border-border-subtle text-text-secondary hover:border-text-secondary/30")}>
                       <ArrowRightLeft className="w-4 h-4" />
-                      {language === 'ar' ? 'إرجاع للمورد' : 'Return to Supplier'}
+                      {language === 'ar' ? 'إرجاع للمورد' : language === 'fr' ? 'Retour au fournisseur' : 'Return to Supplier'}
                     </button>
                   </div>
                 )}
@@ -848,18 +850,18 @@ export default function Inventory({ permissions }: { permissions: any }) {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.supplier}</label>
                       <select required={adjType === 'out' && adjOutReason === 'return'} className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold focus:border-accent outline-none shadow-sm" value={adjSupplierId} onChange={(e) => setAdjSupplierId(e.target.value)}>
-                        <option value="">{language === 'ar' ? "اختر المورد..." : "Select Supplier..."}</option>
+                        <option value="">{language === 'ar' ? "اختر المورد..." : language === 'fr' ? "Sélectionner Fournisseur..." : "Select Supplier..."}</option>
                         {(suppliers || []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
                     </div>
                     {adjSupplierId && (
                       <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/20">
-                        <label className="text-[10px] font-black text-accent uppercase tracking-widest">{language === 'ar' ? "تكلفة الوحدة" : "Unit Cost"}</label>
+                        <label className="text-[10px] font-black text-accent uppercase tracking-widest">{language === 'ar' ? "تكلفة الوحدة" : language === 'fr' ? "Coût Unitaire" : "Unit Cost"}</label>
                         <input required type="number" step="any" className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-2.5 px-4 text-text-main font-black focus:border-accent outline-none shadow-sm" value={adjCostPrice} onChange={(e) => setAdjCostPrice(e.target.value)} />
                         <p className="text-[9px] text-text-secondary font-bold mt-2">
                           {adjType === 'in' 
-                            ? (language === 'ar' ? "سيتم زيادة التكلفة في دين المورد" : "Cost will increase supplier debt")
-                            : (language === 'ar' ? "سيتم خصم التكلفة من دين المورد" : "Cost will be deducted from supplier debt")}
+                            ? (language === 'ar' ? "سيتم زيادة التكلفة في دين المورد" : language === 'fr' ? "Le coût augmentera la dette du fournisseur" : "Cost will increase supplier debt")
+                            : (language === 'ar' ? "سيتم خصم التكلفة من دين المورد" : language === 'fr' ? "Le coût sera déduit de la dette du fournisseur" : "Cost will be deducted from supplier debt")}
                         </p>
                       </div>
                     )}
@@ -868,7 +870,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.reason} {adjType === 'out' && adjOutReason === 'damage' && "*"}</label>
-                  <input required={adjType === 'out' && adjOutReason === 'damage'} type="text" placeholder={language === 'ar' ? "السبب الملاحظة..." : "Reason / Note..."} className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold focus:border-accent outline-none shadow-sm" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} />
+                  <input required={adjType === 'out' && adjOutReason === 'damage'} type="text" placeholder={language === 'ar' ? "السبب الملاحظة..." : language === 'fr' ? "Motif / Note..." : "Reason / Note..."} className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold focus:border-accent outline-none shadow-sm" value={adjReason} onChange={(e) => setAdjReason(e.target.value)} />
                 </div>
 
                 <button type="submit" className={cn("w-full py-4 rounded-xl font-black flex items-center justify-center gap-2 shadow-xl transition-all text-white uppercase tracking-widest text-sm", adjType === 'in' ? "bg-accent hover:opacity-90 shadow-accent/20" : "bg-danger hover:opacity-90 shadow-danger/20")}>
@@ -884,7 +886,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card border border-border-subtle rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-text-main tracking-tight">{language === 'ar' ? "تعديل المنتج" : "Edit Product"}</h3>
+                <h3 className="text-xl font-black text-text-main tracking-tight">{language === 'ar' ? "تعديل المنتج" : language === 'fr' ? "Modifier le Produit" : "Edit Product"}</h3>
                 <button onClick={() => setEditingProduct(null)} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
               </div>
               <form onSubmit={handleUpdateProduct} className="space-y-5">
@@ -925,7 +927,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   <div className="space-y-1.5 col-span-2">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.supplier}</label>
                     <select className={cn("w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent", language === 'ar' && "text-right")} value={editForm.supplier || ''} onChange={e => setEditForm({...editForm, supplier: e.target.value})}>
-                      <option value="">{language === 'ar' ? "اختر مورد" : "Select Supplier"}</option>
+                      <option value="">{language === 'ar' ? "اختر مورد" : language === 'fr' ? "Sélectionner Fournisseur" : "Select Supplier"}</option>
                       {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
@@ -975,16 +977,16 @@ export default function Inventory({ permissions }: { permissions: any }) {
               </div>
 
               <div className="mb-6 p-4 bg-bg-base/50 rounded-2xl border border-border-subtle">
-                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1">{language === 'ar' ? 'المنتج' : 'Product'}</div>
+                <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1">{language === 'ar' ? 'المنتج' : language === 'fr' ? 'Produit' : 'Product'}</div>
                 <div className="font-bold text-text-main text-lg">{historyProduct.name}</div>
-                <div className="text-xs text-text-secondary mt-1">{language === 'ar' ? 'المخزون الحالي:' : 'Current Stock:'} <span className="font-black text-text-main">{historyProduct.qty}</span></div>
+                <div className="text-xs text-text-secondary mt-1">{language === 'ar' ? 'المخزون الحالي:' : language === 'fr' ? 'Stock actuel:' : 'Current Stock:'} <span className="font-black text-text-main">{historyProduct.qty}</span></div>
               </div>
 
               <div className="flex-1 overflow-y-auto min-h-[200px] border border-border-subtle rounded-2xl bg-bg-base/30">
                 {loadingHistory ? (
                   <div className="flex flex-col items-center justify-center h-48 gap-3">
                     <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-                    <div className="text-xs font-bold text-text-secondary">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>
+                    <div className="text-xs font-bold text-text-secondary">{language === 'ar' ? 'جاري التحميل...' : language === 'fr' ? 'Chargement...' : 'Loading...'}</div>
                   </div>
                 ) : productHistory.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-text-secondary text-xs font-bold">
@@ -1054,7 +1056,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   onClick={() => setShowHistoryModal(false)}
                   className="bg-bg-base hover:bg-bg-base-hover border border-border-subtle text-text-main font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm text-sm"
                 >
-                  {language === 'ar' ? 'إغلاق' : 'Close'}
+                  {language === 'ar' ? 'إغلاق' : language === 'fr' ? 'Fermer' : 'Close'}
                 </button>
               </div>
             </motion.div>

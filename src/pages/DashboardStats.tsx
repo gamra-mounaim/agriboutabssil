@@ -151,9 +151,9 @@ function DashboardStats({ products, categories, customers, sales, language, stat
           danger={totalSupplierDebtValue > 0}
         />
         <StatCard 
-          label={language === 'ar' ? 'المنتجات التالفة' : 'Damaged Goods'} 
+          label={t.damages} 
           value={`${formatNumber(totalDamagesLoss)} ${t.currency}`} 
-          sub={language === 'ar' ? 'انقر لتصدير PDF' : 'Click to export PDF'} 
+          sub={language === 'ar' ? 'انقر لتصدير PDF' : language === 'fr' ? 'Cliquez pour exporter le PDF' : 'Click to export PDF'} 
           danger={totalDamagesLoss > 0}
           onClick={handleExportDamages}
         />
@@ -193,7 +193,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
             {last7Days.every((d: any) => d.amount === 0) ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-text-secondary opacity-60">
                 <TrendingUp className="w-8 h-8 mb-2 opacity-50" />
-                <span className="text-xs font-bold uppercase tracking-widest">{language === 'ar' ? "لا توجد مبيعات" : "NO SALES"}</span>
+                <span className="text-xs font-bold uppercase tracking-widest">{language === 'ar' ? "لا توجد مبيعات" : language === 'fr' ? "AUCUNE VENTE" : "NO SALES"}</span>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%" minHeight={260} minWidth={1}>
@@ -251,7 +251,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
         <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm overflow-hidden flex flex-col h-[350px]">
           <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-6 flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-accent" />
-            {language === 'ar' ? "أفضل المنتجات مبيعاً" : "TOP SELLING PRODUCTS"}
+            {t.topSellingProducts.toUpperCase()}
           </h4>
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
             {topProductsList.length === 0 ? (
@@ -268,7 +268,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                     </div>
                     <div>
                       <div className="text-[12px] font-bold text-text-main line-clamp-1">{tp.name}</div>
-                      <div className="text-[10px] text-text-secondary">{tp.qty} {language === 'ar' ? 'وحدة مباعة' : 'Units Sold'}</div>
+                      <div className="text-[10px] text-text-secondary">{tp.qty} {language === 'ar' ? 'وحدة مباعة' : language === 'fr' ? 'unités vendues' : 'Units Sold'}</div>
                     </div>
                   </div>
                   <div className="text-[12px] font-bold text-success">{formatNumber(tp.price * tp.qty)} {t.currency}</div>
@@ -282,7 +282,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
         <div className="bg-card border border-border-subtle p-6 rounded-2xl shadow-sm relative overflow-hidden h-[350px] flex flex-col">
           <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest mb-2 flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-blue-500" />
-            {language === 'ar' ? "توزيع قيمة المخزون" : "INVENTORY VALUE BY CATEGORY"}
+            {t.inventoryValueByCategory.toUpperCase()}
           </h4>
           <div className="flex-1 w-full min-h-0 mt-2">
             {categoryValueData.length === 0 ? (
@@ -307,7 +307,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                     ))}
                   </Pie>
                   <ReChartsTooltip 
-                    formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : 'Value']}
+                    formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : language === 'fr' ? 'Valeur' : 'Value']}
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--color-border-subtle)', background: 'var(--color-card)', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
                     itemStyle={{ fontWeight: 'bold', color: 'var(--color-text-main)' }}
                   />
@@ -328,12 +328,12 @@ function DashboardStats({ products, categories, customers, sales, language, stat
                   const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
                   generateStockReportPDF({
                     items: criticalItems,
-                    generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US'),
+                    generatedAt: new Date().toLocaleString(language === 'ar' ? 'ar-EG' : language === 'fr' ? 'fr-FR' : 'en-US'),
                     language: language
                   });
                 }}
                 className="bg-bg-base hover:bg-white text-text-secondary hover:text-accent border border-border-subtle hover:border-accent p-1.5 rounded-lg transition-all"
-                title={language === 'ar' ? "تصدير" : "Export"}
+                title={language === 'ar' ? "تصدير" : language === 'fr' ? "Exporter" : "Export"}
               >
                 <Download className="w-3.5 h-3.5" />
               </button>

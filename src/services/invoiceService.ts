@@ -731,15 +731,16 @@ interface StockReportData {
 export const generateStockReportPDF = (data: StockReportData) => {
   const { items, generatedAt, language } = data;
   const isAr = language === 'ar';
+  const isFr = language === 'fr';
   const doc = new jsPDF();
   
   doc.setFontSize(22);
   doc.setTextColor(51, 65, 85);
-  doc.text(isAr ? 'تقرير المخزون الحرج' : 'Critical Stock Report', 105, 20, { align: 'center' });
+  doc.text(isAr ? 'تقرير المخزون الحرج' : isFr ? 'Rapport de Stock Critique' : 'Critical Stock Report', 105, 20, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setTextColor(100, 116, 139);
-  doc.text(`${isAr ? 'تم الإنشاء في' : 'Generated at'}: ${generatedAt}`, 105, 30, { align: 'center' });
+  doc.text(`${isAr ? 'تم الإنشاء في' : isFr ? 'Généré le' : 'Generated at'}: ${generatedAt}`, 105, 30, { align: 'center' });
 
   doc.setLineWidth(0.5);
   doc.setDrawColor(226, 232, 240);
@@ -747,6 +748,8 @@ export const generateStockReportPDF = (data: StockReportData) => {
 
   const tableColumn = isAr ? 
     ["اسم المنتج", "المورد", "الكمية", "الحد الأدنى", "الحالة"] : 
+    isFr ? 
+    ["Nom du produit", "Fournisseur", "Qté", "Min", "Statut"] : 
     ["Product Name", "Supplier", "Qty", "Min", "Status"];
 
   const tableRows = items.map(p => [
@@ -754,7 +757,7 @@ export const generateStockReportPDF = (data: StockReportData) => {
     p.supplier || '-',
     String(p.qty ?? 0),
     String(p.minStock ?? 5),
-    (p.qty ?? 0) === 0 ? (isAr ? "نفذ المخزون" : "Out of Stock") : (isAr ? "مخزون منخفض" : "Low Stock")
+    (p.qty ?? 0) === 0 ? (isAr ? "نفذ المخزون" : isFr ? "Rupture de Stock" : "Out of Stock") : (isAr ? "مخزون منخفض" : isFr ? "Stock Faible" : "Low Stock")
   ]);
 
   autoTable(doc, {
@@ -771,9 +774,9 @@ export const generateStockReportPDF = (data: StockReportData) => {
       if (data.section === 'body' && data.column.index === 4) {
         const status = data.cell.raw;
         let customColor = '#1a1a1a';
-        if (status === 'Out of Stock' || status === 'نفذ المخزون') {
+        if (status === 'Out of Stock' || status === 'نفذ المخزون' || status === 'Rupture de Stock') {
           customColor = '#ea580c'; // Orange-600
-        } else if (status === 'Low Stock' || status === 'مخزون منخفض') {
+        } else if (status === 'Low Stock' || status === 'مخزون منخفض' || status === 'Stock Faible') {
           customColor = '#dc2626'; // Red-600
         }
         drawArabicCell(doc, data, customColor);
@@ -788,16 +791,18 @@ export const generateStockReportPDF = (data: StockReportData) => {
 
 export const generateDamagesReportPDF = (data: any[], totalValue: number, language: string = 'en', settings?: any) => {
   const isAr = language === 'ar';
+  const isFr = language === 'fr';
+  const t = translations[language as 'en' | 'fr' | 'ar'] || translations.en;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
   doc.setFontSize(22);
   doc.setTextColor(51, 65, 85);
-  doc.text(isAr ? 'تقرير السلع التالفة' : 'Damaged Goods Report', pageWidth / 2, 20, { align: 'center' });
+  doc.text(t.damagesTitle, pageWidth / 2, 20, { align: 'center' });
 
   doc.setFontSize(12);
   doc.setTextColor(100, 116, 139);
-  doc.text(`${isAr ? 'تاريخ التقرير' : 'Date'}: ${new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}`, pageWidth / 2, 30, { align: 'center' });
+  doc.text(`${isAr ? 'تاريخ التقرير' : isFr ? 'Date du rapport' : 'Date'}: ${new Date().toLocaleDateString(isAr ? 'ar-EG' : isFr ? 'fr-FR' : 'en-US')}`, pageWidth / 2, 30, { align: 'center' });
 
   doc.setLineWidth(0.5);
   doc.setDrawColor(226, 232, 240);
@@ -805,6 +810,8 @@ export const generateDamagesReportPDF = (data: any[], totalValue: number, langua
 
   const tableColumn = isAr ? 
     ["التاريخ", "المنتج", "الكمية", "تكلفة الوحدة", "الخسارة", "ملاحظة"] : 
+    isFr ? 
+    ["Date", "Produit", "Qté", "Coût Unitaire", "Perte Totale", "Motif"] : 
     ["Date", "Product", "Qty", "Unit Cost", "Total Loss", "Reason"];
 
   const tableRows = data.map(d => [
@@ -842,7 +849,7 @@ export const generateDamagesReportPDF = (data: any[], totalValue: number, langua
   
   doc.setFontSize(10);
   doc.setTextColor(153, 27, 27);
-  doc.text(isAr ? 'إجمالي الخسارة (درهم):' : 'TOTAL LOSS (DH):', boxX + boxW / 2, finalY + 8, { align: 'center' });
+  doc.text(isAr ? 'إجمالي الخسارة (درهم):' : isFr ? 'PERTE TOTALE (DH):' : 'TOTAL LOSS (DH):', boxX + boxW / 2, finalY + 8, { align: 'center' });
   
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
