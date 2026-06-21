@@ -71,6 +71,8 @@ export const api = {
   login: async (username, password) => post(`${API_URL}/auth/login`, { username, password }),
   verifySession: async (userId, sessionVersion) => post(`${API_URL}/auth/verify`, { userId, sessionVersion }),
   logoutAllDevices: async (userId) => post(`${API_URL}/auth/logout-all`, { userId }),
+  changePassword: async (oldPassword, newPassword) => post(`${API_URL}/auth/change-password`, { oldPassword, newPassword }),
+
 
   // Products
   getProducts: async (page?: number, limit?: number, search?: string) => {

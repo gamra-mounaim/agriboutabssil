@@ -129,8 +129,15 @@ export default function App() {
   const [backingUpToDrive, setBackingUpToDrive] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('staff');
   const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('theme') as 'light' | 'dark') || 'light');
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Sync language to DOM direction
+
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
@@ -364,6 +371,60 @@ export default function App() {
     setCurrentUserRole('staff');
     authLogout();
   };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError((t as any).passwordsDoNotMatch);
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      setPasswordError(language === 'ar' ? 'يجب أن تتكون كلمة المرور من 4 أحرف على الأقل' : language === 'fr' ? 'Le mot de passe doit comporter au moins 4 caractères' : 'Password must be at least 4 characters');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await api.changePassword(oldPassword, newPassword);
+      if (res.status === 'success') {
+        setMessage({ text: (t as any).passwordChangedSuccess, type: 'success' });
+        
+        // Update user state and local storage with the new token
+        const stored = localStorage.getItem('pos_user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          u.token = res.token;
+          u.sessionVersion = res.sessionVersion;
+          localStorage.setItem('pos_user', JSON.stringify(u));
+        }
+
+        // Update auth state in app and useAuthStore
+        const updatedUser = {
+          ...user,
+          sessionVersion: res.sessionVersion,
+          token: res.token
+        };
+        setUser(updatedUser);
+        setAuth(updatedUser, res.token);
+
+        // Reset fields and close modal
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setIsChangePasswordOpen(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      const isIncorrect = err.message?.includes('Incorrect current password');
+      setPasswordError(isIncorrect ? (t as any).incorrectCurrentPassword : (t as any).passwordChangedError);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -627,6 +688,14 @@ export default function App() {
             </div>
             
             <div className={cn("flex items-center gap-4", language === 'ar' ? "flex-row-reverse" : "flex-row")}>
+              <button 
+                onClick={() => setIsChangePasswordOpen(true)}
+                title={(t as any).changePassword}
+                className="p-2 rounded-xl bg-bg-base/40 border border-border-subtle hover:text-accent hover:border-accent/40 text-text-secondary transition-all transform active:scale-95 cursor-pointer flex items-center justify-center"
+                aria-label={(t as any).changePassword}
+              >
+                <Key className="w-3.5 h-3.5" />
+              </button>
               <div className={cn("hidden sm:block", language === 'ar' ? "text-right" : "text-left")}>
                 <div className="text-sm font-semibold text-text-main">{user.displayName || user.username}</div>
                 <div className="text-[11px] font-medium text-text-secondary">{user.email || user.role}</div>
@@ -639,6 +708,7 @@ export default function App() {
                 </div>
               )}
             </div>
+
           </div>
         </header>
 
@@ -686,9 +756,120 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Change Password Modal */}
+      <AnimatePresence>
+        {isChangePasswordOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-card border border-border-subtle w-full max-w-md rounded-3xl p-6 shadow-2xl relative overflow-hidden"
+            >
+              {/* Decorative backgrounds */}
+              <div className="absolute top-[-50%] left-[-50%] w-[100%] h-[100%] bg-accent/10 rounded-full filter blur-[80px] pointer-events-none" />
+
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <h3 className="text-lg font-black uppercase tracking-wider text-text-main flex items-center gap-2">
+                  <Key className="w-5 h-5 text-accent animate-pulse" />
+                  {(t as any).changePassword}
+                </h3>
+                <button
+                  onClick={() => {
+                    setIsChangePasswordOpen(false);
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setPasswordError(null);
+                  }}
+                  className="p-1.5 rounded-xl hover:bg-bg-base transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5 text-text-secondary" />
+                </button>
+              </div>
+
+              {passwordError && (
+                <div className="mb-4 p-3 bg-danger/10 border border-danger/25 text-danger text-xs font-semibold rounded-2xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePasswordSubmit} className="space-y-4 relative z-10">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                    {(t as any).currentPassword}
+                  </label>
+                  <input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    required
+                    className="w-full bg-bg-base/50 border border-border-subtle rounded-xl py-3 px-4 text-sm focus:border-accent focus:bg-bg-base outline-none transition-all text-text-main placeholder-text-secondary/35"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                    {(t as any).newPassword}
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="w-full bg-bg-base/50 border border-border-subtle rounded-xl py-3 px-4 text-sm focus:border-accent focus:bg-bg-base outline-none transition-all text-text-main placeholder-text-secondary/35"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                    {(t as any).confirmNewPassword}
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full bg-bg-base/50 border border-border-subtle rounded-xl py-3 px-4 text-sm focus:border-accent focus:bg-bg-base outline-none transition-all text-text-main placeholder-text-secondary/35"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangePasswordOpen(false);
+                      setOldPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setPasswordError(null);
+                    }}
+                    className="flex-1 bg-bg-base hover:bg-bg-base/80 text-text-main font-bold py-3 rounded-2xl active:scale-[0.98] transition-all text-[11px] tracking-wider uppercase border border-border-subtle cursor-pointer"
+                  >
+                    {t.cancel}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={changingPassword}
+                    className="flex-1 bg-accent hover:bg-accent/90 text-white font-black py-3 rounded-2xl active:scale-[0.98] transition-all text-[11px] tracking-wider uppercase shadow-[0_0_15px_rgba(79,70,229,0.2)] disabled:opacity-75 cursor-pointer"
+                  >
+                    {changingPassword ? '...' : t.saveChanges}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
 
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (

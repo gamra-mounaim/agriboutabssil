@@ -296,6 +296,48 @@ async function startServer() {
     }
   });
 
+  app.post("/api/auth/change-password", authMiddleware, async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.body.user.userId;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ status: "error", message: "Old and new passwords are required" });
+    }
+
+    try {
+      const user = (await db.prepare('SELECT password, session_version, username FROM users WHERE id = $1').get(userId)) as any;
+      if (!user) {
+        return res.status(404).json({ status: "error", message: "User not found" });
+      }
+
+      const hashedOld = hashPassword(oldPassword.trim());
+      if (user.password !== hashedOld && user.password !== oldPassword.trim()) {
+        return res.status(400).json({ status: "error", message: "Incorrect current password" });
+      }
+
+      const hashedNew = hashPassword(newPassword.trim());
+      const newSessionVersion = (user.session_version || 1) + 1;
+
+      await db.prepare('UPDATE users SET password = ?, session_version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(hashedNew, newSessionVersion, userId);
+
+      // Generate a new token with the new session version so they stay logged in
+      const newToken = jwt.sign({ userId, sessionVersion: newSessionVersion }, JWT_SECRET, { expiresIn: '7d' });
+
+      logActivity('STAFF', 'update', `Changement de mot de passe`, userId, user.username);
+
+      return res.json({ 
+        status: "success", 
+        sessionVersion: newSessionVersion,
+        token: newToken
+      });
+    } catch (error: any) {
+      console.error("Change password error:", error);
+      res.status(500).json({ status: "error", message: "Database error: " + error.message });
+    }
+  });
+
+
   app.post("/api/auth/register", async (req, res) => {
     const { username, password: rawPassword, role, permissions } = req.body;
     const usernameLower = username.trim().toLowerCase();
