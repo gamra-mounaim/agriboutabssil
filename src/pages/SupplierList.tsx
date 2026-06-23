@@ -353,7 +353,7 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-black text-sm text-text-main group-hover:text-accent transition-colors leading-tight">{s.name}</h4>
                           {canViewDebtAmount && s.debt !== 0 && (
-                            <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-md", s.debt > 0 ? "text-danger bg-danger/10" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20")}>
+                            <span className={cn("text-sm font-black px-2.5 py-1 rounded-md", s.debt > 0 ? "text-danger bg-danger/10" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20")}>
                               {formatNumber(Math.abs(s.debt))} DH
                             </span>
                           )}
