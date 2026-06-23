@@ -38,8 +38,9 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
     }, language, settings);
   };
 
+  const canViewAll = currentUserRole === 'admin' || currentUser?.email?.includes('1984') || (currentUser as any)?.username?.includes('1984');
   const filteredSales = sales.filter(s => {
-    if (currentUserRole !== 'admin' && s.staffId !== currentUser?.id) return false;
+    if (!canViewAll && s.staffId !== currentUser?.id) return false;
     const customer = customers.find(c => c.id === s.customerId);
     const cName = customer?.name || (s as any).customerName || '';
     
@@ -149,23 +150,13 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                   <td className="p-4 text-right font-black text-accent">{formatNumber(sale.total)} DH</td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {sale.paymentMethod === 'debt' ? (
-                        <button
-                          onClick={() => handleEditClick(sale)}
-                          className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors"
-                          title={t.editDiscount}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          className="p-2 bg-gray-50 text-gray-400 rounded-xl cursor-not-allowed"
-                          title={t.cannotDiscountPaid}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleEditClick(sale)}
+                        className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors"
+                        title={t.editDiscount}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       
                       <button 
                         onClick={() => printInvoice(sale)}

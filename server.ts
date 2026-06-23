@@ -1221,7 +1221,12 @@ async function startServer() {
 
   // --- Suppliers API ---
   app.get("/api/suppliers", async (req, res) => {
-    const suppliers = await db.prepare('SELECT * FROM suppliers').all();
+    const suppliers = await db.prepare(`
+      SELECT s.*, 
+             (SELECT COALESCE(SUM(amount), 0) FROM supplier_history WHERE supplier_id = s.id AND type = 'DEBT') as total_purchases,
+             (SELECT COALESCE(SUM(amount), 0) FROM supplier_history WHERE supplier_id = s.id AND type = 'PAYMENT') as total_paid
+      FROM suppliers s
+    `).all();
     res.json(toCamel(suppliers));
   });
 
@@ -1649,10 +1654,6 @@ async function startServer() {
       
       const sale = await db.prepare('SELECT * FROM sales WHERE id = ?').get(id) as any;
       if (!sale) return res.status(404).json({ error: "Sale not found" });
-      
-      if (sale.payment_method !== 'debt') {
-         return res.status(400).json({ error: "Cannot discount a paid invoice" });
-      }
 
       const oldDiscount = sale.discount || 0;
       const discountDiff = discount - oldDiscount;
@@ -1663,7 +1664,7 @@ async function startServer() {
       
       await db.prepare('UPDATE sales SET discount = ?, total = ? WHERE id = ?').run(discount, newTotal, id);
       
-      if (sale.customer_id) {
+      if (sale.payment_method === 'debt' && sale.customer_id) {
         await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(discountDiff, sale.customer_id);
         
         await db.prepare(`

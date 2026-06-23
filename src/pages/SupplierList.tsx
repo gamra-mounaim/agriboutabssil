@@ -385,14 +385,23 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                       </div>
                     )}
 
-                    {/* Debt amount */}
-                    <div className={cn('p-3.5 rounded-xl mb-4', s.debt > 0 ? 'bg-red-50 dark:bg-red-900/10' : 'bg-emerald-50 dark:bg-emerald-900/10')}>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-0.5">{t.youOweSupplier}</p>
-                      <div className="flex items-baseline gap-1">
-                        <span className={cn('text-2xl font-black tracking-tighter', s.debt > 0 ? 'text-danger' : 'text-emerald-600')}>
-                          {canViewDebtAmount ? formatNumber(s.debt) : '***'}
-                        </span>
-                        <span className="text-[10px] font-bold text-text-secondary">{t.currency}</span>
+                    {/* Debt / Paid amounts */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">{language === 'ar' ? 'المدفوع' : 'Payé'}</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-black tracking-tighter text-emerald-600">
+                            {canViewDebtAmount ? formatNumber(s.totalPaid || 0) : '***'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={cn('p-3 rounded-xl', s.debt > 0 ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-800/50')}>
+                        <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", s.debt > 0 ? 'text-danger' : 'text-text-secondary')}>{language === 'ar' ? 'الباقي' : 'Reste'}</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className={cn('text-lg font-black tracking-tighter', s.debt > 0 ? 'text-danger' : 'text-text-main')}>
+                            {canViewDebtAmount ? formatNumber(s.debt) : '***'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
