@@ -1223,8 +1223,8 @@ async function startServer() {
   app.get("/api/suppliers", async (req, res) => {
     const suppliers = await db.prepare(`
       SELECT s.*, 
-             (SELECT COALESCE(SUM(amount), 0) FROM supplier_history WHERE supplier_id = s.id AND type = 'DEBT') as total_purchases,
-             (SELECT COALESCE(SUM(amount), 0) FROM supplier_history WHERE supplier_id = s.id AND type = 'PAYMENT') as total_paid
+             (SELECT COALESCE(SUM(qty * cost_price), 0) FROM products WHERE supplier_id = s.id AND qty > 0) as stock_value,
+             (SELECT COALESCE(SUM(sm.quantity * sm.cost_price), 0) FROM stock_movements sm JOIN products p ON sm.product_id = p.id WHERE p.supplier_id = s.id AND sm.type = 'sale') as sold_value
       FROM suppliers s
     `).all();
     res.json(toCamel(suppliers));

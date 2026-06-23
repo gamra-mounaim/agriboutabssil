@@ -62,8 +62,8 @@ export interface Supplier {
   debt: number;
   due_date?: string;
   dueDate?: string;
-  totalPurchases?: number;
-  totalPaid?: number;
+  stockValue?: number;
+  soldValue?: number;
 }
 
 export interface UserProfile {

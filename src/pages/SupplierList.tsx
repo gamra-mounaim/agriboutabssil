@@ -388,18 +388,18 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                     {/* Debt / Paid amounts */}
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">{language === 'ar' ? 'المدفوع' : 'Payé'}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">{language === 'ar' ? 'ما تم بيعه' : 'Vendu'}</p>
                         <div className="flex items-baseline gap-1">
                           <span className="text-lg font-black tracking-tighter text-emerald-600">
-                            {canViewDebtAmount ? formatNumber(s.totalPaid || 0) : '***'}
+                            {canViewDebtAmount ? formatNumber(s.soldValue || 0) : '***'}
                           </span>
                         </div>
                       </div>
-                      <div className={cn('p-3 rounded-xl', s.debt > 0 ? 'bg-red-50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-800/50')}>
-                        <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", s.debt > 0 ? 'text-danger' : 'text-text-secondary')}>{language === 'ar' ? 'الباقي' : 'Reste'}</p>
+                      <div className={cn('p-3 rounded-xl bg-red-50 dark:bg-red-900/10')}>
+                        <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5 text-danger")}>{language === 'ar' ? 'الباقي في المخزون' : 'En stock'}</p>
                         <div className="flex items-baseline gap-1">
-                          <span className={cn('text-lg font-black tracking-tighter', s.debt > 0 ? 'text-danger' : 'text-text-main')}>
-                            {canViewDebtAmount ? formatNumber(s.debt) : '***'}
+                          <span className={cn('text-lg font-black tracking-tighter text-danger')}>
+                            {canViewDebtAmount ? formatNumber(s.stockValue || 0) : '***'}
                           </span>
                         </div>
                       </div>
