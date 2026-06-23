@@ -350,7 +350,14 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                     {/* Header */}
                     <div className="flex justify-between items-start mb-4">
                       <div className={cn('flex flex-col gap-1', language === 'ar' && 'text-right')}>
-                        <h4 className="font-black text-sm text-text-main group-hover:text-accent transition-colors leading-tight">{s.name}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-black text-sm text-text-main group-hover:text-accent transition-colors leading-tight">{s.name}</h4>
+                          {canViewDebtAmount && s.debt !== 0 && (
+                            <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-md", s.debt > 0 ? "text-danger bg-danger/10" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20")}>
+                              {formatNumber(Math.abs(s.debt))} DH
+                            </span>
+                          )}
+                        </div>
                         {s.phone && (
                           <p className="text-[10px] text-text-secondary font-bold flex items-center gap-1">
                             <Phone className="w-3 h-3" />{s.phone}
