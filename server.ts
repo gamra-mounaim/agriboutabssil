@@ -151,8 +151,34 @@ async function startServer() {
       return encryptedData;
     }
   };
-  const logActivity = async (type: string, action: string, details: string, actorId: string = 'system', actorName: string = 'System') => {
+  const logActivity = async (req: any, type: string, action: string, details: string, fallbackActorId: string = 'system', fallbackActorName: string = 'System') => {
     try {
+      let actorId = fallbackActorId;
+      let actorName = fallbackActorName;
+
+      if (req && req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          if (!token.includes(':')) {
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            if (decoded && decoded.userId) {
+              actorId = decoded.userId;
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (actorId && actorId !== 'system' && actorId !== 'admin') {
+        try {
+          const user = await db.prepare('SELECT name, username FROM users WHERE id = ?').get(actorId) as any;
+          if (user) {
+             actorName = user.name || user.username || fallbackActorName;
+          }
+        } catch (e) {}
+      } else if (actorId === 'admin') {
+        actorName = 'Admin';
+      }
+
       await db.prepare(`
         INSERT INTO activity_log (id, type, action, details, actor_id, actor_name)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -233,7 +259,7 @@ async function startServer() {
           const sessionVersion = userWithoutPassword.session_version || 1;
           const token = jwt.sign({ userId: userWithoutPassword.id, sessionVersion }, JWT_SECRET, { expiresIn: '7d' });
           
-          logActivity('STAFF', 'login', `Utilisateur connecté : ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
+          logActivity(req, 'STAFF', 'login', `Utilisateur connecté : ${userWithoutPassword.username}`, userWithoutPassword.id, userWithoutPassword.username);
           return res.json({ 
             status: "success", 
             user: {
@@ -288,7 +314,7 @@ async function startServer() {
 
     try {
       await db.prepare('UPDATE users SET session_version = COALESCE(session_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1').run(userId);
-      logActivity('STAFF', 'login', `Déconnexion forcée de tous les appareils pour l'utilisateur : ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
+      logActivity(req, 'STAFF', 'login', `Déconnexion forcée de tous les appareils pour l'utilisateur : ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
       return res.json({ status: "success", message: "All sessions logged out successfully" });
     } catch (error: any) {
       console.error("Logout-all error:", error);
@@ -324,7 +350,7 @@ async function startServer() {
       // Generate a new token with the new session version so they stay logged in
       const newToken = jwt.sign({ userId, sessionVersion: newSessionVersion }, JWT_SECRET, { expiresIn: '7d' });
 
-      logActivity('STAFF', 'update', `Changement de mot de passe`, userId, user.username);
+      logActivity(req, 'STAFF', 'update', `Changement de mot de passe`, userId, user.username);
 
       return res.json({ 
         status: "success", 
@@ -354,7 +380,7 @@ async function startServer() {
         VALUES (?, ?, ?, ?, ?)
       `).run(usernameLower, usernameLower, hashedPassword, role, JSON.stringify(permissions));
       
-      logActivity('STAFF', 'create', `Nouvel utilisateur créé : ${usernameLower} (${role})`, 'system', 'System');
+      logActivity(req, 'STAFF', 'create', `Nouvel utilisateur créé : ${usernameLower} (${role})`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -399,7 +425,7 @@ async function startServer() {
     const { id } = req.params;
     try {
       await db.prepare('DELETE FROM users WHERE id = ?').run(id);
-      logActivity('STAFF', 'delete', `Compte utilisateur supprimé : ${id}`, 'system', 'System');
+      logActivity(req, 'STAFF', 'delete', `Compte utilisateur supprimé : ${id}`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -706,7 +732,7 @@ async function startServer() {
         `).run(uuidv4(), supplierId, costAmount, `Initial stock: ${name} (${qty} units)`);
       }
 
-      logActivity('PRODUCT', 'create', `Produit ajouté : ${name} (Qté : ${qty})`, 'system', 'System');
+      logActivity(req, 'PRODUCT', 'create', `Produit ajouté : ${name} (Qté : ${qty})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -747,7 +773,7 @@ async function startServer() {
         VALUES (?, ?, ?, 'update', ?, ?, ?, ?)
       `).run(uuidv4(), id, name, qtyDiff, details, actor || 'System', costPrice || 0);
       
-      logActivity('PRODUCT', 'update', details, 'system', 'System');
+      logActivity(req, 'PRODUCT', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -942,7 +968,7 @@ async function startServer() {
         `).run(uuidv4(), supplierId, costAmount, `Returned to Supplier: ${product.name} (${quantity} units @ ${unitCost})`);
       }
 
-      logActivity('STOCK', 'update', `Stock ${type}: ${product.name} (${quantity} unités)${supplierId ? ' via Fournisseur' : ''}`, actor || 'system', actor || 'System');
+      logActivity(req, 'STOCK', 'update', `Stock ${type}: ${product.name} (${quantity} unités)${supplierId ? ' via Fournisseur' : ''}`, actor || 'system', actor || 'System');
     };
 
     try {
@@ -964,7 +990,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO categories (id, name) VALUES (?, ?)').run(id, name);
-      logActivity('CATEGORY', 'create', `Catégorie créée : ${name}`, 'system', 'System');
+      logActivity(req, 'CATEGORY', 'create', `Catégorie créée : ${name}`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1027,7 +1053,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO customers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
-      logActivity('CUSTOMER', 'create', `Client ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
+      logActivity(req, 'CUSTOMER', 'create', `Client ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1052,7 +1078,7 @@ async function startServer() {
         VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
       `).run(paymentId, id, amount, payment_method || 'CASH', check_number || null, check_due_date || null, check_owner || null);
 
-      logActivity('PAYMENT', 'create', `Paiement de ${amount} de ${customer?.name || 'Client'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
+      logActivity(req, 'PAYMENT', 'create', `Paiement de ${amount} de ${customer?.name || 'Client'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
     };
 
     try {
@@ -1130,7 +1156,7 @@ async function startServer() {
         `).run(returnId, id, `Retour Cash: ${qty} x ${product.name} (Remboursé ${totalValue} DH)`);
       }
 
-      logActivity('RETURN', 'create', `Retour de ${qty}x ${product.name} par ${customerName} (Valeur : ${totalValue})`, 'system', 'System');
+      logActivity(req, 'RETURN', 'create', `Retour de ${qty}x ${product.name} par ${customerName} (Valeur : ${totalValue})`, 'system', 'System');
     };
 
     try {
@@ -1212,7 +1238,7 @@ async function startServer() {
         if (oldCustomer.debt != debt) changes.push(`Debt: ${oldCustomer.debt}->${debt}`);
         if (changes.length > 0) details += ` | Changes: ${changes.join(', ')}`;
       }
-      logActivity('CUSTOMER', 'update', details, 'system', 'System');
+      logActivity(req, 'CUSTOMER', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1243,7 +1269,7 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO suppliers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
-      logActivity('SUPPLIER', 'create', `Fournisseur ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
+      logActivity(req, 'SUPPLIER', 'create', `Fournisseur ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1284,7 +1310,7 @@ async function startServer() {
         }
         if (changes.length > 0) details += ` | Changes: ${changes.join(', ')}`;
       }
-      logActivity('SUPPLIER', 'update', details, 'system', 'System');
+      logActivity(req, 'SUPPLIER', 'update', details, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1304,7 +1330,7 @@ async function startServer() {
         VALUES (?, ?, 'PAYMENT', ?, 'Payment to Supplier', ?, ?, ?, ?)
       `).run(historyId, id, amount, payment_method || 'CASH', check_number || null, check_due_date || null, check_owner || null);
       
-      logActivity('SUPPLIER_PAYMENT', 'create', `Paiement de ${amount} à ${supplier?.name || 'Fournisseur'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
+      logActivity(req, 'SUPPLIER_PAYMENT', 'create', `Paiement de ${amount} à ${supplier?.name || 'Fournisseur'} (${payment_method || 'ESPÈCES'})`, 'system', 'System');
     };
 
     try {
@@ -1634,7 +1660,7 @@ async function startServer() {
         `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? `Reste de la facture #${nextInvoice} (Chèque)` : `Facture #${nextInvoice} (Crédit)`);
       }
 
-      logActivity('SALE', 'create', `Nouvelle vente - Facture N° ${saleId.slice(0, 8)} - Total : ${total}`, staffId, 'Staff');
+      logActivity(req, 'SALE', 'create', `Nouvelle vente - Facture N° ${nextInvoice} - Total : ${total}`, staffId, 'Staff');
     };
 
     try {
@@ -1673,7 +1699,7 @@ async function startServer() {
         `).run(uuidv4(), sale.customer_id, discountDiff, `Remise ajoutée sur la facture #${sale.invoice_number}`);
       }
       
-      logActivity('SALE', 'update', `Remise de ${discountDiff} ajoutée à la facture N° ${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
+      logActivity(req, 'SALE', 'update', `Remise de ${discountDiff} ajoutée à la facture N° ${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
       
       res.json({ status: "success" });
     } catch (e: any) {
@@ -1937,7 +1963,7 @@ async function startServer() {
         WHERE id = ?
       `).run(shopName, shopAddress, shopPhone, 'main');
       
-      logActivity('SETTINGS', 'update', `Paramètres de la boutique mis à jour : ${shopName}`, 'admin', 'Admin');
+      logActivity(req, 'SETTINGS', 'update', `Paramètres de la boutique mis à jour : ${shopName}`, 'admin', 'Admin');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -2071,7 +2097,7 @@ async function startServer() {
         fields: 'id',
       });
 
-      logActivity('SYSTEM', 'backup', `Base de données sauvegardée sur Google Drive : ${fileName}`, 'system', 'System');
+      logActivity(req, 'SYSTEM', 'backup', `Base de données sauvegardée sur Google Drive : ${fileName}`, 'system', 'System');
       res.json({ status: "success", fileId: response.data.id });
     } catch (e: any) {
       console.error("Drive upload failed:", e);
@@ -2149,7 +2175,7 @@ async function startServer() {
       await transaction();
       // Re-initialize DB to ensure defaults exist if they were missing in the backup
       await initDb();
-      logActivity('SYSTEM', 'import', 'Base de données restaurée à partir d\'une sauvegarde', 'system', 'System');
+      logActivity(req, 'SYSTEM', 'import', 'Base de données restaurée à partir d\'une sauvegarde', 'system', 'System');
       res.json({ status: "success", message: "Backup restored successfully" });
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });
