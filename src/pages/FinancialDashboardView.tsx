@@ -902,14 +902,23 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         {permissions.supplierDebt && (
           <div className="lg:col-span-1 space-y-6">
              {/* Supplier Debt Card */}
-             <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[300px]">
-                <div className="text-center">
-                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-6">{t.totalSupplierDebt}</div>
-                  <div className="text-5xl font-black text-text-main my-8">{formatNumber(totalSupplierDebt)}</div>
-                  <div className="text-2xl font-black text-text-main">{t.currency}</div>
-                  <div className="mt-8 pt-8 border-t border-border-subtle">
-                    <div className="text-[11px] font-bold text-danger uppercase tracking-tighter">{t.amountOwedToSuppliers}</div>
+             <div className="bg-gradient-to-br from-white to-red-50 p-6 rounded-[2rem] border border-red-100 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-bl-full -z-10 transition-transform duration-500 group-hover:scale-110"></div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-red-100 text-danger flex items-center justify-center shadow-inner">
+                    <AlertCircle className="w-5 h-5" />
                   </div>
+                  <div className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.totalSupplierDebt}</div>
+                </div>
+                
+                <div className="flex items-end gap-2 mb-6">
+                  <div className="text-4xl sm:text-5xl font-black text-text-main tracking-tight">{formatNumber(totalSupplierDebt)}</div>
+                  <div className="text-xl font-bold text-text-secondary mb-1">{t.currency}</div>
+                </div>
+                
+                <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-2 rounded-xl border border-red-100/50 shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-danger animate-pulse"></div>
+                  <div className="text-[10px] font-bold text-danger uppercase tracking-wider">{t.amountOwedToSuppliers}</div>
                 </div>
              </div>
           </div>
