@@ -801,7 +801,7 @@ async function startServer() {
           sm.reason AS reason
         FROM stock_movements sm
         LEFT JOIN users u ON sm.actor = u.id
-        WHERE sm.product_id = ?
+        WHERE sm.product_id = ? AND sm.type != 'sale'
         
         ORDER BY timestamp DESC
       `;
@@ -890,8 +890,7 @@ async function startServer() {
         }
       }
       
-      const filteredHistory = history.filter((item: any) => item.type.toLowerCase() !== 'sale');
-      res.json(filteredHistory);
+      res.json(history);
     } catch (error: any) {
       console.error("Error fetching product history:", error);
       res.status(500).json({ status: "error", message: error.message });
