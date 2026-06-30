@@ -801,11 +801,11 @@ async function startServer() {
           sm.reason AS reason
         FROM stock_movements sm
         LEFT JOIN users u ON sm.actor = u.id
-        WHERE sm.product_id = ? AND sm.type != 'sale'
+        WHERE sm.product_id = ?
         
         ORDER BY timestamp DESC
       `;
-      let history = await db.prepare(query).all(id, id);
+      let history = await db.prepare(query).all(id);
       
       // Check if there is a 'create' or initial movement
       const hasCreate = history.some(item => item.type === 'create');
@@ -865,7 +865,7 @@ async function startServer() {
                 type: 'update',
                 quantity: diff,
                 customer_name: null,
-                timestamp: product.updated_at || product.created_at,
+                timestamp: initialTimestamp,
                 employee_name: 'System',
                 reason: diff > 0 
                   ? 'Ajustement de stock (historique) / تعديل المخزون (سابق)' 
@@ -890,7 +890,8 @@ async function startServer() {
         }
       }
       
-      res.json(history);
+      const filteredHistory = history.filter((item: any) => item.type.toLowerCase() !== 'sale');
+      res.json(filteredHistory);
     } catch (error: any) {
       console.error("Error fetching product history:", error);
       res.status(500).json({ status: "error", message: error.message });
