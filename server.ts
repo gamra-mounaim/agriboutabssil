@@ -805,7 +805,7 @@ async function startServer() {
         
         ORDER BY timestamp DESC
       `;
-      let history = await db.prepare(query).all(id);
+      let history = await db.prepare(query).all(id, id);
       
       // Check if there is a 'create' or initial movement
       const hasCreate = history.some(item => item.type === 'create');
