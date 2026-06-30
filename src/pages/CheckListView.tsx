@@ -26,6 +26,7 @@ export default function CheckListView() {
 
   const { fetchData } = useStore();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
   const handleStatusChange = async (
     type: string,
@@ -329,14 +330,31 @@ export default function CheckListView() {
                     </div>
                   </td>
                                     <td className="p-5">
-                    <input 
-                      type="date" 
-                      disabled={updatingId === check.id}
-                      className="bg-transparent border-b-2 border-border-subtle focus:border-accent outline-none text-sm font-bold text-text-main text-center w-full"
-                      value={(check as any).checkDueDate ? String((check as any).checkDueDate).split('T')[0] : ''}
-                      onChange={(e) => handleDateChange(check.type, check.id, e.target.value)}
-                    />
-                    <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString()}</div>
+                    {editingDateId === check.id ? (
+                      <input 
+                        type="date" 
+                        autoFocus
+                        onBlur={() => setEditingDateId(null)}
+                        disabled={updatingId === check.id}
+                        className="bg-transparent border-b-2 border-border-subtle focus:border-accent outline-none text-sm font-bold text-text-main text-center w-full"
+                        value={(check as any).checkDueDate ? String((check as any).checkDueDate).split('T')[0] : ''}
+                        onChange={(e) => {
+                          handleDateChange(check.type, check.id, e.target.value);
+                          setEditingDateId(null);
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        className="text-sm font-bold text-text-main cursor-pointer hover:text-accent border-b-2 border-transparent hover:border-border-subtle pb-0.5 inline-block text-center w-full"
+                        onClick={() => setEditingDateId(check.id)}
+                        title={language === "ar" ? "انقر لتعديل التاريخ" : "Click to edit date"}
+                      >
+                        {(check as any).checkDueDate 
+                          ? new Date((check as any).checkDueDate).toLocaleDateString('fr-FR')
+                          : (language === 'ar' ? 'أدخل التاريخ' : 'Select date')}
+                      </div>
+                    )}
+                    <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString('fr-FR')}</div>
                   </td>
                   <td className="p-5">
                     <div className={cn("text-[10px] font-black uppercase px-2 py-1 rounded-lg inline-flex items-center gap-1", 
