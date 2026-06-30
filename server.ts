@@ -1086,7 +1086,7 @@ async function startServer() {
 
   app.post("/api/customers/:id/return", async (req, res) => {
     const { id } = req.params;
-    const { productId, qty, price, action, description } = req.body;
+    const { productId, qty, price, action, description, actor } = req.body;
     const returnId = uuidv4();
     const movementId = uuidv4();
     
@@ -1110,8 +1110,8 @@ async function startServer() {
       // 2. Log stock movement
       await db.prepare(`
         INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor, cost_price)
-        VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, 'System', ?)
-      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`, product.cost_price || 0);
+        VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, ?, ?)
+      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`, actor || 'System', product.cost_price || 0);
 
       // 3. Update Customer Debt if action is 'debt' (only if not a walking customer)
       if (action === 'debt' && id !== 'walking') {

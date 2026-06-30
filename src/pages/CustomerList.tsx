@@ -128,7 +128,8 @@ export default function CustomerList() {
         qty: qtyVal,
         price: priceVal,
         action: returnAction,
-        description: returnDescription.trim()
+        description: returnDescription.trim(),
+        actor: user?.username || 'System'
       });
       
       setMessage({ text: t.returnSuccess || "Return recorded successfully.", type: 'success' });
