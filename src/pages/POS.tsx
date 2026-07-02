@@ -484,7 +484,19 @@ export default function POS() {
                     >
                       -
                     </button>
-                    <span className="w-8 text-center text-xs font-black text-text-main">{item.qty}</span>
+                    <input 
+                      type="number"
+                      min="1"
+                      value={item.qty}
+                      onFocus={e => e.target.select()}
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          updateCartQty(item.productId, val);
+                        }
+                      }}
+                      className="w-10 text-center text-xs font-black text-text-main bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <button 
                       onClick={() => updateCartQty(item.productId, item.qty + 1)}
                       className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-bg-base text-text-secondary transition-colors"
