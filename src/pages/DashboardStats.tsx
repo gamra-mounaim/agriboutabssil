@@ -14,19 +14,6 @@ function DashboardStats({ products, categories, customers, sales, language, stat
   const t = translations[language];
   const { setMessage } = useStore();
   
-  const upcomingDebts = (customers || []).filter(c => {
-    const cDueDate = c.dueDate || c.due_date;
-    if (!cDueDate || c.debt <= 0) return false;
-    const dueDate = new Date(cDueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    dueDate.setHours(0, 0, 0, 0);
-    
-    // Near if overdue or within next 3 days
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 3;
-  }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
   const totalSalesLifetime = stats?.totalSales || 0;
   const totalStockUnits = stats?.totalStock || 0;
@@ -76,41 +63,7 @@ function DashboardStats({ products, categories, customers, sales, language, stat
 
   return (
     <div className="space-y-8 mb-8">
-      {upcomingDebts.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex flex-wrap items-center gap-4 text-red-500 overflow-hidden relative shadow-sm"
-        >
-          <div className="bg-red-500 p-2 rounded-xl text-white">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
-              {t.upcomingDebtPayments}
-            </p>
-            <p className="text-[13px] font-semibold opacity-90">
-              {`${upcomingDebts.length} ${t.upcomingDebtsCount}.`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {upcomingDebts.slice(0, 3).map(c => {
-              const cDueDate = c.dueDate || c.due_date;
-              const isOverdue = new Date(cDueDate!) < new Date();
-              return (
-                <div key={c.id} className={cn(
-                  "px-3 py-1.5 rounded-lg text-[11px] font-bold border flex items-center gap-2",
-                  isOverdue ? "bg-red-500 text-white border-red-600" : "bg-bg-base border-border-subtle text-text-main"
-                )}>
-                  <span>{c.name}</span>
-                  <span className="opacity-60">{cDueDate}</span>
-                </div>
-              );
-            })}
-            {upcomingDebts.length > 3 && <span className="text-xs items-center flex font-bold">+ {upcomingDebts.length - 3}</span>}
-          </div>
-        </motion.div>
-      )}
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 group/stats">
         <StatCard 
