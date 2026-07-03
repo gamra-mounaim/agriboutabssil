@@ -79,7 +79,7 @@ export function GlobalAlerts() {
                       isOverdue ? "bg-red-500 text-white border-red-600 shadow-sm" : "bg-white/60 dark:bg-black/20 border-red-500/30 text-red-700 dark:text-red-300"
                     )}>
                       <span className="max-w-[120px] truncate">{c.checkOwner || c.partyName}</span>
-                      <span className="opacity-75">{dueDate.toLocaleDateString(language === 'ar' ? 'ar-EG' : language === 'fr' ? 'fr-FR' : 'en-US')}</span>
+                      <span className="opacity-75">{dueDate.toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                     </div>
                   );
                 })}
@@ -115,7 +115,7 @@ export function GlobalAlerts() {
                       isOverdue ? "bg-amber-500 text-white border-amber-600 shadow-sm" : "bg-white/60 dark:bg-black/20 border-amber-500/30 text-amber-800 dark:text-amber-200"
                     )}>
                       <span className="max-w-[150px] truncate">{c.name}</span>
-                      <span className="opacity-75">{new Date(cDueDate).toLocaleDateString(language === 'ar' ? 'ar-EG' : language === 'fr' ? 'fr-FR' : 'en-US')}</span>
+                      <span className="opacity-75">{new Date(cDueDate).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                     </div>
                   );
                 })}

@@ -350,11 +350,11 @@ export default function CheckListView() {
                         title={language === "ar" ? "انقر لتعديل التاريخ" : "Click to edit date"}
                       >
                         {(check as any).checkDueDate 
-                          ? new Date((check as any).checkDueDate).toLocaleDateString('fr-FR')
+                          ? new Date((check as any).checkDueDate).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
                           : (language === 'ar' ? 'أدخل التاريخ' : 'Select date')}
                       </div>
                     )}
-                    <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString('fr-FR')}</div>
+                    <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                   </td>
                   <td className="p-5">
                     <div className={cn("text-[10px] font-black uppercase px-2 py-1 rounded-lg inline-flex items-center gap-1", 
