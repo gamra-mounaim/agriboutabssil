@@ -593,6 +593,14 @@ export default function App() {
             </span>
           </button>
         </div>
+
+        <div className="p-4 border-t border-border-subtle text-center hidden md:block pb-6">
+          <p className="text-[9px] text-text-secondary/60 font-semibold uppercase tracking-[0.2em]">
+            Developed by
+            <br />
+            <span className="text-accent font-black tracking-widest mt-1 inline-block opacity-80 hover:opacity-100 transition-opacity">GAMRA MOUNAIM</span>
+          </p>
+        </div>
       </nav>
 
       {/* Main Content */}
