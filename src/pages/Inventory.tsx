@@ -135,6 +135,13 @@ export default function Inventory({ permissions }: { permissions: any }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  // --- Low Stock Alert ---
+  const [hasDismissedLowStock, setHasDismissedLowStock] = useState(false);
+  const lowStockProductsAlert = useMemo(() => {
+    return products.filter(p => p.qty <= (p.minStock ?? 5));
+  }, [products]);
+  const showLowStockAlert = lowStockProductsAlert.length > 0 && !hasDismissedLowStock;
+
   // ============================================================================
   // Handlers
   // ============================================================================
@@ -1058,6 +1065,74 @@ export default function Inventory({ permissions }: { permissions: any }) {
                 >
                   {language === 'ar' ? 'إغلاق' : language === 'fr' ? 'Fermer' : 'Close'}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Low Stock Alert Modal */}
+        {showLowStockAlert && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.9, y: 20 }} 
+              className="bg-card border border-red-500/30 rounded-[2rem] p-8 w-full max-w-3xl shadow-[0_0_50px_rgba(239,68,68,0.15)] max-h-[85vh] flex flex-col relative overflow-hidden"
+            >
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
+              
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex flex-col items-center text-center mb-8">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4 shadow-inner ring-4 ring-red-50 dark:ring-red-900/10">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-2xl font-black text-text-main tracking-tight mb-2">
+                    {language === 'ar' ? 'تنبيه نفاذ المخزون !' : language === 'fr' ? 'Alerte Rupture de Stock !' : 'Low Stock Alert !'}
+                  </h3>
+                  <p className="text-text-secondary text-sm max-w-md mx-auto font-medium">
+                    {language === 'ar' 
+                      ? 'المنتجات التالية نفذت أو قاربت على النفاذ من المخزون. المرجو مراجعتها وإعادة تزويدها.' 
+                      : language === 'fr' 
+                      ? 'Les produits suivants sont en rupture ou presque. Veuillez les vérifier.' 
+                      : 'The following products are running out of stock. Please review and restock.'}
+                  </p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-[250px] border border-border-subtle rounded-2xl bg-bg-base/40 shadow-inner p-2 custom-scrollbar">
+                  <div className="grid gap-2">
+                    {lowStockProductsAlert.map(p => (
+                      <div key={p.id} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border-subtle hover:border-red-500/30 transition-colors shadow-sm group">
+                        <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
+                          <span className="font-bold text-text-main text-sm group-hover:text-red-500 transition-colors">{p.name}</span>
+                          <span className="text-[10px] font-mono text-text-secondary mt-0.5">{p.barcode || `#${p.id.slice(0,8).toUpperCase()}`}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex flex-col items-center">
+                            <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">{language === 'ar' ? 'الكمية' : 'Qty'}</span>
+                            <span className={cn("text-lg font-black", p.qty <= 0 ? "text-red-500" : "text-orange-500")}>{p.qty}</span>
+                          </div>
+                          <div className="h-8 w-px bg-border-subtle mx-2"></div>
+                          <div className="flex flex-col items-center opacity-60">
+                            <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">{language === 'ar' ? 'التنبيه' : 'Min'}</span>
+                            <span className="text-sm font-black text-text-secondary">{p.minStock ?? 5}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="mt-8 flex justify-center relative z-10">
+                  <button 
+                    onClick={() => setHasDismissedLowStock(true)}
+                    className="group relative overflow-hidden bg-red-500 hover:bg-red-600 text-white font-black py-4 px-12 rounded-2xl transition-all shadow-xl shadow-red-500/20 active:scale-95 text-sm uppercase tracking-widest flex items-center gap-2"
+                  >
+                    <span className="relative z-10">{language === 'ar' ? 'حسناً، فهمت' : language === 'fr' ? 'D\'accord, j\'ai compris' : 'Understood'}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
