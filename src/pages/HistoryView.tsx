@@ -463,10 +463,14 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-bg-base border border-border-subtle rounded text-[9px] font-black text-text-secondary uppercase tracking-tighter">
                       <UserCog className="w-2.5 h-2.5" />
-                      {a.actorName === 'System' ? (language === 'ar' ? 'النظام' : 'Système') : 
-                       a.actorName === 'Staff' ? (language === 'ar' ? 'الموظف' : 'Personnel') : 
-                       a.actorName === 'Admin' ? (language === 'ar' ? 'المسؤول' : 'Administrateur') : 
-                       a.actorName || (language === 'ar' ? 'النظام' : 'Système')}
+                      {(() => {
+                        const actor = appUsers.find(u => u.id === a.actorId);
+                        const actualName = actor ? (actor.displayName || actor.username || actor.email) : a.actorName;
+                        if (actualName === 'System' || !actualName) return (language === 'ar' ? 'النظام' : 'Système');
+                        if (actualName === 'Admin' && !actor) return (language === 'ar' ? 'المسؤول' : 'Administrateur');
+                        if (actualName === 'Staff' && !actor) return (language === 'ar' ? 'الموظف' : 'Personnel');
+                        return actualName;
+                      })()}
                     </div>
                     <span className={cn(
                       "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded",

@@ -372,6 +372,35 @@ export default function App() {
     authLogout();
   };
 
+  useEffect(() => {
+    let idleTimer: any;
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      if (user) {
+        idleTimer = setTimeout(() => {
+          handleLogout();
+          setMessage({ text: language === 'ar' ? 'تم تسجيل الخروج بسبب عدم النشاط للحماية (10 دقائق)' : language === 'fr' ? 'Déconnecté pour inactivité (10 min)' : 'Logged out due to inactivity', type: 'error' });
+        }, 10 * 60 * 1000);
+      }
+    };
+    if (user) {
+      resetIdleTimer();
+      window.addEventListener('mousemove', resetIdleTimer);
+      window.addEventListener('keydown', resetIdleTimer);
+      window.addEventListener('click', resetIdleTimer);
+      window.addEventListener('scroll', resetIdleTimer);
+      window.addEventListener('touchstart', resetIdleTimer);
+    }
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener('mousemove', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+      window.removeEventListener('click', resetIdleTimer);
+      window.removeEventListener('scroll', resetIdleTimer);
+      window.removeEventListener('touchstart', resetIdleTimer);
+    };
+  }, [user, language]);
+
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
