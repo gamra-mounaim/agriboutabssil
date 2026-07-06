@@ -637,9 +637,15 @@ export default function App() {
                 aria-label={t.notifications}
               >
                 <Bell className="w-5 h-5 text-text-secondary" />
-                {notifications.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full animate-pulse" />
-                )}
+                {(() => {
+                  const unreadCount = notifications.filter(n => !n.isRead || n.isRead === 0).length;
+                  if (unreadCount === 0) return null;
+                  return (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-black shadow-sm animate-pulse-slow">
+                      {unreadCount}
+                    </span>
+                  );
+                })()}
               </button>
 
               <AnimatePresence>
@@ -655,7 +661,9 @@ export default function App() {
                   >
                     <div className="p-4 border-b border-border-subtle flex items-center justify-between">
                       <span className="text-xs font-black uppercase tracking-widest">{t.notifications}</span>
-                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">{notifications.length}</span>
+                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                        {notifications.filter(n => !n.isRead || n.isRead === 0).length} {(t as any).unread || (language === 'ar' ? 'غير مقروءة' : 'Unread')}
+                      </span>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
@@ -667,23 +675,41 @@ export default function App() {
                         notifications.map(note => (
                           <div 
                             key={note.id} 
-                            className="p-4 hover:bg-bg-base/50 transition-colors group border-b border-border-subtle last:border-0"
+                            className={cn(
+                               "p-4 transition-colors group border-b border-border-subtle last:border-0",
+                               (!note.isRead || note.isRead === 0) ? "bg-accent/5 hover:bg-accent/10" : "bg-transparent hover:bg-bg-base/50"
+                            )}
                             dir={language === 'ar' ? 'rtl' : 'ltr'}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={cn("p-2 rounded-xl", note.type === 'STOCK' ? "bg-orange-50 text-orange-500" : "bg-blue-50 text-blue-500")}>
-                                {note.type === 'STOCK' ? <Package className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                              <div className={cn("p-2 rounded-xl mt-1", note.type === 'STOCK' ? "bg-orange-50 text-orange-500" : "bg-blue-50 text-blue-500")}>
+                                {note.type === 'STOCK' ? <Package className="w-4 h-4" /> : <Users className="w-4 h-4" />}
                               </div>
                               <div className={cn("flex-1 min-w-0", language === 'ar' ? "text-right" : "text-left")}>
-                                <p className="text-[11px] font-bold text-text-main line-clamp-1 uppercase">{note.title}</p>
-                                <p className="text-[10px] text-text-secondary line-clamp-2 mt-0.5 leading-relaxed">{note.message}</p>
-                                <button 
-                                  onClick={() => markAsRead(note.id)}
-                                  className="mt-2 text-[9px] font-black text-accent uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <CheckCircle className="w-3 h-3" />
-                                  {t.markAsRead}
-                                </button>
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={cn("text-[12px] line-clamp-1", (!note.isRead || note.isRead === 0) ? "font-black text-text-main" : "font-semibold text-text-main/80")}>
+                                    {note.type === 'STOCK' && language === 'ar' ? 'تنبيه مخزون منخفض' : note.type === 'STOCK' && language === 'fr' ? 'Alerte Stock Faible' : note.type === 'STOCK' ? 'Low Stock Alert' : note.title}
+                                  </p>
+                                  {(!note.isRead || note.isRead === 0) && <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-1.5" />}
+                                </div>
+                                <p className={cn("text-[11px] line-clamp-2 mt-1 leading-relaxed", (!note.isRead || note.isRead === 0) ? "text-text-main/90 font-medium" : "text-text-secondary")}>
+                                    {note.type === 'STOCK' && note.message.includes('Current quantity is') ? (
+                                        <>
+                                            <span className="font-bold">{note.message.split(':')[0]}</span>
+                                            {language === 'ar' ? ' : الكمية الحالية هي ' : language === 'fr' ? ' : Quantité actuelle est ' : ' : Current quantity is '}
+                                            <span className="font-black text-red-500">{note.message.split('Current quantity is ')[1]}</span>
+                                        </>
+                                    ) : note.message}
+                                </p>
+                                {(!note.isRead || note.isRead === 0) && (
+                                  <button 
+                                    onClick={() => markAsRead(note.id)}
+                                    className="mt-2.5 text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 px-2 py-1 rounded-md hover:bg-accent hover:text-white"
+                                  >
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    {t.markAsRead}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
