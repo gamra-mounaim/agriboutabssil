@@ -401,6 +401,35 @@ export default function App() {
     };
   }, [user, language]);
 
+  // Auto Backup Hook (Runs locally to trigger serverless backend backups reliably)
+  useEffect(() => {
+    if (!settings?.autoBackup || !user) return;
+
+    const runAutoBackup = async () => {
+      try {
+        const lastBackup = localStorage.getItem('last_auto_backup_timestamp');
+        const now = Date.now();
+        // Trigger auto backup every 5 hours of active app usage
+        if (!lastBackup || now - parseInt(lastBackup) > 5 * 60 * 60 * 1000) {
+          localStorage.setItem('last_auto_backup_timestamp', now.toString());
+          
+          console.log("Triggering scheduled auto-backups...");
+          const promises = [];
+          promises.push(api.sendBackupEmail().catch(() => {}));
+          promises.push(api.backupToGoogleDrive().catch(() => {}));
+          
+          await Promise.all(promises);
+        }
+      } catch (err) {
+        console.error("Auto backup error:", err);
+      }
+    };
+
+    runAutoBackup();
+    const interval = setInterval(runAutoBackup, 60 * 60 * 1000); // Check every hour
+    return () => clearInterval(interval);
+  }, [settings?.autoBackup, user]);
+
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
