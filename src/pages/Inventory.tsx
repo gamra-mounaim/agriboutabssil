@@ -1083,8 +1083,8 @@ export default function Inventory({ permissions }: { permissions: any }) {
               <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
               
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="flex flex-col items-center text-center mb-8">
+              <div className="relative z-10 flex flex-col h-full overflow-hidden">
+                <div className="flex flex-col items-center text-center mb-8 shrink-0">
                   <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4 shadow-inner ring-4 ring-red-50 dark:ring-red-900/10">
                     <AlertTriangle className="w-8 h-8" />
                   </div>
@@ -1100,7 +1100,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   </p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-[250px] border border-border-subtle rounded-2xl bg-bg-base/40 shadow-inner p-2 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto min-h-0 border border-border-subtle rounded-2xl bg-bg-base/40 shadow-inner p-2 custom-scrollbar">
                   <div className="grid gap-2">
                     {lowStockProductsAlert.map(p => (
                       <div key={p.id} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border-subtle hover:border-red-500/30 transition-colors shadow-sm group">
@@ -1124,7 +1124,7 @@ export default function Inventory({ permissions }: { permissions: any }) {
                   </div>
                 </div>
                 
-                <div className="mt-8 flex justify-center relative z-10">
+                <div className="mt-8 flex justify-center relative z-10 shrink-0">
                   <button 
                     onClick={() => setHasDismissedLowStock(true)}
                     className="group relative overflow-hidden bg-red-500 hover:bg-red-600 text-white font-black py-4 px-12 rounded-2xl transition-all shadow-xl shadow-red-500/20 active:scale-95 text-sm uppercase tracking-widest flex items-center gap-2"
