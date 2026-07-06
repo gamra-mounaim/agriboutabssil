@@ -46,6 +46,7 @@ export default function CustomerList() {
   const [returnModal, setReturnModal] = useState<{ customer: Customer } | null>(null);
   const [returnProductId, setReturnProductId] = useState('');
   const [returnProductSearch, setReturnProductSearch] = useState('');
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const [returnQty, setReturnQty] = useState('');
   const [returnPrice, setReturnPrice] = useState('');
   const [returnAction, setReturnAction] = useState<'debt' | 'cash'>('debt');
@@ -137,6 +138,7 @@ export default function CustomerList() {
       setReturnModal(null);
       setReturnProductId('');
       setReturnProductSearch('');
+      setIsProductDropdownOpen(false);
       setReturnQty('');
       setReturnPrice('');
       setReturnAction('debt');
@@ -212,6 +214,7 @@ export default function CustomerList() {
     }
     if (!returnModal) {
       setReturnProductSearch('');
+      setIsProductDropdownOpen(false);
     }
   }, [returnModal]);
 
@@ -759,42 +762,76 @@ export default function CustomerList() {
 
               <form onSubmit={handleReturnSubmit} className="space-y-4">
                 {/* Product Selector */}
-                <div className="space-y-1">
+                <div className="space-y-1 relative">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.selectProduct}</label>
                   
-                  <div className="relative mb-2">
-                    <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4", language === 'ar' ? "right-3" : "left-3")} />
-                    <input 
-                      type="text"
-                      placeholder={language === 'ar' ? "بحث عن منتج..." : "Rechercher un produit..."}
-                      className={cn("w-full bg-bg-base border border-border-subtle rounded-xl py-2 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all", language === 'ar' ? "pr-9 pl-3 text-right" : "pl-9 pr-3")}
-                      value={returnProductSearch}
-                      onChange={e => setReturnProductSearch(e.target.value)}
-                    />
-                  </div>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+                      className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all flex items-center justify-between"
+                    >
+                      <span className={cn("truncate", !returnProductId && "text-text-secondary")}>
+                        {returnProductId 
+                          ? products.find(p => p.id === returnProductId)?.name || t.selectProduct
+                          : `-- ${t.selectProduct} --`}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-text-secondary" />
+                    </button>
 
-                  <select 
-                    required
-                    className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all"
-                    value={returnProductId} 
-                    onChange={e => {
-                      const pId = e.target.value;
-                      setReturnProductId(pId);
-                      const found = products.find(p => p.id === pId);
-                      if (found) {
-                        setReturnPrice(found.price.toString());
-                      } else {
-                        setReturnPrice('');
-                      }
-                    }}
-                  >
-                    <option value="">-- {t.selectProduct} --</option>
-                    {products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.price} {t.currency})
-                      </option>
-                    ))}
-                  </select>
+                    <AnimatePresence>
+                      {isProductDropdownOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }} 
+                          animate={{ opacity: 1, y: 0 }} 
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute z-50 top-full left-0 right-0 mt-2 bg-white border border-border-subtle rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[250px]"
+                        >
+                          <div className="p-2 border-b border-border-subtle bg-bg-base/50 sticky top-0">
+                            <div className="relative">
+                              <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4", language === 'ar' ? "right-3" : "left-3")} />
+                              <input 
+                                type="text"
+                                autoFocus
+                                placeholder={language === 'ar' ? "بحث عن منتج..." : "Rechercher un produit..."}
+                                className={cn("w-full bg-white border border-border-subtle rounded-lg py-2 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all", language === 'ar' ? "pr-9 pl-3 text-right" : "pl-9 pr-3")}
+                                value={returnProductSearch}
+                                onChange={e => setReturnProductSearch(e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="overflow-y-auto flex-1 p-1">
+                            {products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).length === 0 ? (
+                              <div className="py-4 text-center text-xs text-text-secondary font-bold">
+                                {language === 'ar' ? 'لا توجد منتجات' : 'Aucun produit trouvé'}
+                              </div>
+                            ) : (
+                              products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).map(p => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setReturnProductId(p.id);
+                                    setReturnPrice(p.price.toString());
+                                    setIsProductDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-4 py-3 rounded-lg text-xs font-bold hover:bg-bg-base transition-colors flex items-center justify-between",
+                                    returnProductId === p.id && "bg-accent/10 text-accent"
+                                  )}
+                                >
+                                  <span className="truncate">{p.name}</span>
+                                  <span className="shrink-0 ml-2 opacity-70">{p.price} {t.currency}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
