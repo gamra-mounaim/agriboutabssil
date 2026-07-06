@@ -45,6 +45,7 @@ export default function CustomerList() {
   // Product Return States
   const [returnModal, setReturnModal] = useState<{ customer: Customer } | null>(null);
   const [returnProductId, setReturnProductId] = useState('');
+  const [returnProductSearch, setReturnProductSearch] = useState('');
   const [returnQty, setReturnQty] = useState('');
   const [returnPrice, setReturnPrice] = useState('');
   const [returnAction, setReturnAction] = useState<'debt' | 'cash'>('debt');
@@ -135,6 +136,7 @@ export default function CustomerList() {
       setMessage({ text: t.returnSuccess || "Return recorded successfully.", type: 'success' });
       setReturnModal(null);
       setReturnProductId('');
+      setReturnProductSearch('');
       setReturnQty('');
       setReturnPrice('');
       setReturnAction('debt');
@@ -207,6 +209,9 @@ export default function CustomerList() {
   useEffect(() => {
     if (returnModal && returnModal.customer.id === 'walking') {
       setReturnAction('cash');
+    }
+    if (!returnModal) {
+      setReturnProductSearch('');
     }
   }, [returnModal]);
 
@@ -756,6 +761,18 @@ export default function CustomerList() {
                 {/* Product Selector */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.selectProduct}</label>
+                  
+                  <div className="relative mb-2">
+                    <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-4 h-4", language === 'ar' ? "right-3" : "left-3")} />
+                    <input 
+                      type="text"
+                      placeholder={language === 'ar' ? "بحث عن منتج..." : "Rechercher un produit..."}
+                      className={cn("w-full bg-bg-base border border-border-subtle rounded-xl py-2 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all", language === 'ar' ? "pr-9 pl-3 text-right" : "pl-9 pr-3")}
+                      value={returnProductSearch}
+                      onChange={e => setReturnProductSearch(e.target.value)}
+                    />
+                  </div>
+
                   <select 
                     required
                     className="w-full bg-white border border-border-subtle rounded-xl py-3 px-4 text-xs font-bold focus:border-accent outline-none shadow-sm transition-all"
@@ -772,7 +789,7 @@ export default function CustomerList() {
                     }}
                   >
                     <option value="">-- {t.selectProduct} --</option>
-                    {products.map(p => (
+                    {products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.name} ({p.price} {t.currency})
                       </option>
