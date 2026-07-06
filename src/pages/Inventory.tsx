@@ -1084,20 +1084,29 @@ export default function Inventory({ permissions }: { permissions: any }) {
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
               
               <div className="relative z-10 flex flex-col h-full overflow-hidden">
-                <div className="flex flex-col items-center text-center mb-8 shrink-0">
-                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4 shadow-inner ring-4 ring-red-50 dark:ring-red-900/10">
-                    <AlertTriangle className="w-8 h-8" />
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 shrink-0 bg-red-50 dark:bg-red-900/10 p-4 sm:p-5 rounded-2xl border border-red-100 dark:border-red-900/30">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center shadow-inner shrink-0 ring-4 ring-white dark:ring-slate-800">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <div className={cn(language === 'ar' && "text-right")}>
+                      <h3 className="text-lg font-black text-red-600 dark:text-red-400 tracking-tight leading-tight">
+                        {language === 'ar' ? 'تنبيه نفاذ المخزون !' : language === 'fr' ? 'Alerte Rupture de Stock !' : 'Low Stock Alert !'}
+                      </h3>
+                      <div className="text-sm font-bold text-red-500 mt-0.5">
+                        {language === 'ar' ? 'المنتجات الناقصة:' : language === 'fr' ? 'Produits manquants:' : 'Missing products:'} 
+                        <span className="font-black ml-1 text-lg">{lowStockProductsAlert.length}</span>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-black text-text-main tracking-tight mb-2">
-                    {language === 'ar' ? 'تنبيه نفاذ المخزون !' : language === 'fr' ? 'Alerte Rupture de Stock !' : 'Low Stock Alert !'}
-                  </h3>
-                  <p className="text-text-secondary text-sm max-w-md mx-auto font-medium">
-                    {language === 'ar' 
-                      ? 'المنتجات التالية نفذت أو قاربت على النفاذ من المخزون. المرجو مراجعتها وإعادة تزويدها.' 
-                      : language === 'fr' 
-                      ? 'Les produits suivants sont en rupture ou presque. Veuillez les vérifier.' 
-                      : 'The following products are running out of stock. Please review and restock.'}
-                  </p>
+                  
+                  <button 
+                    onClick={() => setHasDismissedLowStock(true)}
+                    className="w-full sm:w-auto group relative overflow-hidden bg-red-500 hover:bg-red-600 text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg shadow-red-500/20 active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    <span className="relative z-10">{language === 'ar' ? 'حسناً، فهمت' : language === 'fr' ? 'D\'accord, j\'ai compris' : 'Understood'}</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                  </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 border border-border-subtle rounded-2xl bg-bg-base/40 shadow-inner p-2 custom-scrollbar">
@@ -1122,16 +1131,6 @@ export default function Inventory({ permissions }: { permissions: any }) {
                       </div>
                     ))}
                   </div>
-                </div>
-                
-                <div className="mt-8 flex justify-center relative z-10 shrink-0">
-                  <button 
-                    onClick={() => setHasDismissedLowStock(true)}
-                    className="group relative overflow-hidden bg-red-500 hover:bg-red-600 text-white font-black py-4 px-12 rounded-2xl transition-all shadow-xl shadow-red-500/20 active:scale-95 text-sm uppercase tracking-widest flex items-center gap-2"
-                  >
-                    <span className="relative z-10">{language === 'ar' ? 'حسناً، فهمت' : language === 'fr' ? 'D\'accord, j\'ai compris' : 'Understood'}</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
-                  </button>
                 </div>
               </div>
             </motion.div>
