@@ -42,6 +42,7 @@ export default function POS() {
   const [customerName, setCustomerName] = useState('');
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [isAddingNewCustomer, setIsAddingNewCustomer] = useState(false);
   const [newCustomerDetail, setNewCustomerDetail] = useState({ name: '', phone: '' });
   const [isFlahActive, setIsFlahActive] = useState(false);
@@ -141,7 +142,8 @@ export default function POS() {
   const change = Math.max(0, cashReceived - total);
 
   const checkout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isCheckingOut) return;
+    setIsCheckingOut(true);
 
     try {
       const saleResult = await api.createSale({
@@ -198,6 +200,8 @@ export default function POS() {
     } catch (err: any) {
       console.error(err);
       setMessage({ text: language === 'ar' ? 'فشلت العملية' : 'Checkout Failed', type: 'error' });
+    } finally {
+      setIsCheckingOut(false);
     }
   };
 
@@ -727,7 +731,7 @@ export default function POS() {
                 {t.clear || 'Clear'}
               </button>
               <button 
-                disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId)}
+                disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId) || isCheckingOut}
                 onClick={checkout}
                 className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
               >
