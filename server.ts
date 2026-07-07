@@ -501,13 +501,17 @@ async function startServer() {
       data.version = "1.0";
       data.date = new Date().toISOString();
 
-      if (!fs.existsSync('./backups')) fs.mkdirSync('./backups');
       const filename = `auto_backup_${new Date().toISOString().split('T')[0]}.json`;
       const backupContent = JSON.stringify(data, null, 2);
-      fs.writeFileSync(`./backups/${filename}`, backupContent);
       
-      await db.prepare('INSERT INTO backup_history (id, filename) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET filename = EXCLUDED.filename').run('latest', filename);
-      console.log(`Auto-backup completed: ${filename}`);
+      try {
+        if (!fs.existsSync('./backups')) fs.mkdirSync('./backups');
+        fs.writeFileSync(`./backups/${filename}`, backupContent);
+        await db.prepare('INSERT INTO backup_history (id, filename) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET filename = EXCLUDED.filename').run('latest', filename);
+        console.log(`Auto-backup saved to disk: ${filename}`);
+      } catch (fsErr) {
+        console.log(`Could not save backup to local disk (likely read-only cloud env), skipping local save. Error: ${fsErr.message}`);
+      }
 
       // Try to send email backup if SMTP is configured
       const smtpUser = process.env.SMTP_USER;
