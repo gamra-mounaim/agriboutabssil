@@ -379,8 +379,8 @@ export default function App() {
       if (user) {
         idleTimer = setTimeout(() => {
           handleLogout();
-          setMessage({ text: language === 'ar' ? 'تم تسجيل الخروج بسبب عدم النشاط للحماية (10 دقائق)' : language === 'fr' ? 'Déconnecté pour inactivité (10 min)' : 'Logged out due to inactivity', type: 'error' });
-        }, 10 * 60 * 1000);
+          setMessage({ text: language === 'ar' ? 'تم تسجيل الخروج بسبب عدم النشاط للحماية (ساعتين)' : language === 'fr' ? 'Déconnecté pour inactivité (2 heures)' : 'Logged out due to inactivity (2 hours)', type: 'error' });
+        }, 2 * 60 * 60 * 1000);
       }
     };
     if (user) {
