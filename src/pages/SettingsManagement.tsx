@@ -227,7 +227,7 @@ export default function SettingsManagement({
                 {latestBackup && (
                   <div className="text-[10px] text-accent font-black uppercase tracking-widest mt-2 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-                    {language === 'ar' ? "آخر نسخة احتياطية:" : "LAST BACKUP:"} {new Date(latestBackup.created_at).toLocaleString()}
+                    {language === 'ar' ? "آخر نسخة احتياطية:" : "LAST BACKUP:"} {new Date(latestBackup.created_at).toLocaleString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </div>
                 )}
               </div>
@@ -267,30 +267,6 @@ export default function SettingsManagement({
                       {backingUpToDrive ? <RefreshCw className="w-4 h-4 animate-spin" /> : <GoogleDriveIcon />}
                       {t.backupToDrive}
                     </button>
-
-                    <button
-                      onClick={async () => {
-                        try {
-                          setBackingUpToDrive(true);
-                          await api.sendBackupEmail();
-                          setMessage({ text: language === 'ar' ? "تم إرسال النسخة الاحتياطية للبريد!" : "Backup sent to email!", type: 'success' });
-                        } catch (e: any) {
-                          const msg = e.message || '';
-                          if (msg.includes('SMTP_AUTH_FAILED')) {
-                            setMessage({ text: t.smtpError, type: 'error' });
-                          } else {
-                            setMessage({ text: msg || t.backupError, type: 'error' });
-                          }
-                        } finally {
-                          setBackingUpToDrive(false);
-                        }
-                      }}
-                      disabled={backingUpToDrive}
-                      className="px-6 py-3 bg-white border-2 border-accent text-accent font-black rounded-xl hover:bg-accent/5 active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
-                    >
-                      {backingUpToDrive ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                      {t.backupToEmail}
-                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-3">
@@ -300,30 +276,6 @@ export default function SettingsManagement({
                     >
                       <GoogleDriveIcon />
                       {t.googleDriveConnect}
-                    </button>
-
-                    <button
-                      onClick={async () => {
-                        try {
-                          setBackingUpToDrive(true);
-                          await api.sendBackupEmail();
-                          setMessage({ text: language === 'ar' ? "تم إرسال النسخة الاحتياطية للبريد!" : "Backup sent to email!", type: 'success' });
-                        } catch (e: any) {
-                          const msg = e.message || '';
-                          if (msg.includes('SMTP_AUTH_FAILED')) {
-                            setMessage({ text: t.smtpError, type: 'error' });
-                          } else {
-                            setMessage({ text: msg || t.backupError, type: 'error' });
-                          }
-                        } finally {
-                          setBackingUpToDrive(false);
-                        }
-                      }}
-                      disabled={backingUpToDrive}
-                      className="px-6 py-3 bg-white border-2 border-accent text-accent font-black rounded-xl hover:bg-accent/5 active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
-                    >
-                      {backingUpToDrive ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                      {t.backupToEmail}
                     </button>
                   </div>
                 )}

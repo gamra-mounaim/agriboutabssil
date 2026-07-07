@@ -621,6 +621,7 @@ async function startServer() {
         fields: 'id',
       });
 
+      await db.prepare('INSERT INTO backup_history (id, filename, created_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET filename = EXCLUDED.filename, created_at = CURRENT_TIMESTAMP').run('latest', fileName);
       console.log(`Auto-backup to Google Drive completed successfully: ${fileName}`);
     } catch (e: any) {
       console.error("Auto-backup to Google Drive failed:", e);
@@ -655,14 +656,14 @@ async function startServer() {
     }
   }, 12 * 60 * 60 * 1000);
 
-  // Google Drive auto-backup interval (5 hours)
+  // Google Drive auto-backup interval (10 hours)
   setInterval(async () => {
     try {
       await performDriveAutoBackup();
     } catch (err) {
       console.error("Scheduled Drive auto-backup failed:", err);
     }
-  }, 5 * 60 * 60 * 1000);
+  }, 10 * 60 * 60 * 1000);
 
   app.post("/api/backup/email/send", authMiddleware, async (req, res) => {
     try {
@@ -2107,6 +2108,7 @@ async function startServer() {
         fields: 'id',
       });
 
+      await db.prepare('INSERT INTO backup_history (id, filename, created_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET filename = EXCLUDED.filename, created_at = CURRENT_TIMESTAMP').run('latest', fileName);
       logActivity(req, 'SYSTEM', 'backup', `Base de données sauvegardée sur Google Drive : ${fileName}`, 'system', 'System');
       res.json({ status: "success", fileId: response.data.id });
     } catch (e: any) {
