@@ -1619,6 +1619,12 @@ async function startServer() {
 
       // 2. Create Items & Update Stock
       for (const item of items) {
+        // Prevent negative stock
+        const currentProduct = (await db.prepare('SELECT qty FROM products WHERE id = ?').get(item.productId)) as any;
+        if (!currentProduct || currentProduct.qty < item.qty) {
+          throw new Error(`Stock insuffisant pour le produit: ${item.name}`);
+        }
+
         await db.prepare(`
           INSERT INTO sale_items (sale_id, product_id, name, price, qty)
           VALUES (?, ?, ?, ?, ?)
