@@ -156,9 +156,9 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 30, { align: 'right' });
   
   // Date & Time
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('fr-FR');
-  const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const invoiceDate = data.date ? new Date(data.date) : new Date();
+  const dateStr = invoiceDate.toLocaleDateString('fr-FR');
+  const timeStr = invoiceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
   doc.text(`DATE: ${dateStr}`, shopX, 40, { align: 'right' });
