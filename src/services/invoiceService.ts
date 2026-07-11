@@ -123,15 +123,15 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
 
   // Header background
   doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, pageWidth, 42, 'F');
+  doc.rect(0, 0, pageWidth, 35, 'F');
 
   // Brand Name & Logo
   try {
     if (SHOP_DETAILS.logo) {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 10, 16, 16);
+        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 8, 12, 12);
       } catch (err) {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 10, 16, 16);
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 8, 12, 12);
       }
     }
   } catch (e) {
@@ -139,21 +139,28 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   }
 
   const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text(shopName, margin + 20, 17);
+  doc.text(shopName, margin + 15, 12);
   
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 20, 23);
+  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 15, 17);
+
+  doc.setFontSize(18);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FACTURE', margin + 15, 26);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
   doc.setFontSize(8);
-  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 15, { align: 'right' });
-  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 20, { align: 'right' });
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'normal');
+  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 10, { align: 'right' });
+  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 15, { align: 'right' });
   
   // Date & Time
   const invoiceDate = data.date ? new Date(data.date) : new Date();
@@ -161,15 +168,10 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const timeStr = invoiceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text(`DATE: ${dateStr}`, shopX, 28, { align: 'right' });
-  doc.text(`HEURE: ${timeStr}`, shopX, 33, { align: 'right' });
+  doc.text(`DATE: ${dateStr}`, shopX, 22, { align: 'right' });
+  doc.text(`HEURE: ${timeStr}`, shopX, 27, { align: 'right' });
 
-  let currentY = 52;
-
-  // Title
-  doc.setFontSize(28);
-  doc.setTextColor(241, 245, 249);
-  doc.text('FACTURE', pageWidth / 2, 48, { align: 'center' });
+  let currentY = 45;
 
   const walkingCustomers = [
     translations.en.walkingCustomer,
@@ -242,57 +244,57 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const subtotalVal = data.subtotal || (data.total + discountVal);
 
   if (discountVal > 0) {
-    doc.roundedRect(boxX, finalY, boxW, 45, 2, 2, 'FD');
+    doc.roundedRect(boxX, finalY, boxW, 35, 2, 2, 'FD');
     
     // Subtotal Row
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text('TOTAL BRUT (TTC):', boxX + 5, finalY + 10);
+    doc.text('TOTAL BRUT (TTC):', boxX + 5, finalY + 8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text(`${formatNumber(subtotalVal)} DH`, pageWidth - margin - 5, finalY + 10, { align: 'right' });
+    doc.text(`${formatNumber(subtotalVal)} DH`, pageWidth - margin - 5, finalY + 8, { align: 'right' });
 
     // Discount Row
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184);
-    doc.text('REMISE (TAKHFID):', boxX + 5, finalY + 18);
+    doc.text('REMISE (TAKHFID):', boxX + 5, finalY + 14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(220, 38, 38); // Red color for discount
-    doc.text(`-${formatNumber(discountVal)} DH`, pageWidth - margin - 5, finalY + 18, { align: 'right' });
+    doc.setTextColor(220, 38, 38);
+    doc.text(`-${formatNumber(discountVal)} DH`, pageWidth - margin - 5, finalY + 14, { align: 'right' });
 
     // Divider
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.3);
-    doc.line(boxX + 5, finalY + 23, pageWidth - margin - 5, finalY + 23);
+    doc.line(boxX + 5, finalY + 18, pageWidth - margin - 5, finalY + 18);
 
     // Total Net Row
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text('NET À PAYER (TTC):', boxX + 5, finalY + 30);
+    doc.text('NET À PAYER (TTC):', boxX + 5, finalY + 24);
     
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 40, { align: 'right' });
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 31, { align: 'right' });
   } else {
-    doc.roundedRect(boxX, finalY, boxW, 35, 2, 2, 'FD');
+    doc.roundedRect(boxX, finalY, boxW, 25, 2, 2, 'FD');
     
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text('TOTAL NET À PAYER (TTC):', boxX + 5, finalY + 12);
+    doc.text('TOTAL NET À PAYER (TTC):', boxX + 5, finalY + 10);
     
-    doc.setFontSize(22);
+    doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); // Darker black
     doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 22, { align: 'right' });
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 20, { align: 'right' });
   }
 
   // Display paid amount and remaining debt if a check amount is set
   if (data.checkAmount !== undefined && data.checkAmount !== null && data.checkAmount < data.total) {
-    const finalRowY = finalY + (discountVal > 0 ? 55 : 35);
+    const finalRowY = finalY + (discountVal > 0 ? 43 : 33);
     
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
@@ -307,12 +309,12 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
     doc.setFont('helvetica', 'normal');
-    doc.text('RESTE À PAYER (CRÉDIT):', boxX - 10, finalRowY + 8);
+    doc.text('RESTE À PAYER (CRÉDIT):', boxX - 10, finalRowY + 6);
     
     doc.setFontSize(11);
     doc.setTextColor(220, 38, 38); // Red color for debt
     doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total - data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY + 8, { align: 'right' });
+    doc.text(`${formatNumber(data.total - data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY + 6, { align: 'right' });
   }
 
   if (data.paymentMethod) {
