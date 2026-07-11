@@ -123,15 +123,15 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
 
   // Header background
   doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.rect(0, 0, pageWidth, 28, 'F');
 
   // Brand Name & Logo
   try {
     if (SHOP_DETAILS.logo) {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 8, 12, 12);
+        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 5, 10, 10);
       } catch (err) {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 8, 12, 12);
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 5, 10, 10);
       }
     }
   } catch (e) {
@@ -139,28 +139,28 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   }
 
   const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text(shopName, margin + 15, 12);
+  doc.text(shopName, margin + 12, 9);
   
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 15, 17);
+  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 12, 13);
 
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.text('FACTURE', margin + 15, 26);
+  doc.text('FACTURE', margin + 12, 21);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 10, { align: 'right' });
-  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 15, { align: 'right' });
+  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 8, { align: 'right' });
+  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 12, { align: 'right' });
   
   // Date & Time
   const invoiceDate = data.date ? new Date(data.date) : new Date();
@@ -168,10 +168,10 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const timeStr = invoiceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text(`DATE: ${dateStr}`, shopX, 22, { align: 'right' });
-  doc.text(`HEURE: ${timeStr}`, shopX, 27, { align: 'right' });
+  doc.text(`DATE: ${dateStr}`, shopX, 18, { align: 'right' });
+  doc.text(`HEURE: ${timeStr}`, shopX, 22, { align: 'right' });
 
-  let currentY = 45;
+  let currentY = 32;
 
   const walkingCustomers = [
     translations.en.walkingCustomer,
@@ -190,14 +190,14 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     doc.setTextColor(30, 41, 59);
     
     if (containsArabic(data.clientName || '')) {
-      const clientImg = renderTextToImg(data.clientName || '', { size: 14, bold: true, color: '#1e293b' });
+      const clientImg = renderTextToImg(data.clientName || '', { size: 12, bold: true, color: '#1e293b' });
       const imgProps = (doc as any).getImageProperties(clientImg);
-      const imgW = 60;
+      const imgW = 50;
       const hScale = imgProps.height / imgProps.width;
-      doc.addImage(clientImg, 'PNG', margin, currentY + 2, imgW, imgW * hScale);
+      doc.addImage(clientImg, 'PNG', margin, currentY + 1, imgW, imgW * hScale);
     } else {
       doc.setFont('helvetica', 'bold');
-      doc.text(data.clientName || '', margin, currentY + 8);
+      doc.text(data.clientName || '', margin, currentY + 5);
     }
   }
 
@@ -205,12 +205,12 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const invoiceNum = data.invoiceNumber 
     ? data.invoiceNumber.toString().padStart(6, '0') 
     : data.saleId.toUpperCase().slice(0, 8);
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 41, 59);
-  doc.text(`N° (${invoiceNum})`, pageWidth - margin, currentY + 8, { align: 'right' });
+  doc.text(`N° (${invoiceNum})`, pageWidth - margin, currentY + 5, { align: 'right' });
 
-  currentY += 25;
+  currentY += 12;
 
   // Items Table
   autoTable(doc, {
@@ -232,7 +232,13 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     }
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+  
+  // Check if we have enough space for the totals box (approx 50-60mm)
+  if (finalY + 60 > pageHeight - 15) {
+    doc.addPage();
+    finalY = 20;
+  }
   
   // Totals Area
   const boxW = 80;
