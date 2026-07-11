@@ -234,8 +234,8 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
 
   let finalY = (doc as any).lastAutoTable.finalY + 10;
   
-  // Check if we have enough space for the totals box (approx 50-60mm)
-  if (finalY + 60 > pageHeight - 15) {
+  // Check if we have enough space for the totals box (max 40mm)
+  if (finalY + 40 > pageHeight - 15) {
     doc.addPage();
     finalY = 20;
   }
