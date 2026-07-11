@@ -123,15 +123,15 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
 
   // Header background
   doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, pageWidth, 55, 'F');
+  doc.rect(0, 0, pageWidth, 42, 'F');
 
   // Brand Name & Logo
   try {
     if (SHOP_DETAILS.logo) {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 12, 18, 18);
+        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 10, 16, 16);
       } catch (err) {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 12, 18, 18);
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 10, 16, 16);
       }
     }
   } catch (e) {
@@ -139,21 +139,21 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   }
 
   const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text(shopName, margin + 22, 22);
+  doc.text(shopName, margin + 20, 17);
   
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 22, 28);
+  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 20, 23);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
-  doc.setFontSize(9);
-  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 25, { align: 'right' });
-  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 30, { align: 'right' });
+  doc.setFontSize(8);
+  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 15, { align: 'right' });
+  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 20, { align: 'right' });
   
   // Date & Time
   const invoiceDate = data.date ? new Date(data.date) : new Date();
@@ -161,15 +161,15 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const timeStr = invoiceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text(`DATE: ${dateStr}`, shopX, 40, { align: 'right' });
-  doc.text(`HEURE: ${timeStr}`, shopX, 45, { align: 'right' });
+  doc.text(`DATE: ${dateStr}`, shopX, 28, { align: 'right' });
+  doc.text(`HEURE: ${timeStr}`, shopX, 33, { align: 'right' });
 
-  let currentY = 70;
+  let currentY = 52;
 
   // Title
-  doc.setFontSize(32);
+  doc.setFontSize(28);
   doc.setTextColor(241, 245, 249);
-  doc.text('FACTURE', pageWidth / 2, 63, { align: 'center' });
+  doc.text('FACTURE', pageWidth / 2, 48, { align: 'center' });
 
   const walkingCustomers = [
     translations.en.walkingCustomer,
