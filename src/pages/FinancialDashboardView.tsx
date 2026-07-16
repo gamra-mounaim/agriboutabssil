@@ -169,7 +169,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     ].sort((a, b) => b.amount - a.amount);
 
     return (
-      <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+      <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
             {(t as any).usedPaymentMethods}
@@ -184,7 +184,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           {paymentMethodsList.map(method => (
             <div key={method.id} className={`flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent transition-all ${method.wrapperClass}`}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl bg-white border border-border-subtle flex items-center justify-center ${method.iconClass}`}>
+                <div className={`w-10 h-10 rounded-xl bg-card border border-border-subtle flex items-center justify-center ${method.iconClass}`}>
                   <span className="font-bold text-lg">{method.icon}</span>
                 </div>
                 <div>
@@ -203,7 +203,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     );
   };
 
-  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-white", showCurrency = true, onClick, danger }: any) => (
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true, onClick, danger }: any) => (
     <div 
       onClick={onClick}
       className={cn(
@@ -271,7 +271,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         {/* Simplified Top Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Daily Profit Card */}
-          <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[180px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+          <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[180px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
             <div className="flex justify-between items-start">
               <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
@@ -284,7 +284,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           </div>
 
           {/* Debtor Customers Card */}
-          <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
+          <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
             <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">
               {t.debtorCustomers}
             </div>
@@ -301,7 +301,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         {/* Simplified Charts & Alerts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sales Trend Chart */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+          <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-accent" />
@@ -386,7 +386,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           </div>
 
           {/* Critical Stock Alerts */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+          <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
                 {t.stockAlerts}
@@ -403,7 +403,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 lowStock.map(p => (
                   <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-card border border-border-subtle flex items-center justify-center text-accent shrink-0">
                         <Package className="w-4 h-4" />
                       </div>
                       <div className="overflow-hidden">
@@ -474,7 +474,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 return (
                   <div key={c.id} className={cn(
                     "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
-                    isOverdue ? "bg-red-500 text-white border-red-600" : "bg-white border-border-subtle text-text-main"
+                    isOverdue ? "bg-red-500 text-white border-red-600" : "bg-card border-border-subtle text-text-main"
                   )}>
                     <span>{c.name}</span>
                     <span className="opacity-60">{cDueDate}</span>
@@ -506,7 +506,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 return (
                   <div key={s.id} className={cn(
                     "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
-                    isOverdue ? "bg-amber-500 text-white border-amber-600" : "bg-white border-border-subtle text-text-main"
+                    isOverdue ? "bg-amber-500 text-white border-amber-600" : "bg-card border-border-subtle text-text-main"
                   )}>
                     <span>{s.name}</span>
                     <span className="opacity-60">{sDueDate}</span>
@@ -582,7 +582,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             {t.realizedSalesProfits}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
@@ -594,7 +594,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
             </div>
 
-            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.weeklyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
@@ -606,7 +606,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               <ProfitBreakdown breakdown={stats?.weeklyProfitBreakdown} />
             </div>
 
-            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.monthlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
@@ -618,7 +618,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               <ProfitBreakdown breakdown={stats?.monthlyProfitBreakdown} />
             </div>
 
-            <div className="bg-white p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
+            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.yearlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
@@ -642,7 +642,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             )}>
                {/* Sales Trend Chart */}
                {permissions.financialsSales && (
-                 <div className={cn(permissions.financialsInventory ? "lg:col-span-2" : "col-span-1", "bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group")}>
+                 <div className={cn(permissions.financialsInventory ? "lg:col-span-2" : "col-span-1", "bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group")}>
                     <div className="flex items-center justify-between mb-6">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
@@ -729,7 +729,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
 
                {/* Category Distribution Pie Chart */}
                {permissions.financialsInventory && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
                    <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                      <LayoutGrid className="w-5 h-5 text-blue-500" />
                      {t.inventoryValueByCategory}
@@ -773,7 +773,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors || permissions.financialsInventory) && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
               {permissions.financialsInventory && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
                     <div className="flex items-center justify-between mb-8">
                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
                       <div className="flex items-center gap-2">
@@ -800,7 +800,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                         lowStock.map(p => (
                           <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg bg-white border border-border-subtle flex items-center justify-center text-accent shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-card border border-border-subtle flex items-center justify-center text-accent shrink-0">
                                 <Package className="w-4 h-4" />
                               </div>
                               <div className="overflow-hidden">
@@ -827,7 +827,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               )}
               {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
               {permissions.financialsTopProducts && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <ShoppingCart className="w-5 h-5 text-accent" />
                     {(t as any).topSellingProducts}
@@ -861,7 +861,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                  </div>
               )}
               {permissions.financialsTopDebtors && (
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <Users className="w-5 h-5 text-red-500" />
                     {(t as any).topDebtors}
