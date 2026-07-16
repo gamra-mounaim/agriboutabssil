@@ -1749,7 +1749,12 @@ async function startServer() {
       
       await db.prepare('UPDATE sales SET discount = ?, total = ? WHERE id = ?').run(discount, newTotal, id);
       
-      if (sale.payment_method === 'debt' && sale.customer_id) {
+      // Check if this sale generated debt (either purely 'debt', or 'check' with check_amount < original_total)
+      const originalTotal = sale.total;
+      const isDebt = sale.payment_method === 'debt';
+      const isPartialCheck = sale.payment_method === 'check' && sale.check_amount !== null && sale.check_amount < originalTotal;
+      
+      if ((isDebt || isPartialCheck) && sale.customer_id) {
         await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(discountDiff, sale.customer_id);
         
         await db.prepare(`
