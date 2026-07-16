@@ -111,7 +111,7 @@ const drawArabicCell = (doc: jsPDF, data: any, color?: string) => {
   }
 };
 
-export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', settings?: any) => {
+export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', settings?: any, isProforma: boolean = false) => {
   // Always use French for invoices as requested
   const t = translations.fr;
   const isAr = false;
@@ -152,7 +152,7 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.text('FACTURE', margin + 12, 21);
+  doc.text(isProforma ? 'BON DE PRÉPARATION' : 'FACTURE', margin + 12, 21);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
@@ -202,13 +202,15 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   }
 
   // Invoice Number
-  const invoiceNum = data.invoiceNumber 
-    ? data.invoiceNumber.toString().padStart(6, '0') 
-    : data.saleId.toUpperCase().slice(0, 8);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 41, 59);
-  doc.text(`N° (${invoiceNum})`, pageWidth - margin, currentY + 5, { align: 'right' });
+  if (!isProforma) {
+    const invoiceNum = data.invoiceNumber 
+      ? data.invoiceNumber.toString().padStart(6, '0') 
+      : data.saleId.toUpperCase().slice(0, 8);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text(`N° (${invoiceNum})`, pageWidth - margin, currentY + 5, { align: 'right' });
+  }
 
   currentY += 12;
 
@@ -334,7 +336,8 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   doc.setTextColor(148, 163, 184);
   doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-  const fileName = `Facture_${data.saleId.slice(0, 8)}.pdf`;
+  const prefix = isProforma ? 'Bon_Preparation' : 'Facture';
+  const fileName = `${prefix}_${data.saleId.slice(0, 8)}.pdf`;
   doc.save(fileName);
 };
 

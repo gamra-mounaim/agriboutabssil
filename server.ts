@@ -1372,6 +1372,54 @@ async function startServer() {
     res.json(toCamel(history));
   });
 
+  // --- Draft Sales API ---
+  app.get("/api/draft-sales", async (req, res) => {
+    try {
+      const drafts = await db.prepare('SELECT * FROM draft_sales ORDER BY created_at DESC').all();
+      res.json(toCamel(drafts));
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
+  app.post("/api/draft-sales", async (req, res) => {
+    const { id, customerId, customerName, cartData, discount, paymentMethod, total } = req.body;
+    try {
+      await db.prepare(`
+        INSERT INTO draft_sales (id, customer_id, customer_name, cart_data, discount, payment_method, total)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET
+          customer_id = EXCLUDED.customer_id,
+          customer_name = EXCLUDED.customer_name,
+          cart_data = EXCLUDED.cart_data,
+          discount = EXCLUDED.discount,
+          payment_method = EXCLUDED.payment_method,
+          total = EXCLUDED.total,
+          created_at = CURRENT_TIMESTAMP
+      `).run(
+        id || uuidv4(),
+        customerId || null,
+        customerName || null,
+        JSON.stringify(cartData),
+        discount || 0,
+        paymentMethod || 'cash',
+        total || 0
+      );
+      res.json({ status: "success" });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
+  app.delete("/api/draft-sales/:id", async (req, res) => {
+    try {
+      await db.prepare('DELETE FROM draft_sales WHERE id = ?').run(req.params.id);
+      res.json({ status: "success" });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
   // --- Sales API ---
   app.get("/api/sales", async (req, res) => {
     if (!req.query.page) {

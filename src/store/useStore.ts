@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../services/apiService';
-import { Product, Category, Customer, Supplier, Sale, CheckDoc, Payment, UserProfile, ActivityLog, Notification } from '../types';
+import { Product, Category, Customer, Supplier, Sale, CheckDoc, Payment, UserProfile, ActivityLog, Notification, DraftSale } from '../types';
 
 interface AuthState {
   user: any | null;
@@ -50,6 +50,7 @@ interface AppState {
   settings: any;
   notifications: Notification[];
   latestBackup: any;
+  draftSales: DraftSale[];
 
   setMessage: (message: { text: string, type: 'success' | 'error' } | null) => void;
   message: { text: string, type: 'success' | 'error' } | null;
@@ -84,6 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
   settings: null,
   notifications: [],
   latestBackup: null,
+  draftSales: [],
   message: null,
 
   setMessage: (message) => set({ message }),
@@ -148,7 +150,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const [
-        prods, cats, custs, supps, sls, cks, pymts, stts, usrs, logs, stngs, notes, latest
+        prods, cats, custs, supps, sls, cks, pymts, stts, usrs, logs, stngs, notes, latest, drafts
       ] = await Promise.all([
         fetchApi(api.getProducts, [], 'Products'),
         fetchApi(api.getCategories, [], 'Categories'),
@@ -162,7 +164,8 @@ export const useStore = create<AppState>((set, get) => ({
         fetchApi(() => api.getActivityLogs(1, 50, userId), { data: [], total: 0, page: 1 }, 'Activity'),
         fetchApi(api.getSettings, null, 'Settings'),
         fetchApi(api.getNotifications, [], 'Notifications'),
-        fetchApi(api.getLatestBackup, null, 'LatestBackup')
+        fetchApi(api.getLatestBackup, null, 'LatestBackup'),
+        fetchApi(api.getDraftSales, [], 'Drafts')
       ]);
 
       set({
@@ -182,7 +185,8 @@ export const useStore = create<AppState>((set, get) => ({
         activitiesPage: logs?.page || 1,
         settings: stngs,
         notifications: Array.isArray(notes) ? notes : [],
-        latestBackup: latest
+        latestBackup: latest,
+        draftSales: Array.isArray(drafts) ? drafts : []
       });
     } catch (e) {
       console.error("Critical Refresh Error:", e);

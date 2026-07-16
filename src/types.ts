@@ -26,6 +26,17 @@ export interface SaleItem {
   qty: number;
 }
 
+export interface DraftSale {
+  id: string;
+  customerId?: string;
+  customerName?: string;
+  cartData: string; // JSON string
+  discount: number;
+  paymentMethod: string;
+  total: number;
+  createdAt?: string;
+}
+
 export interface Sale {
   id: string;
   invoiceNumber: number;

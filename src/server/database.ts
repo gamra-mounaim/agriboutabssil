@@ -251,6 +251,17 @@ export async function initDb() {
       tokens TEXT,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS draft_sales (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT,
+      customer_name TEXT,
+      cart_data TEXT,
+      discount REAL,
+      payment_method TEXT,
+      total REAL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   try {

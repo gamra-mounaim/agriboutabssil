@@ -73,6 +73,11 @@ export const api = {
   logoutAllDevices: async (userId) => post(`${API_URL}/auth/logout-all`, { userId }),
   changePassword: async (oldPassword, newPassword) => post(`${API_URL}/auth/change-password`, { oldPassword, newPassword }),
 
+  // Draft Sales
+  getDraftSales: async () => get(`${API_URL}/draft-sales`),
+  saveDraftSale: async (draft: any) => post(`${API_URL}/draft-sales`, draft),
+  deleteDraftSale: async (id: string) => del(`${API_URL}/draft-sales/${id}`),
+
 
   // Products
   getProducts: async (page?: number, limit?: number, search?: string) => {

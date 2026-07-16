@@ -20,7 +20,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function POS() {
-  const { products, categories, customers, settings, fetchData: onRefresh, setMessage } = useStore();
+  const { products, categories, customers, settings, draftSales, fetchData: onRefresh, setMessage } = useStore();
   const { language, user } = useAuthStore();
 
   const t = translations[language];
@@ -47,6 +47,7 @@ export default function POS() {
   const [newCustomerDetail, setNewCustomerDetail] = useState({ name: '', phone: '' });
   const [isFlahActive, setIsFlahActive] = useState(false);
   const [originalPrices, setOriginalPrices] = useState<{[id: string]: number}>({});
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
 
   const handleQuickAddCustomer = async () => {
     if (!newCustomerDetail.name.trim()) return;
@@ -205,6 +206,70 @@ export default function POS() {
     }
   };
 
+  const handleHoldCart = async () => {
+    if (cart.length === 0) return;
+    try {
+      await api.saveDraftSale({
+        id: Date.now().toString(),
+        customerId: selectedCustomerId,
+        customerName: customerName,
+        cartData: cart,
+        discount: parseFloat(discount) || 0,
+        paymentMethod: paymentMethod,
+        total: total
+      });
+      setMessage({ text: language === 'ar' ? 'تم الحفظ في الانتظار' : 'Saved to drafts', type: 'success' });
+      setCart([]);
+      setSelectedCustomerId('');
+      setCustomerName('');
+      setDiscount('0');
+      onRefresh();
+    } catch (e) {
+      setMessage({ text: language === 'ar' ? 'خطأ' : 'Error', type: 'error' });
+    }
+  };
+
+  const handleResumeDraft = async (draft: any) => {
+    try {
+      const cartData = typeof draft.cartData === 'string' ? JSON.parse(draft.cartData) : draft.cartData;
+      setCart(cartData);
+      setSelectedCustomerId(draft.customerId || '');
+      setCustomerName(draft.customerName || '');
+      setDiscount((draft.discount || 0).toString());
+      setPaymentMethod(draft.paymentMethod as any || 'cash');
+      
+      await api.deleteDraftSale(draft.id);
+      setShowDraftsModal(false);
+      onRefresh();
+    } catch (e) {
+      setMessage({ text: language === 'ar' ? 'خطأ' : 'Error resuming', type: 'error' });
+    }
+  };
+
+  const handleDeleteDraft = async (id: string) => {
+    try {
+      await api.deleteDraftSale(id);
+      onRefresh();
+    } catch (e) {
+      setMessage({ text: language === 'ar' ? 'خطأ' : 'Error deleting', type: 'error' });
+    }
+  };
+
+  const handlePrintProforma = () => {
+    if (cart.length === 0) return;
+    const data = {
+      saleId: 'PROFORMA',
+      date: new Date().toISOString(),
+      items: cart,
+      total,
+      subtotal,
+      discount: discountVal,
+      clientName: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.name : customerName,
+      staffName: user?.name || user?.username || 'Staff'
+    };
+    generateInvoicePDF(data, language, settings, true);
+  };
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col xl:flex-row gap-6 overflow-hidden -mt-2 relative">
       <AnimatePresence>
@@ -282,6 +347,19 @@ export default function POS() {
                 value={search || ''} onChange={e => setSearch(e.target.value)}
               />
             </div>
+            
+            <button
+              onClick={() => setShowDraftsModal(true)}
+              className="bg-bg-base border border-border-subtle text-text-main font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-warning hover:text-white transition-all flex items-center gap-2 shadow-sm relative group"
+            >
+              <CalendarClock className="w-4 h-4 group-hover:animate-pulse" />
+              {language === 'ar' ? 'الانتظار' : 'Attente'}
+              {draftSales?.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-danger text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">
+                  {draftSales.length}
+                </span>
+              )}
+            </button>
             
             {/* Mobile Categories (Horizontal) */}
             <div className="flex xl:hidden items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -723,24 +801,116 @@ export default function POS() {
               <span className="text-sm font-bold text-text-secondary uppercase">{t.currency}</span>
             </div>
 
-            <div className="flex gap-3">
-               <button 
-                onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); }}
-                className="bg-white border border-border-subtle text-text-secondary font-black text-[10px] uppercase tracking-widest p-4 rounded-2xl hover:bg-danger hover:text-white hover:border-danger transition-all"
-              >
-                {t.clear || 'Clear'}
-              </button>
-              <button 
-                disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId) || isCheckingOut}
-                onClick={checkout}
-                className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
-              >
-                {t.checkout}
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                 <button 
+                  disabled={cart.length === 0}
+                  onClick={handlePrintProforma}
+                  className="bg-bg-base border border-border-subtle text-text-main font-black text-[10px] uppercase tracking-widest py-3 px-2 rounded-xl hover:bg-accent hover:text-white hover:border-accent transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:hover:bg-bg-base disabled:hover:text-text-main disabled:hover:border-border-subtle"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  {language === 'ar' ? 'وصل تحضير' : 'Devis'}
+                </button>
+                 <button 
+                  disabled={cart.length === 0}
+                  onClick={handleHoldCart}
+                  className="bg-bg-base border border-border-subtle text-text-main font-black text-[10px] uppercase tracking-widest py-3 px-2 rounded-xl hover:bg-warning hover:text-white hover:border-warning transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:hover:bg-bg-base disabled:hover:text-text-main disabled:hover:border-border-subtle"
+                >
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  {language === 'ar' ? 'في الانتظار' : 'Attente'}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                 <button 
+                  onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); }}
+                  className="bg-white border border-border-subtle text-text-secondary font-black text-[10px] uppercase tracking-widest p-4 rounded-xl hover:bg-danger hover:text-white hover:border-danger transition-all w-24"
+                >
+                  {t.clear || 'Clear'}
+                </button>
+                <button 
+                  disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId) || isCheckingOut}
+                  onClick={checkout}
+                  className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
+                >
+                  {t.checkout}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Drafts Modal */}
+      <AnimatePresence>
+        {showDraftsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-border-subtle flex flex-col"
+            >
+              <div className="p-4 border-b border-border-subtle flex justify-between items-center bg-bg-base/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <CalendarClock className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-text-main uppercase tracking-widest">{language === 'ar' ? 'لوائح الانتظار' : 'En Attente'}</h2>
+                  </div>
+                </div>
+                <button onClick={() => setShowDraftsModal(false)} className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+                {draftSales?.length === 0 ? (
+                  <div className="text-center py-10 text-text-secondary opacity-60">
+                    <CalendarClock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-bold uppercase tracking-widest text-xs">{language === 'ar' ? 'لا توجد سلات في الانتظار' : 'Aucune attente'}</p>
+                  </div>
+                ) : (
+                  draftSales?.map(draft => (
+                    <div key={draft.id} className="flex items-center justify-between p-4 bg-bg-base border border-border-subtle rounded-2xl hover:border-accent/30 transition-all">
+                      <div>
+                        <div className="font-bold text-sm text-text-main">
+                          {draft.customerName || (language === 'ar' ? 'زبون عابر' : 'Client Comptoir')}
+                        </div>
+                        <div className="text-[10px] text-text-secondary uppercase tracking-widest mt-1">
+                          {new Date(draft.createdAt || Date.now()).toLocaleString(language === 'ar' ? 'ar-MA' : 'fr-FR')}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="font-black text-accent text-lg">
+                          {formatNumber(draft.total)} <span className="text-[10px] uppercase tracking-widest">DH</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleResumeDraft(draft)}
+                            className="bg-accent text-white p-2 rounded-xl hover:bg-accent-hover transition-all"
+                            title="Reprendre"
+                          >
+                            <ArrowUpRight className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteDraft(draft.id)}
+                            className="bg-danger/10 text-danger p-2 rounded-xl hover:bg-danger hover:text-white transition-all"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
