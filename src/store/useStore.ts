@@ -60,7 +60,7 @@ interface AppState {
 
   salesTotal: number;
   salesPage: number;
-  fetchSalesPage: (page: number) => Promise<void>;
+  fetchSalesPage: (page: number, search?: string) => Promise<void>;
 
   activitiesTotal: number;
   activitiesPage: number;
@@ -103,9 +103,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   salesTotal: 0,
   salesPage: 1,
-  fetchSalesPage: async (page: number) => {
+  fetchSalesPage: async (page: number, search?: string) => {
     try {
-      const res = await api.getSales(page, 50) as any;
+      const res = await api.getSales(page, 50, search) as any;
       set({ sales: res.data || [], salesTotal: res.total || 0, salesPage: res.page || 1 });
     } catch (err) {
       console.error("Failed to fetch paginated sales", err);

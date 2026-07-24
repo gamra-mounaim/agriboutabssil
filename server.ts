@@ -1439,9 +1439,23 @@ async function startServer() {
     
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
+    const search = req.query.search ? `%${req.query.search}%` : null;
     
-    const total = (await db.prepare('SELECT COUNT(*) as count FROM sales').get() as any).count;
-    const sales = await db.prepare('SELECT * FROM sales ORDER BY date DESC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+    let query = 'SELECT s.* FROM sales s LEFT JOIN customers c ON s.customer_id = c.id';
+    let countQuery = 'SELECT COUNT(*) as count FROM sales s LEFT JOIN customers c ON s.customer_id = c.id';
+    let params: any[] = [];
+    
+    if (search) {
+      const searchWhere = ' WHERE CAST(s.invoice_number AS TEXT) LIKE ? OR s.customer_name LIKE ? OR c.name LIKE ? OR s.check_number LIKE ? OR s.check_owner LIKE ? OR s.id LIKE ?';
+      query += searchWhere;
+      countQuery += searchWhere;
+      params = [search, search, search, search, search, search];
+    }
+    
+    query += ' ORDER BY s.date DESC LIMIT ? OFFSET ?';
+    
+    const total = (await db.prepare(countQuery).get(...params) as any).count;
+    const sales = await db.prepare(query).all(...params, limit, (page - 1) * limit);
     
     const saleIds = sales.map((s: any) => s.id);
     let itemsBySale = {};

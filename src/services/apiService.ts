@@ -135,9 +135,12 @@ export const api = {
   getSupplierHistory: async (supplierId) => get(`${API_URL}/suppliers/${supplierId}/history`),
 
   // Sales
-  getSales: async (page?: number, limit?: number) => {
+  getSales: async (page?: number, limit?: number, search?: string) => {
     let url = `${API_URL}/sales`;
-    if (page) url += `?page=${page}&limit=${limit || 50}`;
+    if (page) {
+      url += `?page=${page}&limit=${limit || 50}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+    }
     return get(url);
   },
   getSaleItems: async (id) => get(`${API_URL}/sales/${id}/items`),

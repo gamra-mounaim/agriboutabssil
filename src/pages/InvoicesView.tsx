@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Printer, Edit2, CheckCircle2, AlertTriangle, FileText, X } from 'lucide-react';
 import { cn, formatNumber } from '../utils';
 import { Sale } from '../types';
@@ -9,7 +9,7 @@ import { api } from '../services/apiService';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function InvoicesView({ permissions, currentUserRole }: { permissions: any, currentUserRole?: string }) {
-  const { sales, customers, appUsers, settings, fetchData } = useStore();
+  const { sales, salesTotal, salesPage, fetchSalesPage, customers, appUsers, settings, fetchData } = useStore();
   const { language, user: currentUser } = useAuthStore();
   const t = translations[language] as any;
 
@@ -37,6 +37,13 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
       checkOwner: sale.checkOwner
     }, language, settings);
   };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchSalesPage(1, searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery, fetchSalesPage]);
 
   const canViewAll = currentUserRole === 'admin' || currentUser?.email?.includes('1984') || (currentUser as any)?.username?.includes('1984');
   const filteredSales = sales.filter(s => {
@@ -179,6 +186,30 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
               )}
             </tbody>
           </table>
+          
+          {salesTotal > 50 && (
+            <div className="flex items-center justify-between p-5 border-t border-border-subtle bg-bg-base/30">
+              <div className="text-xs font-black text-text-secondary uppercase tracking-widest">
+                {language === 'ar' ? `صفحة ${salesPage} من ${Math.ceil(salesTotal / 50)}` : language === 'fr' ? `Page ${salesPage} sur ${Math.ceil(salesTotal / 50)}` : `Page ${salesPage} of ${Math.ceil(salesTotal / 50)}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  disabled={salesPage === 1}
+                  onClick={() => fetchSalesPage(salesPage - 1, searchQuery)}
+                  className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+                >
+                  {language === 'ar' ? 'السابق' : language === 'fr' ? 'Précédent' : 'Previous'}
+                </button>
+                <button 
+                  disabled={salesPage >= Math.ceil(salesTotal / 50)}
+                  onClick={() => fetchSalesPage(salesPage + 1, searchQuery)}
+                  className="px-4 py-2 bg-white border border-border-subtle rounded-xl text-xs font-bold hover:bg-bg-base disabled:opacity-50 transition-colors"
+                >
+                  {language === 'ar' ? 'التالي' : language === 'fr' ? 'Suivant' : 'Next'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
