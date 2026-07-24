@@ -48,6 +48,8 @@ export default function POS() {
   const [isFlahActive, setIsFlahActive] = useState(false);
   const [originalPrices, setOriginalPrices] = useState<{[id: string]: number}>({});
   const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   const handleQuickAddCustomer = async () => {
     if (!newCustomerDetail.name.trim()) return;
@@ -184,6 +186,7 @@ export default function POS() {
         setCart([]);
         setSelectedCustomerId('');
         setCustomerName('');
+        setCustomerSearchQuery('');
         setDiscount('0');
         setReceivedAmount('');
         setCheckNumber('');
@@ -222,6 +225,7 @@ export default function POS() {
       setCart([]);
       setSelectedCustomerId('');
       setCustomerName('');
+      setCustomerSearchQuery('');
       setDiscount('0');
       onRefresh();
     } catch (e) {
@@ -235,6 +239,12 @@ export default function POS() {
       setCart(cartData);
       setSelectedCustomerId(draft.customerId || '');
       setCustomerName(draft.customerName || '');
+      if (draft.customerId) {
+        const found = customers.find(c => c.id === draft.customerId);
+        if (found) setCustomerSearchQuery(found.name);
+      } else {
+        setCustomerSearchQuery('');
+      }
       setDiscount((draft.discount || 0).toString());
       setPaymentMethod(draft.paymentMethod as any || 'cash');
       
@@ -673,24 +683,79 @@ export default function POS() {
                  <div className="space-y-2">
                    <div className="relative group">
                       <Users className={cn(
-                        "absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary transition-colors group-focus-within:text-accent",
+                        "absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary transition-colors group-focus-within:text-accent z-10",
                         language === 'ar' ? "right-3.5" : "left-3.5"
                       )} />
-                      <select 
+                      
+                      <div 
                         className={cn(
-                          "w-full bg-white border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent focus:ring-4 focus:ring-accent/5 outline-none transition-all shadow-sm appearance-none",
+                          "w-full bg-white border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 outline-none transition-all shadow-sm cursor-text relative flex items-center",
                           language === 'ar' && "text-right"
                         )}
-                        value={selectedCustomerId} onChange={e => { setSelectedCustomerId(e.target.value); setCustomerName(''); }}
                       >
-                        <option value="">{language === 'ar' ? "إختر زبون..." : language === 'fr' ? "Lier à un compte..." : "Link to Account..."}</option>
-                        {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.debt > 0 ? `(${language === 'ar' ? 'دين' : language === 'fr' ? 'Dette' : 'Debt'}: ${formatNumber(c.debt)})` : ''}</option>)}
-                      </select>
+                        <input
+                           placeholder={language === 'ar' ? "إختر زبون... (بحث)" : language === 'fr' ? "Chercher un compte..." : "Search Account..."}
+                           className="w-full bg-transparent outline-none cursor-text"
+                           value={customerSearchQuery}
+                           onChange={(e) => {
+                             setCustomerSearchQuery(e.target.value);
+                             setShowCustomerDropdown(true);
+                             if (selectedCustomerId) {
+                               setSelectedCustomerId('');
+                               setCustomerName('');
+                             }
+                           }}
+                           onFocus={() => {
+                             setShowCustomerDropdown(true);
+                             if (selectedCustomerId) {
+                               setCustomerSearchQuery('');
+                               setSelectedCustomerId('');
+                             }
+                           }}
+                        />
+                      </div>
                       <ChevronDown className={cn(
-                        "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50",
+                        "absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary pointer-events-none opacity-50 z-10",
                         language === 'ar' ? "left-3.5" : "right-3.5"
                       )} />
-                   </div>
+
+                      {showCustomerDropdown && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => {
+                              setShowCustomerDropdown(false);
+                              if (!selectedCustomerId) setCustomerSearchQuery('');
+                            }}
+                          />
+                          <div className="absolute top-full mt-2 w-full bg-white border border-border-subtle rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto overflow-x-hidden">
+                            {customers.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).map(c => (
+                              <button
+                                key={c.id}
+                                onClick={() => {
+                                  setSelectedCustomerId(c.id);
+                                  setCustomerName('');
+                                  setCustomerSearchQuery(c.name);
+                                  setShowCustomerDropdown(false);
+                                }}
+                                className={cn(
+                                  "w-full px-4 py-3 text-xs font-bold hover:bg-bg-base border-b border-border-subtle last:border-0 transition-colors",
+                                  language === 'ar' ? "text-right" : "text-left",
+                                  selectedCustomerId === c.id ? "bg-accent/10 text-accent" : "text-text-main"
+                                )}
+                              >
+                                {c.name} {c.debt > 0 ? <span className="text-danger mx-1">({language === 'ar' ? 'دين' : language === 'fr' ? 'Dette' : 'Debt'}: {formatNumber(c.debt)})</span> : ''}
+                              </button>
+                            ))}
+                            {customers.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length === 0 && (
+                              <div className="px-4 py-3 text-xs font-bold text-text-secondary text-center opacity-60">
+                                {language === 'ar' ? 'لا توجد نتائج' : 'Aucun résultat'}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
                    
                    {!selectedCustomerId && (
                       <div className="relative group animate-in fade-in slide-in-from-top-2 duration-300">
@@ -822,7 +887,7 @@ export default function POS() {
               </div>
               <div className="flex gap-2">
                  <button 
-                  onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); }}
+                  onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); setCustomerSearchQuery(''); }}
                   className="bg-white border border-border-subtle text-text-secondary font-black text-[10px] uppercase tracking-widest p-4 rounded-xl hover:bg-danger hover:text-white hover:border-danger transition-all w-24"
                 >
                   {t.clear || 'Clear'}
