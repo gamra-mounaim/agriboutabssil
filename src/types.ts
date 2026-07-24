@@ -1,3 +1,13 @@
+export interface ProductLot {
+  id: string;
+  productId: string;
+  qty: number;
+  costPrice: number;
+  supplier?: string;
+  supplierId?: string;
+  createdAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -11,6 +21,7 @@ export interface Product {
   supplierId?: string;
   updatedAt?: any;
   soldQty?: number;
+  lots?: ProductLot[];
 }
 
 export interface Category {

@@ -272,6 +272,11 @@ export const translations = {
     passwordChangedSuccess: "Password changed successfully!",
     passwordChangedError: "Error: Failed to change password.",
     incorrectCurrentPassword: "Incorrect current password.",
+    stockBatches: "Stock Batches",
+    batchDetails: "Batch Details",
+    batchQty: "Batch Quantity",
+    batchCostPrice: "Batch Purchase Price",
+    newBatch: "New Batch / Restock",
   },
   fr: {
     appName: "AGRI BOUTABSSIL",
@@ -544,6 +549,11 @@ export const translations = {
     passwordChangedSuccess: "Mot de passe changé avec succès !",
     passwordChangedError: "Erreur : Échec du changement de mot de passe.",
     incorrectCurrentPassword: "Mot de passe actuel incorrect.",
+    stockBatches: "Lots en Stock",
+    batchDetails: "Détails des Lots",
+    batchQty: "Quantité du Lot",
+    batchCostPrice: "Prix d'Achat du Lot",
+    newBatch: "Nouveau Lot / Réapprovisionnement",
   },
   ar: {
     appName: "AGRI BOUTABSSIL",
@@ -816,5 +826,10 @@ export const translations = {
     passwordChangedSuccess: "تم تغيير كلمة المرور بنجاح!",
     passwordChangedError: "خطأ: فشل تغيير كلمة المرور.",
     incorrectCurrentPassword: "كلمة المرور الحالية غير صحيحة.",
+    stockBatches: "دفعات المخزون",
+    batchDetails: "تفاصيل الدفعات",
+    batchQty: "كمية الدفعة",
+    batchCostPrice: "ثمن شراء الدفعة",
+    newBatch: "دفعة جديدة / تزويد بالسلعة",
   }
 };

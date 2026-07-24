@@ -449,7 +449,21 @@ async function startServer() {
         ) sales ON p.id = sales.product_id
       `;
       const products = await db.prepare(query).all();
-      res.json(toCamel(products));
+      const rawLots = await db.prepare('SELECT id, product_id, qty, cost_price, supplier, supplier_id, created_at FROM product_lots WHERE qty > 0 ORDER BY created_at ASC').all();
+      
+      const lotsByProduct: Record<string, any[]> = {};
+      for (const lot of rawLots) {
+        const pId = lot.product_id;
+        if (!lotsByProduct[pId]) lotsByProduct[pId] = [];
+        lotsByProduct[pId].push(toCamel(lot));
+      }
+
+      const productsWithLots = products.map((p: any) => ({
+        ...toCamel(p),
+        lots: lotsByProduct[p.id] || []
+      }));
+
+      res.json(productsWithLots);
     } catch (err: any) {
       console.error("Error in GET /api/products:", err);
       res.status(500).json({ status: "error", message: "Failed to fetch products from database", details: err.message });
@@ -727,6 +741,14 @@ async function startServer() {
         VALUES (?, ?, ?, 'create', ?, 'Stock Initial / مخزون أولي', ?, ?)
       `).run(uuidv4(), id, name, qty, actor || 'System', costPrice || 0);
 
+      // Create initial lot entry if qty > 0
+      if (qty > 0) {
+        await db.prepare(`
+          INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(uuidv4(), id, qty, costPrice || 0, supplier || null, supplierId || null);
+      }
+
       // Update supplier debt if qty > 0 and supplierId provided
       if (qty > 0 && supplierId && costPrice > 0) {
         const costAmount = (costPrice || 0) * qty;
@@ -944,6 +966,22 @@ async function startServer() {
 
       await db.prepare('UPDATE products SET qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newQty, id);
       
+      if (type === 'in') {
+        await db.prepare(`
+          INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(uuidv4(), id, quantity, unitCost, product.supplier || null, supplierId || product.supplier_id || null);
+      } else if (type === 'out') {
+        let rem = quantity;
+        const activeLots = await db.prepare('SELECT id, qty FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(id);
+        for (const lot of activeLots) {
+          if (rem <= 0) break;
+          const deduct = Math.min(lot.qty, rem);
+          await db.prepare('UPDATE product_lots SET qty = qty - ? WHERE id = ?').run(deduct, lot.id);
+          rem -= deduct;
+        }
+      }
+
       await db.prepare(`
         INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1698,6 +1736,16 @@ async function startServer() {
         `).run(saleId, item.productId, item.name, item.price, item.qty);
 
         await db.prepare('UPDATE products SET qty = qty - ? WHERE id = ?').run(item.qty, item.productId);
+
+        // Deduct from product_lots in FIFO order (oldest lot first)
+        let remainingToDeduct = item.qty;
+        const activeLots = await db.prepare('SELECT id, qty FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(item.productId);
+        for (const lot of activeLots) {
+          if (remainingToDeduct <= 0) break;
+          const deduct = Math.min(lot.qty, remainingToDeduct);
+          await db.prepare('UPDATE product_lots SET qty = qty - ? WHERE id = ?').run(deduct, lot.id);
+          remainingToDeduct -= deduct;
+        }
 
         const pCost = (await db.prepare('SELECT cost_price FROM products WHERE id = ?').get(item.productId) as any)?.cost_price || 0;
 

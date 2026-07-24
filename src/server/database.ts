@@ -262,6 +262,17 @@ export async function initDb() {
       total REAL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS product_lots (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      qty REAL NOT NULL,
+      cost_price REAL NOT NULL,
+      supplier TEXT,
+      supplier_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+    );
   `);
 
   try {
@@ -308,6 +319,25 @@ export async function initDb() {
   try {
     await db.prepare("ALTER TABLE customer_history ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
   } catch (e) {}
+
+  // Auto-sync lots for products without lots
+  try {
+    const unlotProducts = await db.prepare(`
+      SELECT p.id, p.qty, p.cost_price, p.supplier, p.supplier_id 
+      FROM products p 
+      LEFT JOIN product_lots pl ON p.id = pl.product_id 
+      WHERE pl.id IS NULL AND p.qty > 0
+    `).all();
+    for (const prod of unlotProducts) {
+      const lotId = 'lot_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+      await db.prepare(`
+        INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `).run(lotId, prod.id, prod.qty, prod.cost_price || 0, prod.supplier || null, prod.supplier_id || null);
+    }
+  } catch (e) {
+    console.error("Error auto-syncing product_lots:", e);
+  }
 
   // Initialize settings
   const settingsData = await db.prepare('SELECT * FROM settings WHERE id = $1').get('main');
