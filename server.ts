@@ -1776,8 +1776,7 @@ async function startServer() {
           VALUES (?, ?, 'PAYMENT', ?, ?)
         `).run(uuidv4(), sale.customer_id, discountDiff, `Remise ajoutée sur la facture #${sale.invoice_number}`);
       }
-      
-      logActivity(req, 'SALE', 'update', `Remise de ${discountDiff} ajoutée à la facture N° ${sale.id.slice(0, 8)}`, staffId || 'System', 'Staff');
+      logActivity(req, 'SALE', 'update', `Remise de ${discountDiff} ajoutée à la facture N° ${sale.invoice_number}`, staffId || 'System', 'Staff');
       
       res.json({ status: "success" });
     } catch (e: any) {
