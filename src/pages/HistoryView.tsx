@@ -465,7 +465,7 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
                       <UserCog className="w-2.5 h-2.5" />
                       {(() => {
                         const actor = appUsers.find(u => u.id === a.actorId);
-                        const actualName = actor ? (actor.displayName || actor.username || actor.email) : a.actorName;
+                        const actualName = actor ? ((actor as any).displayName || (actor as any).username || actor.email) : a.actorName;
                         if (actualName === 'System' || !actualName) return (language === 'ar' ? 'النظام' : 'Système');
                         if (actualName === 'Admin' && !actor) return (language === 'ar' ? 'المسؤول' : 'Administrateur');
                         if (actualName === 'Staff' && !actor) return (language === 'ar' ? 'الموظف' : 'Personnel');

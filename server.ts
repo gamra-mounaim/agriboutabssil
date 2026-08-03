@@ -1252,6 +1252,37 @@ async function startServer() {
     }
   });
 
+  app.get("/api/customers/:id/purchased-products", async (req, res) => {
+    const { id } = req.params;
+    try {
+      let productsList;
+      if (id === 'walking') {
+        productsList = await db.prepare(`
+          SELECT DISTINCT p.id, p.name, p.price, p.qty, MAX(si.price) as last_sold_price
+          FROM sale_items si
+          JOIN sales s ON si.sale_id = s.id
+          JOIN products p ON si.product_id = p.id
+          WHERE (s.customer_id IS NULL OR s.customer_id = '' OR s.customer_id = 'walking')
+          GROUP BY p.id, p.name, p.price, p.qty
+          ORDER BY p.name ASC
+        `).all();
+      } else {
+        productsList = await db.prepare(`
+          SELECT DISTINCT p.id, p.name, p.price, p.qty, MAX(si.price) as last_sold_price
+          FROM sale_items si
+          JOIN sales s ON si.sale_id = s.id
+          JOIN products p ON si.product_id = p.id
+          WHERE s.customer_id = ?
+          GROUP BY p.id, p.name, p.price, p.qty
+          ORDER BY p.name ASC
+        `).all(id);
+      }
+      res.json(toCamel(productsList));
+    } catch (e: any) {
+      res.status(500).json({ status: "error", message: e.message });
+    }
+  });
+
   app.get("/api/payments", async (req, res) => {
     try {
       const payments = await db.prepare('SELECT p.*, c.name as customerName FROM payments p LEFT JOIN customers c ON p.customer_id = c.id ORDER BY p.date DESC').all();

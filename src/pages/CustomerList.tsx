@@ -52,6 +52,82 @@ export default function CustomerList() {
   const [returnAction, setReturnAction] = useState<'debt' | 'cash'>('debt');
   const [returnDescription, setReturnDescription] = useState('');
 
+  // FLAH 10% and Purchased Products states for Return Modal
+  const [isReturnFlahActive, setIsReturnFlahActive] = useState(false);
+  const [purchasedProducts, setPurchasedProducts] = useState<any[]>([]);
+  const [loadingPurchasedProducts, setLoadingPurchasedProducts] = useState(false);
+  const [showAllProductsInReturn, setShowAllProductsInReturn] = useState(false);
+
+  const openReturnModal = async (customer: Customer) => {
+    setReturnModal({ customer });
+    setReturnProductId('');
+    setReturnProductSearch('');
+    setIsProductDropdownOpen(false);
+    setReturnQty('');
+    setReturnPrice('');
+    setReturnAction(customer.id === 'walking' ? 'cash' : 'debt');
+    setReturnDescription('');
+    setIsReturnFlahActive(false);
+    setShowAllProductsInReturn(false);
+
+    setLoadingPurchasedProducts(true);
+    try {
+      const res = await api.getCustomerPurchasedProducts(customer.id);
+      setPurchasedProducts(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error('Error fetching purchased products:', err);
+      setPurchasedProducts([]);
+    } finally {
+      setLoadingPurchasedProducts(false);
+    }
+  };
+
+  const availableReturnProducts = useMemo(() => {
+    if (showAllProductsInReturn) {
+      return products;
+    }
+    if (purchasedProducts && purchasedProducts.length > 0) {
+      return purchasedProducts;
+    }
+    return products;
+  }, [showAllProductsInReturn, purchasedProducts, products]);
+
+  const toggleReturnFlah = () => {
+    const newActive = !isReturnFlahActive;
+    setIsReturnFlahActive(newActive);
+
+    if (returnProductId) {
+      const prod = products.find(p => p.id === returnProductId) || purchasedProducts.find((p: any) => p.id === returnProductId);
+      if (prod) {
+        const basePrice = Number(prod.price) || 0;
+        if (newActive) {
+          const flahPrice = Math.round(basePrice * 1.1 * 100) / 100;
+          setReturnPrice(flahPrice.toString());
+        } else {
+          setReturnPrice(basePrice.toString());
+        }
+      }
+    }
+  };
+
+  const handleSelectReturnProduct = (prod: any) => {
+    setReturnProductId(prod.id);
+    const basePrice = Number(prod.price) || 0;
+    
+    let priceToSet = basePrice;
+    if (isReturnFlahActive) {
+      priceToSet = Math.round(basePrice * 1.1 * 100) / 100;
+    } else if (prod.lastSoldPrice && Math.abs((Number(prod.lastSoldPrice) / basePrice) - 1.1) < 0.03) {
+      priceToSet = Number(prod.lastSoldPrice);
+      setIsReturnFlahActive(true);
+    } else if (prod.lastSoldPrice) {
+      priceToSet = Number(prod.lastSoldPrice);
+    }
+    
+    setReturnPrice(priceToSet.toString());
+    setIsProductDropdownOpen(false);
+  };
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', due_date: '' });
   const [selectedSaleToShow, setSelectedSaleToShow] = useState<Sale | null>(null);
@@ -301,7 +377,7 @@ export default function CustomerList() {
               />
             </div>
             <button 
-              onClick={() => setReturnModal({ customer: { id: 'walking', name: t.walkingCustomer || 'Client de passage', debt: 0, email: '', phone: '', address: '' } })} 
+              onClick={() => openReturnModal({ id: 'walking', name: t.walkingCustomer || 'Client de passage', debt: 0, email: '', phone: '', address: '' })} 
               className="h-full bg-accent text-white py-5 px-8 rounded-[2rem] text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent/20 hover:opacity-90 transition-all shrink-0 active:scale-95"
             >
               <ArrowRightLeft className="w-4 h-4" />
@@ -616,7 +692,7 @@ export default function CustomerList() {
                   <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: customerHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
                     <Download className="w-3.5 h-3.5 text-accent" /> {t.generateStatement}
                   </button>
-                  <button onClick={() => setReturnModal({ customer: selectedCustomer })} className="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
+                  <button onClick={() => openReturnModal(selectedCustomer)} className="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
                     <ArrowRightLeft className="w-3.5 h-3.5" /> {t.returnProduct}
                   </button>
                   <button onClick={() => setAdjustModal({ type: 'pay', customer: selectedCustomer })} className="flex-1 bg-success text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
@@ -752,18 +828,49 @@ export default function CustomerList() {
         {returnModal && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-text-main/40 backdrop-blur-md">
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-card w-full max-w-md rounded-[2rem] shadow-2xl border border-border-subtle p-8 max-h-[90vh] overflow-y-auto">
-              <div className="text-center mb-6">
-                <div className="inline-flex p-4 rounded-full bg-accent/5 text-accent mb-4">
-                  <ArrowRightLeft className="w-8 h-8" />
+              
+              {/* Top Header with FLAH 10% Toggle Button */}
+              <div className="flex items-center justify-between mb-6 bg-bg-base/60 p-4 rounded-2xl border border-border-subtle">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-accent/10 text-accent">
+                    <ArrowRightLeft className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black tracking-tight text-text-main uppercase">{t.returnProduct}</h3>
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.15em] mt-0.5">{returnModal.customer.name}</p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-black tracking-tight text-text-main uppercase">{t.returnProduct}</h3>
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] mt-1">{returnModal.customer.name}</p>
+
+                <button 
+                  type="button"
+                  onClick={toggleReturnFlah}
+                  className={cn(
+                    "px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm",
+                    isReturnFlahActive ? "bg-accent text-white border-accent shadow-accent/25 scale-105" : "bg-white text-text-secondary border-border-subtle hover:bg-bg-base"
+                  )}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isReturnFlahActive ? (language === 'ar' ? 'فلاح نشط' : 'FLAH ON') : 'FLAH 10%'}</span>
+                </button>
               </div>
 
               <form onSubmit={handleReturnSubmit} className="space-y-4">
                 {/* Product Selector */}
                 <div className="space-y-1 relative">
-                  <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1">{t.selectProduct}</label>
+                  <div className="flex items-center justify-between px-1 mb-1">
+                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{t.selectProduct}</label>
+                    {purchasedProducts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllProductsInReturn(!showAllProductsInReturn)}
+                        className="text-[9px] font-bold text-accent hover:underline"
+                      >
+                        {showAllProductsInReturn 
+                          ? (language === 'ar' ? `مشتريات الزبون فقط (${purchasedProducts.length})` : `Achats client فقط (${purchasedProducts.length})`)
+                          : (language === 'ar' ? 'إظهار كل المخزون' : 'Afficher tout le stock')}
+                      </button>
+                    )}
+                  </div>
                   
                   <div className="relative">
                     <button
@@ -773,7 +880,7 @@ export default function CustomerList() {
                     >
                       <span className={cn("truncate", !returnProductId && "text-text-secondary")}>
                         {returnProductId 
-                          ? products.find(p => p.id === returnProductId)?.name || t.selectProduct
+                          ? (availableReturnProducts.find(p => p.id === returnProductId)?.name || products.find(p => p.id === returnProductId)?.name || t.selectProduct)
                           : `-- ${t.selectProduct} --`}
                       </span>
                       <ChevronDown className="w-4 h-4 text-text-secondary" />
@@ -803,27 +910,47 @@ export default function CustomerList() {
                           </div>
                           
                           <div className="overflow-y-auto flex-1 p-1">
-                            {products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).length === 0 ? (
-                              <div className="py-4 text-center text-xs text-text-secondary font-bold">
-                                {language === 'ar' ? 'لا توجد منتجات' : 'Aucun produit trouvé'}
+                            {loadingPurchasedProducts ? (
+                              <div className="py-6 text-center text-xs text-text-secondary font-bold">
+                                {language === 'ar' ? 'جاري تحميل منتجات الزبون...' : 'Chargement des produits...'}
+                              </div>
+                            ) : availableReturnProducts.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).length === 0 ? (
+                              <div className="py-6 text-center text-xs text-text-secondary font-bold px-2">
+                                {purchasedProducts.length === 0 && !showAllProductsInReturn ? (
+                                  <div className="space-y-2">
+                                    <p>{language === 'ar' ? 'لم يقم هذا الزبون بشراء أي منتج مسجل سابقاً' : 'Aucun achat précédent trouvé'}</p>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setShowAllProductsInReturn(true)}
+                                      className="text-accent underline text-[10px] font-black"
+                                    >
+                                      {language === 'ar' ? 'إظهار جميع منتجات المخزون' : 'Afficher tout le stock'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  language === 'ar' ? 'لا توجد نتائج' : 'Aucun produit trouvé'
+                                )}
                               </div>
                             ) : (
-                              products.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).map(p => (
+                              availableReturnProducts.filter(p => p.name.toLowerCase().includes(returnProductSearch.toLowerCase())).map(p => (
                                 <button
                                   key={p.id}
                                   type="button"
-                                  onClick={() => {
-                                    setReturnProductId(p.id);
-                                    setReturnPrice(p.price.toString());
-                                    setIsProductDropdownOpen(false);
-                                  }}
+                                  onClick={() => handleSelectReturnProduct(p)}
                                   className={cn(
                                     "w-full text-left px-4 py-3 rounded-lg text-xs font-bold hover:bg-bg-base transition-colors flex items-center justify-between",
                                     returnProductId === p.id && "bg-accent/10 text-accent"
                                   )}
                                 >
                                   <span className="truncate">{p.name}</span>
-                                  <span className="shrink-0 ml-2 opacity-70">{p.price} {t.currency}</span>
+                                  <div className="shrink-0 ml-2 text-right">
+                                    <span className="opacity-80 block">{p.price} {t.currency}</span>
+                                    {p.lastSoldPrice && (
+                                      <span className="text-[9px] font-semibold text-accent block">
+                                        {language === 'ar' ? `ثمن الشراء: ${p.lastSoldPrice} DH` : `Achat: ${p.lastSoldPrice} DH`}
+                                      </span>
+                                    )}
+                                  </div>
                                 </button>
                               ))
                             )}

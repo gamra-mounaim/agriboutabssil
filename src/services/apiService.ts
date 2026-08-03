@@ -123,6 +123,7 @@ export const api = {
   addPayment: async (customerId, paymentData) => post(`${API_URL}/customers/${customerId}/payment`, paymentData),
   addCharge: async (customerId, amount, description) => post(`${API_URL}/customers/${customerId}/charge`, { amount, description }),
   getCustomerHistory: async (customerId) => get(`${API_URL}/customers/${customerId}/history`),
+  getCustomerPurchasedProducts: async (customerId: string) => get(`${API_URL}/customers/${customerId}/purchased-products`),
   returnProduct: async (customerId, returnData) => post(`${API_URL}/customers/${customerId}/return`, returnData),
   
   // Suppliers
