@@ -651,85 +651,165 @@ export const generateTransactionReceiptPDF = (data: TransactionReceiptData, lang
     name: settings?.shopName || settings?.shop_name || SHOP_DETAILS.name,
     address: settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address,
     phone: settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone,
+    tagline: SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'
   };
-  const doc = new jsPDF({
-    unit: 'mm',
-    format: [80, 150]
-  });
+
+  const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
-  let currentY = 15;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
 
-  // Header Title
-  const titleText = data.type === 'PAYMENT' 
-    ? (isAr ? 'وصل سداد' : 'RECEIPT') 
-    : (isAr ? 'وصل دين' : 'DEBIT NOTE');
-  const titleImg = renderTextToImg(titleText, { size: 16, bold: true, color: '#334155' });
-  const titleW = 40;
-  const titleH = (doc as any).getImageProperties(titleImg).height * titleW / (doc as any).getImageProperties(titleImg).width;
-  doc.addImage(titleImg, 'PNG', (pageWidth - titleW) / 2, currentY, titleW, titleH);
-  currentY += titleH + 8;
+  // Header background
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 0, pageWidth, 28, 'F');
 
-  // Shop Info
-  const shopNameImg = renderTextToImg(shop.name, { size: 10, bold: true });
-  doc.addImage(shopNameImg, 'PNG', (pageWidth - 30) / 2, currentY, 30, 4);
-  currentY += 6;
+  // Brand Name & Logo
+  try {
+    if (SHOP_DETAILS.logo) {
+      try {
+        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 5, 10, 10);
+      } catch (err) {
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 5, 10, 10);
+      }
+    }
+  } catch (e) {
+    console.error('Error adding logo to PDF:', e);
+  }
+
+  doc.setFontSize(12);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  doc.text(shop.name, margin + 12, 9);
+  
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'normal');
+  doc.text(shop.tagline, margin + 12, 13);
+
+  // Shop Info (Right)
+  const shopX = pageWidth - margin;
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text(shop.address, shopX, 8, { align: 'right' });
+  doc.text(`Tél: ${shop.phone}`, shopX, 12, { align: 'right' });
+  
+  // Document Title
+  const isReturn = data.description.toLowerCase().includes('retour');
+  let title = data.type === 'PAYMENT' ? (isReturn ? 'BON DE RETOUR' : 'REÇU DE PAIEMENT') : 'BON DE DÉBIT';
+  if (isAr) {
+     title = data.type === 'PAYMENT' ? (isReturn ? 'وصل إرجاع' : 'وصل سداد') : 'وصل دين';
+  }
+
+  let currentY = 45;
+  
+  if (isAr) {
+     const titleImg = renderTextToImg(title, { size: 16, bold: true, color: '#0f172a' });
+     const imgProps = (doc as any).getImageProperties(titleImg);
+     const titleW = 50;
+     const titleH = imgProps.height * titleW / imgProps.width;
+     doc.addImage(titleImg, 'PNG', pageWidth/2 - titleW/2, currentY, titleW, titleH);
+     currentY += titleH + 10;
+  } else {
+     doc.setFontSize(16);
+     doc.setTextColor(15, 23, 42);
+     doc.setFont('helvetica', 'bold');
+     doc.text(title, pageWidth / 2, currentY, { align: 'center' });
+     currentY += 15;
+  }
 
   // Ref & Date
-  const refText = `REF: #${data.saleId?.slice(0, 8).toUpperCase() || Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text(refText, pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4;
-  
-  const dateStr = new Date(data.date).toLocaleString(isAr ? 'ar-EG' : 'en-US');
-  doc.text(dateStr, pageWidth / 2, currentY, { align: 'center' });
-  currentY += 10;
-
-  doc.setLineDashPattern([1, 1], 0);
-  doc.line(5, currentY, pageWidth - 5, currentY);
-  currentY += 10;
-
-  // Customer & Details
-  const customerLabel = isAr ? 'اسم الزبون:' : 'Customer:';
-  const customerLabelImg = renderTextToImg(customerLabel, { size: 9 });
-  doc.addImage(customerLabelImg, 'PNG', isAr ? pageWidth - 20 : 10, currentY, 12, 3.5);
+  const refText = `RÉF: #${data.saleId?.slice(0, 8).toUpperCase() || Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(data.customerName, isAr ? 10 : pageWidth - 10, currentY + 3, { align: isAr ? 'left' : 'right' });
+  doc.setTextColor(71, 85, 105);
+  doc.text(refText, margin, currentY);
   
-  currentY += 8;
-  const descLabel = isAr ? 'التفاصيل:' : 'Details:';
-  const descLabelImg = renderTextToImg(descLabel, { size: 9 });
-  doc.addImage(descLabelImg, 'PNG', isAr ? pageWidth - 20 : 10, currentY, 12, 3.5);
-  doc.setFontSize(9);
+  const dateStr = new Date(data.date).toLocaleString(isAr ? 'ar-EG' : 'fr-FR');
   doc.setFont('helvetica', 'normal');
-  doc.text(data.description, isAr ? 10 : pageWidth - 10, currentY + 3, { align: isAr ? 'left' : 'right' });
+  doc.text(`${isAr ? 'التاريخ' : 'Date'}: ${dateStr}`, pageWidth - margin, currentY, { align: 'right' });
 
-  currentY += 15;
+  currentY += 10;
 
-  // Amount Box
-  doc.setDrawColor(230, 230, 230);
+  // Customer Info Box
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(10, currentY, pageWidth - 20, 20, 2, 2, 'FD');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 20, 2, 2, 'FD');
   
-  const amtLabel = isAr ? 'المبلغ:' : 'AMOUNT:';
-  const amtLabelImg = renderTextToImg(amtLabel, { size: 10, bold: true });
-  doc.addImage(amtLabelImg, 'PNG', (pageWidth - 15) / 2, currentY + 3, 15, 3.5);
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  if (isAr) {
+    const custLabelImg = renderTextToImg('العميل:', { size: 8, color: '#94a3b8' });
+    doc.addImage(custLabelImg, 'PNG', pageWidth - margin - 15, currentY + 4, 8, 3);
+  } else {
+    doc.text('CLIENT:', margin + 5, currentY + 7);
+  }
+
+  doc.setFontSize(12);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  if (isAr || containsArabic(data.customerName)) {
+    const custNameImg = renderTextToImg(data.customerName, { size: 12, bold: true, color: '#1e293b' });
+    const props = (doc as any).getImageProperties(custNameImg);
+    const w = Math.min(80, props.width * 5 / props.height);
+    doc.addImage(custNameImg, 'PNG', isAr ? pageWidth - margin - 5 - w : margin + 5, currentY + 9, w, 5);
+  } else {
+    doc.text(data.customerName, margin + 5, currentY + 14);
+  }
+
+  currentY += 30;
+
+  // Description and Amount using AutoTable for a clean look
+  const tableHead = isAr ? [['المبلغ', 'التفاصيل']] : [['Désignation', 'Montant']];
+  const tableBody = isAr ? [
+    [`${data.amount.toFixed(2)} DH`, data.description]
+  ] : [
+    [data.description, `${data.amount.toFixed(2)} DH`]
+  ];
+
+  autoTable(doc, {
+    startY: currentY,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: { fillColor: [71, 85, 105], textColor: 255 },
+    styles: { fontSize: 10, cellPadding: 8 },
+    columnStyles: { 
+      0: isAr ? { halign: 'center', cellWidth: 40 } : { halign: 'left' },
+      1: isAr ? { halign: 'right' } : { halign: 'right', cellWidth: 40 }
+    },
+    didParseCell: (data) => prepareArabicCell(data),
+    didDrawCell: (data) => drawArabicCell(doc, data)
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  // Big Amount Box
+  const boxW = 70;
+  const boxX = pageWidth - margin - boxW;
+  doc.setDrawColor(241, 245, 249);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(boxX, currentY, boxW, 20, 2, 2, 'FD');
   
-  doc.setFontSize(16);
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.setFont('helvetica', 'normal');
+  doc.text(isAr ? 'الإجمالي:' : 'MONTANT TOTAL:', boxX + 5, currentY + 8);
+  
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   if (data.type === 'PAYMENT') doc.setTextColor(22, 163, 74);
   else doc.setTextColor(220, 38, 38);
-  doc.text(`${data.amount.toFixed(2)} DH`, pageWidth / 2, currentY + 14, { align: 'center' });
+  
+  doc.text(`${data.amount.toFixed(2)} DH`, boxX + boxW - 5, currentY + 14, { align: 'right' });
 
   // Footer
-  currentY += 30;
-  const footerText = isAr ? 'شكرا لتعاملكم معنا' : 'Thank you for your business';
-  const footerImg = renderTextToImg(footerText, { size: 8 });
-  doc.addImage(footerImg, 'PNG', (pageWidth - 30) / 2, currentY, 30, 3);
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.setFont('helvetica', 'normal');
+  const footerText = isAr ? 'شكرا لتعاملكم معنا' : 'Merci de votre confiance';
+  doc.text(footerText, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-  // Save
-  const filename = `Receipt_${data.type}_${new Date().getTime()}.pdf`;
+  const filename = `${isReturn ? 'Retour' : 'Recu'}_${new Date().getTime()}.pdf`;
   doc.save(filename);
 };
 

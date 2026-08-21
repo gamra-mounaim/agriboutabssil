@@ -392,21 +392,29 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                       </div>
                     )}
 
-                    {/* Debt / Paid amounts */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
+                    {/* Debt / Paid / Profit amounts */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
                       <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10">
                         <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">{language === 'ar' ? 'ما تم بيعه' : 'Vendu'}</p>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-lg font-black tracking-tighter text-emerald-600">
+                          <span className="text-base font-black tracking-tighter text-emerald-600">
                             {canViewDebtAmount ? formatNumber(s.soldValue || 0) : '***'}
                           </span>
                         </div>
                       </div>
                       <div className={cn('p-3 rounded-xl bg-red-50 dark:bg-red-900/10')}>
-                        <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5 text-danger")}>{language === 'ar' ? 'الباقي في المخزون' : 'En stock'}</p>
+                        <p className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5 text-danger")}>{language === 'ar' ? 'بالمخزون' : 'En stock'}</p>
                         <div className="flex items-baseline gap-1">
-                          <span className={cn('text-lg font-black tracking-tighter text-danger')}>
+                          <span className={cn('text-base font-black tracking-tighter text-danger')}>
                             {canViewDebtAmount ? formatNumber(s.stockValue || 0) : '***'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-0.5">{language === 'ar' ? 'الربح' : 'Bénéfice'}</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-black tracking-tighter text-blue-600">
+                            {canViewDebtAmount ? formatNumber(s.profit || 0) : '***'}
                           </span>
                         </div>
                       </div>

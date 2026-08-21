@@ -1324,7 +1324,8 @@ async function startServer() {
     const suppliers = await db.prepare(`
       SELECT s.*, 
              (SELECT COALESCE(SUM(qty * cost_price), 0) FROM products WHERE supplier_id = s.id AND qty > 0) as stock_value,
-             (SELECT COALESCE(SUM(sm.quantity * sm.cost_price), 0) FROM stock_movements sm JOIN products p ON sm.product_id = p.id WHERE p.supplier_id = s.id AND sm.type = 'sale') as sold_value
+             (SELECT COALESCE(SUM(sm.quantity * sm.cost_price), 0) FROM stock_movements sm JOIN products p ON sm.product_id = p.id WHERE p.supplier_id = s.id AND sm.type = 'sale') as sold_value,
+             (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) FROM sale_items si JOIN products p ON si.product_id = p.id WHERE p.supplier_id = s.id) as profit
       FROM suppliers s
     `).all();
     res.json(toCamel(suppliers));
@@ -1878,13 +1879,23 @@ async function startServer() {
     const getBreakdown = async (dateConditionItem: string, dateConditionSale: string) => {
       const profitByMethod = await db.prepare(`
         SELECT 
-          s.payment_method,
+          CASE 
+            WHEN s.payment_method = 'debt' AND COALESCE(c.debt, 0) <= 0 THEN 'cash'
+            WHEN s.payment_method = 'check' AND s.check_status = 'CASHED' THEN 'cash'
+            ELSE s.payment_method
+          END as payment_method,
           SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) as profit
         FROM sale_items si 
         JOIN sales s ON si.sale_id = s.id 
         LEFT JOIN products p ON si.product_id = p.id 
+        LEFT JOIN customers c ON s.customer_id = c.id
         ${dateConditionItem}
-        GROUP BY s.payment_method
+        GROUP BY 
+          CASE 
+            WHEN s.payment_method = 'debt' AND COALESCE(c.debt, 0) <= 0 THEN 'cash'
+            WHEN s.payment_method = 'check' AND s.check_status = 'CASHED' THEN 'cash'
+            ELSE s.payment_method
+          END
       `).all() as any[];
 
       const discountByMethod = await db.prepare(`
