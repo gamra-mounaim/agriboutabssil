@@ -51,6 +51,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
 
   const lowStock = products.filter(p => p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
   const topProductsList = stats?.topProductsList || [];
+  const dormantStockList = stats?.dormantStockList || [];
   const topDebtorsList = useMemo(() => {
     return [...(customers || [])].filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5);
   }, [customers]);
@@ -777,7 +778,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             </div>
           )}
           {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors || permissions.financialsInventory) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
               {permissions.financialsInventory && (
                  <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
                     <div className="flex items-center justify-between mb-8">
@@ -892,6 +893,40 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                           </div>
                           <div className="text-right">
                              <div className="text-sm font-black text-red-600">{formatNumber(c.debt)}</div>
+                             <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                 </div>
+              )}
+              {permissions.financialsInventory && (
+                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                  <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
+                    <Archive className="w-5 h-5 text-amber-500" />
+                    {language === 'ar' ? 'السلع غير المباعة (أكثر من 3 أشهر)' : language === 'fr' ? 'Stock dormant (> 3 mois)' : 'Dormant Stock (> 3 months)'}
+                  </h4>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
+                    {dormantStockList.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                        <Archive className="w-8 h-8" />
+                        <p className="text-xs font-bold uppercase">{t.noData || "No Data"}</p>
+                      </div>
+                    ) : (
+                      dormantStockList.map((tp: any, idx: number) => (
+                        <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-amber-500/20 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black text-sm">
+                              #{idx + 1}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-text-main line-clamp-1" title={tp.name}>{tp.name}</div>
+                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {t.inStock}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="text-sm font-black text-amber-600">{formatNumber(tp.totalValue)}</div>
                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
                           </div>
                         </div>

@@ -1990,6 +1990,19 @@ async function startServer() {
       LIMIT 5
     `).all();
 
+    // Dormant Stock (No sales in last 90 days, highest tied up capital)
+    const dormantStockList = await db.prepare(`
+      SELECT p.id, p.name, p.qty, p.cost_price, (p.qty * p.cost_price) as total_value
+      FROM products p
+      LEFT JOIN sale_items si ON p.id = si.product_id 
+      LEFT JOIN sales s ON si.sale_id = s.id AND s.date >= CURRENT_DATE - INTERVAL '90 days'
+      WHERE p.qty > 0
+      GROUP BY p.id, p.name, p.qty, p.cost_price
+      HAVING COALESCE(SUM(si.qty), 0) = 0
+      ORDER BY total_value DESC
+      LIMIT 5
+    `).all();
+
     // Global Payment Methods Breakdown
     const paymentMethodsBreakdown = { cash: 0, card: 0, check: 0, debt: 0, total: 0 };
     const salesOverview = await db.prepare(`SELECT payment_method, SUM(total) as amount, SUM(check_amount) as check_amount FROM sales GROUP BY payment_method`).all() as any[];
@@ -2037,6 +2050,7 @@ async function startServer() {
       paymentMethodsBreakdown,
       last7Days: last7Days.reverse(),
       topProductsList,
+      dormantStockList,
       prev7DaysTotal
     }));
     } catch (err: any) {
