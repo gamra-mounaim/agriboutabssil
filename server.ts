@@ -1900,11 +1900,21 @@ async function startServer() {
 
       const discountByMethod = await db.prepare(`
         SELECT 
-          payment_method,
-          SUM(discount) as discount
-        FROM sales
-        ${dateConditionSale}
-        GROUP BY payment_method
+          CASE 
+            WHEN s.payment_method = 'debt' AND COALESCE(c.debt, 0) <= 0 THEN 'cash'
+            WHEN s.payment_method = 'check' AND s.check_status = 'CASHED' THEN 'cash'
+            ELSE s.payment_method
+          END as payment_method,
+          SUM(s.discount) as discount
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        ${dateConditionSale.replace(/WHERE date /g, 'WHERE s.date ')}
+        GROUP BY 
+          CASE 
+            WHEN s.payment_method = 'debt' AND COALESCE(c.debt, 0) <= 0 THEN 'cash'
+            WHEN s.payment_method = 'check' AND s.check_status = 'CASHED' THEN 'cash'
+            ELSE s.payment_method
+          END
       `).all() as any[];
 
       const breakdown = { cash: 0, debt: 0, check: 0, card: 0, remise: 0, total: 0 };
