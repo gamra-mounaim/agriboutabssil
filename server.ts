@@ -1737,7 +1737,8 @@ async function startServer() {
       res.json(toCamel(damages));
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
-
+    }
+  });
   app.delete("/api/damages/:id", authMiddleware, async (req, res) => {
     try {
       const movement = await db.prepare("SELECT * FROM stock_movements WHERE id = ?").get(req.params.id) as any;
@@ -1749,11 +1750,8 @@ async function startServer() {
       await db.prepare("DELETE FROM stock_movements WHERE id = ?").run(req.params.id);
       
       res.json({ status: "success" });
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message || "Error" });
-    }
-  });
-
     }
   });
 
