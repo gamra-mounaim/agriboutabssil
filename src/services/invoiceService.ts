@@ -264,7 +264,7 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   currentY += boxHeight + 4;
 
 
-  // Items Table
+    // Items Table
   autoTable(doc, {
     startY: currentY,
     head: [['Designation', 'Qté', 'Prix Unitaire', 'Total']],
@@ -274,13 +274,29 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
       `${formatNumber(item.price)} DH`,
       `${formatNumber(item.qty * item.price)} DH`
     ]),
-    theme: 'striped',
-    headStyles: { fillColor: [30, 41, 59], textColor: 255, halign: 'center' },
-    styles: { fontSize: 9, cellPadding: 5 },
+    theme: 'grid',
+    headStyles: { 
+      fillColor: [255, 255, 255], 
+      textColor: [0, 0, 0], 
+      halign: 'center',
+      fontStyle: 'bold',
+      fontSize: 10,
+      lineWidth: 0.5,
+      lineColor: [100, 116, 139]
+    },
+    styles: { 
+      fontSize: 9, 
+      cellPadding: 6,
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      lineWidth: 0.1,
+      lineColor: [203, 213, 225]
+    },
     columnStyles: { 
-      1: { halign: 'center' },
-      2: { halign: 'right' },
-      3: { halign: 'right' }
+      0: { fontStyle: 'bold' },
+      1: { halign: 'center', fontStyle: 'bold' },
+      2: { halign: 'right', fontStyle: 'bold' },
+      3: { halign: 'right', fontStyle: 'bold' }
     }
   });
 
