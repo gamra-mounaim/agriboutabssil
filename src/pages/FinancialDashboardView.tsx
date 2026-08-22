@@ -170,12 +170,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     ].sort((a, b) => b.amount - a.amount);
 
     return (
-      <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+      <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden group">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
             {(t as any).usedPaymentMethods}
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
               3
             </span>
@@ -184,13 +184,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
           {paymentMethodsList.map(method => (
             <div key={method.id} className={`flex items-center justify-between p-4 bg-bg-base/50 rounded-2xl border border-transparent transition-all ${method.wrapperClass}`}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-10 h-10 rounded-xl bg-card border border-border-subtle flex items-center justify-center ${method.iconClass}`}>
                   <span className="font-bold text-lg">{method.icon}</span>
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-text-main">{method.label}</div>
-                  <div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{method.pct}%</div>
+                  <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{method.label}</div><div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{method.pct}%</div></div>
                 </div>
               </div>
               <div className="text-right">
@@ -308,13 +307,13 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         {/* Simplified Charts & Alerts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sales Trend Chart */}
-          <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group">
+          <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden group">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-accent" />
                 {t.salesTrend7Days}
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {pctChange !== null && (
                   <div className={cn(
                     "flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full",
@@ -393,12 +392,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           </div>
 
           {/* Critical Stock Alerts */}
-          <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm">
+          <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">
                 {t.stockAlerts}
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">
                   {lowStock.length}
                 </span>
@@ -409,12 +408,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               {lowStock.length > 0 ? (
                 lowStock.map(p => (
                   <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-card border border-border-subtle flex items-center justify-center text-accent shrink-0">
                         <Package className="w-4 h-4" />
                       </div>
-                      <div className="overflow-hidden">
-                        <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
+                      <div className="overflow-hidden flex-1 min-w-0">
+                        <div className="text-xs font-bold text-text-main truncate" title={p.name} dir="auto">{p.name}</div>
                         <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
                       </div>
                     </div>
@@ -649,13 +648,13 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             )}>
                {/* Sales Trend Chart */}
                {permissions.financialsSales && (
-                 <div className={cn(permissions.financialsInventory ? "lg:col-span-2" : "col-span-1", "bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden group")}>
+                 <div className={cn(permissions.financialsInventory ? "lg:col-span-2" : "col-span-1", "bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden group")}>
                     <div className="flex items-center justify-between mb-6">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
                          {t.salesTrend7Days}
                        </h3>
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2 min-w-0">
                          {pctChange !== null && (
                            <div className={cn(
                              "flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full",
@@ -736,7 +735,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
 
                {/* Category Distribution Pie Chart */}
                {permissions.financialsInventory && (
-                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
                    <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                      <LayoutGrid className="w-5 h-5 text-blue-500" />
                      {t.inventoryValueByCategory}
@@ -780,10 +779,10 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors || permissions.financialsInventory) && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
               {permissions.financialsInventory && (
-                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
                     <div className="flex items-center justify-between mb-8">
                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
                         <button 
                           onClick={() => {
@@ -806,12 +805,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       {lowStock.length > 0 ? (
                         lowStock.map(p => (
                           <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <div className="w-8 h-8 rounded-lg bg-card border border-border-subtle flex items-center justify-center text-accent shrink-0">
                                 <Package className="w-4 h-4" />
                               </div>
-                              <div className="overflow-hidden">
-                                <div className="text-xs font-bold text-text-main truncate" title={p.name}>{p.name}</div>
+                              <div className="overflow-hidden flex-1 min-w-0">
+                                <div className="text-xs font-bold text-text-main truncate" title={p.name} dir="auto">{p.name}</div>
                                 <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
                               </div>
                             </div>
@@ -834,7 +833,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               )}
               {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
               {permissions.financialsTopProducts && (
-                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <ShoppingCart className="w-5 h-5 text-accent" />
                     {(t as any).topSellingProducts}
@@ -848,13 +847,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     ) : (
                       topProductsList.map((tp: any, idx: number) => (
                         <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-accent/20 transition-all">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-black text-sm">
                               #{idx + 1}
                             </div>
                             <div>
-                              <div className="text-sm font-bold text-text-main line-clamp-1">{tp.name}</div>
-                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {(t as any).unitLabel}</div>
+                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{tp.name}</div><div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase truncate">{tp.qty} {(t as any).unitLabel}</div></div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -868,7 +866,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                  </div>
               )}
               {permissions.financialsTopDebtors && (
-                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <Users className="w-5 h-5 text-red-500" />
                     {(t as any).topDebtors}
@@ -882,13 +880,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     ) : (
                       topDebtorsList.map((c: any, idx: number) => (
                         <div key={c.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-red-500/20 transition-all">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center font-black text-sm">
                               #{idx + 1}
                             </div>
                             <div>
-                              <div className="text-sm font-bold text-text-main line-clamp-1">{c.name}</div>
-                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{c.phone || '-'}</div>
+                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{c.name}</div><div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase truncate">{c.phone || '-'}</div></div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -902,7 +899,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                  </div>
               )}
               {permissions.financialsInventory && (
-                 <div className="bg-card p-8 rounded-[2.5rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <Archive className="w-5 h-5 text-amber-500" />
                     {language === 'ar' ? 'السلع غير المباعة (أكثر من 3 أشهر)' : language === 'fr' ? 'Stock dormant (> 3 mois)' : 'Dormant Stock (> 3 months)'}
@@ -916,7 +913,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     ) : (
                       dormantStockList.map((tp: any, idx: number) => (
                         <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-amber-500/20 transition-all">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black text-sm">
                               #{idx + 1}
                             </div>

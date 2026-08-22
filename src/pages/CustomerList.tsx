@@ -17,7 +17,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Destructure common icons to avoid TS errors
-const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
+const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function CustomerList() {
   const { products, customers, sales, payments, checks, settings, fetchData: onRefresh, setMessage } = useStore();
@@ -418,14 +418,27 @@ export default function CustomerList() {
                    )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => setAdjustModal({ type: 'pay', customer: c })} className="bg-accent text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10 active:scale-95 transition-all hover:bg-accent/90">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <button onClick={() => { setAdjustModal({ type: 'pay', customer: c }); setAdjustAmount(''); }} className="bg-accent text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10 active:scale-95 transition-all hover:bg-accent/90">
                     {t.payDebt}
                   </button>
                   <button onClick={() => setAdjustModal({ type: 'charge', customer: c })} className="bg-white border-2 border-border-subtle text-text-main py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-accent hover:text-accent transition-all">
                     {t.newCharge}
                   </button>
                 </div>
+                {c.debt > 0 && (
+                  <button 
+                    onClick={() => {
+                      setAdjustModal({ type: 'pay', customer: c });
+                      setAdjustAmount(c.debt.toString());
+                    }} 
+                    className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
+                  >
+                    <span>{language === 'ar' ? 'تصفية كامل الدين' : 'Clear Full Debt'}</span>
+                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                )}
                 <button onClick={() => setSelectedCustomer(c)} className="w-full mt-4 py-2 text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-[0.3em] transition-colors border-t border-border-subtle/40 pt-4">{t.view} {t.customerDetails}</button>
               </div>
             ))}
@@ -688,7 +701,7 @@ export default function CustomerList() {
               </div>
 
               <div className="p-6 bg-[#fafafa] border-t border-border-subtle flex flex-col gap-4">
-                <div className="flex gap-3">
+                <div className="flex gap-3 mb-3">
                   <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: customerHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
                     <Download className="w-3.5 h-3.5 text-accent" /> {t.generateStatement}
                   </button>
@@ -699,6 +712,19 @@ export default function CustomerList() {
                     {t.payDebt}
                   </button>
                 </div>
+                {selectedCustomer.debt > 0 && (
+                  <button 
+                    onClick={() => {
+                      setAdjustModal({ type: 'pay', customer: selectedCustomer });
+                      setAdjustAmount(selectedCustomer.debt.toString());
+                    }} 
+                    className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
+                  >
+                    <span>{language === 'ar' ? 'تصفية كامل الدين' : 'Clear Full Debt'}</span>
+                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
