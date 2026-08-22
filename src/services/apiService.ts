@@ -156,6 +156,7 @@ export const api = {
   // Dashboard
   getDashboardStats: async () => get(`${API_URL}/dashboard/stats`),
   getDamagesReport: async () => get(`${API_URL}/reports/damages`),
+  deleteDamage: async (id: string | number) => del(`${API_URL}/damages/${id}`),
 
   // Stats
   getStats: async () => get(`${API_URL}/stats`),

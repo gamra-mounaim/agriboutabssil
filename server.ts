@@ -1737,6 +1737,23 @@ async function startServer() {
       res.json(toCamel(damages));
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
+
+  app.delete("/api/damages/:id", authMiddleware, async (req, res) => {
+    try {
+      const movement = await db.prepare("SELECT * FROM stock_movements WHERE id = ?").get(req.params.id) as any;
+      if (!movement) {
+        return res.status(404).json({ status: "error", message: "Damage record not found" });
+      }
+      
+      await db.prepare("UPDATE products SET qty = qty + ? WHERE id = ?").run(movement.quantity, movement.product_id);
+      await db.prepare("DELETE FROM stock_movements WHERE id = ?").run(req.params.id);
+      
+      res.json({ status: "success" });
+    } catch (error) {
+      res.status(500).json({ status: "error", message: error.message || "Error" });
+    }
+  });
+
     }
   });
 

@@ -190,15 +190,25 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
     
+    let clientEnd = currentY + 10;
     if (containsArabic(data.clientName || '')) {
       const clientImg = renderTextToImg(data.clientName || '', { size: 12, bold: true, color: '#1e293b' });
       const imgProps = (doc as any).getImageProperties(clientImg);
       const imgW = 50;
       const hScale = imgProps.height / imgProps.width;
       doc.addImage(clientImg, 'PNG', margin, currentY + 1, imgW, imgW * hScale);
+      clientEnd = currentY + (imgW * hScale) + 2;
     } else {
       doc.setFont('helvetica', 'bold');
       doc.text(data.clientName || '', margin, currentY + 5);
+      clientEnd = currentY + 10;
+    }
+    
+    if (data.clientPhone && data.clientPhone.trim() !== '') {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Tél: ' + data.clientPhone, margin, clientEnd + 2);
     }
   }
 

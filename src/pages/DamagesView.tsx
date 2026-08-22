@@ -14,6 +14,7 @@ import {
   TrendingDown,
   User,
   RefreshCw,
+  Undo,
   FileText,
   ChevronDown,
 } from 'lucide-react';
@@ -69,6 +70,7 @@ export default function DamagesView() {
   const [filter, setFilter] = useState<Filter>('all');
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | number | null>(null);
 
   const fetchData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -87,6 +89,19 @@ export default function DamagesView() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleDelete = async (id: string | number) => {
+    if (!window.confirm(isRtl ? 'هل أنت متأكد أنك تريد استرجاع هذه الكمية إلى المخزون؟' : 'Voulez-vous vraiment annuler ce dommage et remettre la quantité en stock ?')) return;
+    setIsDeleting(id);
+    try {
+      await api.deleteDamage(id);
+      await fetchData(false);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -341,6 +356,7 @@ export default function DamagesView() {
                     { key: 'loss',  label: t.damagesLoss      },
                     { key: 'rsn',   label: t.damagesReason    },
                     { key: 'actor', label: t.damagesActor     },
+                    { key: 'actions', label: '' },
                   ].map(col => (
                     <th
                       key={col.key}
@@ -408,6 +424,16 @@ export default function DamagesView() {
                             <User className="w-3.5 h-3.5 text-text-secondary/40" />
                             {actor}
                           </div>
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            onClick={() => handleDelete(r.id)}
+                            disabled={isDeleting === r.id}
+                            title={isRtl ? 'استرجاع للمخزون' : 'Remettre en stock'}
+                            className="p-2 text-text-secondary hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all disabled:opacity-50"
+                          >
+                            <Undo className={cn("w-4 h-4", isDeleting === r.id && "animate-spin")} />
+                          </button>
                         </td>
                       </motion.tr>
                     );
