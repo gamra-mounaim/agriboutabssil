@@ -181,49 +181,88 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     'Client Passager'
   ];
 
-  // Bill To
+  // Bill To Background Box
   const hasClient = data.clientName && data.clientName.trim() !== '' && !walkingCustomers.includes(data.clientName);
+  
+  // Calculate heights to draw a unified box
+  let boxHeight = 22;
+  let clientNameHScale = 0;
+  let clientImgProps = null;
+  let clientImgW = 50;
+  
   if (hasClient) {
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('CLIENT:', margin, currentY);
-    doc.setFontSize(14);
-    doc.setTextColor(30, 41, 59);
-    
-    let clientEnd = currentY + 10;
     if (containsArabic(data.clientName || '')) {
       const clientImg = renderTextToImg(data.clientName || '', { size: 12, bold: true, color: '#1e293b' });
-      const imgProps = (doc as any).getImageProperties(clientImg);
-      const imgW = 50;
-      const hScale = imgProps.height / imgProps.width;
-      doc.addImage(clientImg, 'PNG', margin, currentY + 1, imgW, imgW * hScale);
-      clientEnd = currentY + (imgW * hScale) + 2;
+      clientImgProps = (doc as any).getImageProperties(clientImg);
+      clientNameHScale = clientImgProps.height / clientImgProps.width;
+      boxHeight = Math.max(22, (clientImgW * clientNameHScale) + 12);
     } else {
-      doc.setFont('helvetica', 'bold');
-      doc.text(data.clientName || '', margin, currentY + 5);
-      clientEnd = currentY + 10;
+      boxHeight = 24;
     }
-    
     if (data.clientPhone && data.clientPhone.trim() !== '') {
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Tél: ' + data.clientPhone, margin, clientEnd + 2);
+      boxHeight += 6;
     }
   }
 
-  // Invoice Number
+  // Draw light grey box for professional look
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY - 4, pageWidth - (margin * 2), boxHeight, 2, 2, 'FD');
+
+  // Bill To details
+  if (hasClient) {
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text('CLIENT:', margin + 4, currentY + 2);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    
+    let nextTextY = currentY + 8;
+    if (clientImgProps) {
+      doc.addImage(clientImgProps.data, 'PNG', margin + 4, currentY + 3, clientImgW, clientImgW * clientNameHScale);
+      nextTextY = currentY + 4 + (clientImgW * clientNameHScale);
+    } else {
+      doc.setFont('helvetica', 'bold');
+      doc.text(data.clientName || '', margin + 4, currentY + 8);
+      nextTextY = currentY + 14;
+    }
+    
+    if (data.clientPhone && data.clientPhone.trim() !== '') {
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Tél: ' + data.clientPhone, margin + 4, nextTextY);
+    }
+  }
+
+  // Invoice Number (Right side inside the box)
   if (!isProforma) {
     const invoiceNum = data.invoiceNumber 
       ? data.invoiceNumber.toString().padStart(6, '0') 
       : data.saleId.toUpperCase().slice(0, 8);
-    doc.setFontSize(10);
+      
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('FACTURE N°', pageWidth - margin - 4, currentY + 2, { align: 'right' });
+    
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 41, 59);
-    doc.text(`N° (${invoiceNum})`, pageWidth - margin, currentY + 5, { align: 'right' });
+    doc.text(invoiceNum, pageWidth - margin - 4, currentY + 8, { align: 'right' });
+  } else {
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('DOCUMENT', pageWidth - margin - 4, currentY + 2, { align: 'right' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('PRÉPARATION', pageWidth - margin - 4, currentY + 8, { align: 'right' });
   }
 
-  currentY += 12;
+  currentY += boxHeight + 4;
+
 
   // Items Table
   autoTable(doc, {
