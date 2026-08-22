@@ -203,24 +203,30 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     );
   };
 
-  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true, onClick, danger }: any) => (
-    <div 
-      onClick={onClick}
-      className={cn(
-        bg, 
-        "p-6 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center justify-between min-h-[180px] transition-all",
-        onClick ? "cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-accent/30" : "",
-        danger ? "border-red-500/30 bg-red-500/5" : "border-border-subtle"
-      )}
-    >
-      <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
-      <div className="flex flex-col items-center">
-        <div className={`text-4xl font-black ${color}`}>{value}</div>
-        {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{t.currency}</div>}
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true, onClick, danger }: any) => {
+    // Dynamically adjust text size based on value length to prevent overflow
+    const valueStr = String(value);
+    const valueSize = valueStr.length > 10 ? 'text-2xl' : valueStr.length > 7 ? 'text-3xl' : 'text-4xl';
+    
+    return (
+      <div 
+        onClick={onClick}
+        className={cn(
+          bg, 
+          "p-6 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center justify-between min-h-[180px] transition-all",
+          onClick ? "cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-accent/30" : "",
+          danger ? "border-red-500/30 bg-red-500/5" : "border-border-subtle"
+        )}
+      >
+        <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
+        <div className="flex flex-col items-center max-w-full">
+          <div className={`${valueSize} font-black ${color} whitespace-nowrap tracking-tighter`}>{value}</div>
+          {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{t.currency}</div>}
+        </div>
+        <div className="text-[10px] text-text-secondary/60 font-medium mt-4">{subtext}</div>
       </div>
-      <div className="text-[10px] text-text-secondary/60 font-medium mt-4">{subtext}</div>
-    </div>
-  );
+    );
+  };
 
   const ProfitBreakdown = ({ breakdown }: { breakdown: any }) => {
     if (!breakdown) return null;
@@ -277,7 +283,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
             </div>
             <div className={cn(isAr && "text-right")}>
-              <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
+              <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(dailyProfit)}</span>
               <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
             </div>
             <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
@@ -588,7 +594,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{formatNumber(dailyProfit)}</span>
+                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(dailyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
@@ -600,7 +606,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{formatNumber(weeklyProfit)}</span>
+                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(weeklyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.weeklyProfitBreakdown} />
@@ -612,7 +618,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{formatNumber(monthlyProfit)}</span>
+                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(monthlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.monthlyProfitBreakdown} />
@@ -624,7 +630,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
-                <span className="text-3xl font-black text-emerald-600">{formatNumber(yearlyProfit)}</span>
+                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(yearlyProfit)}</span>
                 <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.yearlyProfitBreakdown} />
