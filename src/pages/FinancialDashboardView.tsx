@@ -189,10 +189,10 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                   <span className="font-bold text-lg">{method.icon}</span>
                 </div>
                 <div>
-                  <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{method.label}</div><div className="text-[10px] text-text-secondary font-medium uppercase tracking-tight">{method.pct}%</div></div>
+                  <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{method.label}</div><div className="text-xs text-text-secondary font-medium uppercase tracking-tight">{method.pct}%</div></div>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0 whitespace-nowrap ml-2">
                 <div className={`text-lg font-black ${method.amountClass}`}>{formatNumber(method.amount)}</div>
                 <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
               </div>
@@ -218,12 +218,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           danger ? "border-red-500/30 bg-red-500/5" : "border-border-subtle"
         )}
       >
-        <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
+        <div className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
         <div className="flex flex-col items-center max-w-full">
           <div className={`${valueSize} font-black ${color} whitespace-nowrap tracking-tighter`}>{value}</div>
           {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{t.currency}</div>}
         </div>
-        <div className="text-[10px] text-text-secondary/60 font-medium mt-4">{subtext}</div>
+        <div className="text-xs text-text-secondary/60 font-medium mt-4">{subtext}</div>
       </div>
     );
   };
@@ -231,7 +231,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const ProfitBreakdown = ({ breakdown }: { breakdown: any }) => {
     if (!breakdown) return null;
     return (
-      <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 gap-2 text-[10px] font-bold">
+      <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 gap-2 text-xs font-bold">
         <div className="flex items-center justify-between text-emerald-600">
           <span>{t.cash}</span>
           <span>{formatNumber(breakdown.cash)}</span>
@@ -279,26 +279,26 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           {/* Daily Profit Card */}
           <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[180px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
             <div className="flex justify-between items-start">
-              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
+              <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
               <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
             </div>
             <div className={cn(isAr && "text-right")}>
               <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(dailyProfit)}</span>
-              <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
+              <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
             </div>
             <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
           </div>
 
           {/* Debtor Customers Card */}
           <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col items-center text-center justify-between min-h-[180px]">
-            <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">
+            <div className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
               {t.debtorCustomers}
             </div>
             <div className="flex flex-col items-center">
               <div className="text-4xl font-black text-text-main font-mono">{formatNumber(debtorCustomersCount)}</div>
               <div className="text-sm font-bold text-text-secondary mt-1">{t.customerCountUnit}</div>
             </div>
-            <div className="text-[10px] text-text-secondary/60 font-medium mt-4">
+            <div className="text-xs text-text-secondary/60 font-medium mt-4">
               {t.customersWithBalance}
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     </span>
                   </div>
                 )}
-                <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                <div className="text-lg font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
                   {formatNumber(totalTrend7)} {t.currency}
                 </div>
               </div>
@@ -470,7 +470,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <AlertCircle className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-[200px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] mb-0.5">
               {t.upcomingDebtPayments}
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
@@ -479,7 +479,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 const isOverdue = new Date(cDueDate!) < new Date();
                 return (
                   <div key={c.id} className={cn(
-                    "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
+                    "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-2",
                     isOverdue ? "bg-red-500 text-white border-red-600" : "bg-card border-border-subtle text-text-main"
                   )}>
                     <span>{c.name}</span>
@@ -502,7 +502,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <AlertCircle className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-[200px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] mb-0.5">
               {t.upcomingSupplierDebtDueDates}
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
@@ -511,7 +511,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 const isOverdue = new Date(sDueDate!) < new Date();
                 return (
                   <div key={s.id} className={cn(
-                    "px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2",
+                    "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-2",
                     isOverdue ? "bg-amber-500 text-white border-amber-600" : "bg-card border-border-subtle text-text-main"
                   )}>
                     <span>{s.name}</span>
@@ -527,7 +527,16 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             {/* Top Stats Grid */}
       {visibleCardsCount > 0 && (
         <div className={`grid ${gridColsClass} gap-6`}>
-          {permissions.financialsDebts && (
+          {permissions.supplierDebt && (
+              <StatCard 
+                title={t.totalSupplierDebt} 
+                value={formatNumber(totalSupplierDebt)} 
+                subtext={t.amountOwedToSuppliers}
+                color={totalSupplierDebt > 0 ? "text-danger" : "text-text-main"}
+                danger={totalSupplierDebt > 0}
+              />
+            )}
+            {permissions.financialsDebts && (
             <>
               <StatCard 
                 title={t.pendingDebts} 
@@ -570,13 +579,13 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     {permissions.financialsSales && (
             /* Black Card */
             <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
-              <div className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
+              <div className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
               <div className="flex flex-col items-center">
                  <Logo className="w-12 h-12 mb-2 p-1" />
                                 <div className="text-3xl font-black text-white">{formatNumber(totalRevenue)}</div>
                 <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
               </div>
-              <div className="text-[10px] text-white/50 font-medium mt-4">{t.totalSales}</div>
+              <div className="text-xs text-white/50 font-medium mt-4">{t.totalSales}</div>
             </div>
           )}
         </div>
@@ -590,48 +599,48 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(dailyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
+                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
             </div>
 
             <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.weeklyProfit}</span>
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.weeklyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(weeklyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
+                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.weeklyProfitBreakdown} />
             </div>
 
             <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.monthlyProfit}</span>
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.monthlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(monthlyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
+                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.monthlyProfitBreakdown} />
             </div>
 
             <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
               <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.yearlyProfit}</span>
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.yearlyProfit}</span>
                 <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
               </div>
               <div className={cn(isAr && "text-right")}>
                 <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(yearlyProfit)}</span>
-                <span className="text-[10px] font-bold text-text-secondary ml-1">{t.currency}</span>
+                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
               </div>
               <ProfitBreakdown breakdown={stats?.yearlyProfitBreakdown} />
             </div>
@@ -639,9 +648,9 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="w-full">
         {/* Main Content Area */}
-        <div className={cn(permissions.supplierDebt ? "lg:col-span-3" : "lg:col-span-4", "space-y-6")}>
+        <div className="space-y-8 w-full">
           {(permissions.financialsSales || permissions.financialsInventory) && (
             <div className={cn("grid grid-cols-1 gap-6", 
               permissions.financialsSales && permissions.financialsInventory ? "lg:grid-cols-3" : "grid-cols-1"
@@ -669,7 +678,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                              </span>
                            </div>
                          )}
-                         <div className="text-sm font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                         <div className="text-lg font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
                            {formatNumber(totalTrend7)} {t.currency}
                          </div>
                        </div>
@@ -735,7 +744,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
 
                {/* Category Distribution Pie Chart */}
                {permissions.financialsInventory && (
-                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm relative overflow-hidden flex flex-col h-full min-h-[400px]">
                    <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                      <LayoutGrid className="w-5 h-5 text-blue-500" />
                      {t.inventoryValueByCategory}
@@ -777,9 +786,9 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             </div>
           )}
           {(permissions.financialsPaymentMethods || permissions.financialsTopProducts || permissions.financialsTopDebtors || permissions.financialsInventory) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8 mt-8">
               {permissions.financialsInventory && (
-                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm flex flex-col h-full min-h-[400px]">
                     <div className="flex items-center justify-between mb-8">
                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
                       <div className="flex items-center gap-2 min-w-0">
@@ -833,7 +842,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               )}
               {permissions.financialsPaymentMethods && renderPaymentMethodsWidget()}
               {permissions.financialsTopProducts && (
-                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[400px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <ShoppingCart className="w-5 h-5 text-accent" />
                     {(t as any).topSellingProducts}
@@ -852,11 +861,11 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                               #{idx + 1}
                             </div>
                             <div>
-                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{tp.name}</div><div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase truncate">{tp.qty} {(t as any).unitLabel}</div></div>
+                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{tp.name}</div><div className="text-xs text-text-secondary font-medium tracking-tight uppercase truncate">{tp.qty} {(t as any).unitLabel}</div></div>
                             </div>
                           </div>
-                          <div className="text-right">
-                             <div className="text-sm font-black text-emerald-600">{formatNumber(tp.price * tp.qty)}</div>
+                          <div className="text-right shrink-0 whitespace-nowrap ml-2">
+                             <div className="text-lg font-black text-emerald-600">{formatNumber(tp.price * tp.qty)}</div>
                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
                           </div>
                         </div>
@@ -866,7 +875,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                  </div>
               )}
               {permissions.financialsTopDebtors && (
-                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[400px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <Users className="w-5 h-5 text-red-500" />
                     {(t as any).topDebtors}
@@ -885,11 +894,11 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                               #{idx + 1}
                             </div>
                             <div>
-                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{c.name}</div><div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase truncate">{c.phone || '-'}</div></div>
+                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{c.name}</div><div className="text-xs text-text-secondary font-medium tracking-tight uppercase truncate">{c.phone || '-'}</div></div>
                             </div>
                           </div>
-                          <div className="text-right">
-                             <div className="text-sm font-black text-red-600">{formatNumber(c.debt)}</div>
+                          <div className="text-right shrink-0 whitespace-nowrap ml-2">
+                             <div className="text-lg font-black text-red-600">{formatNumber(c.debt)}</div>
                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
                           </div>
                         </div>
@@ -899,7 +908,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                  </div>
               )}
               {permissions.financialsInventory && (
-                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[350px]">
+                 <div className="bg-card p-5 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] border border-border-subtle shadow-sm overflow-hidden flex flex-col h-full min-h-[400px]">
                   <h4 className="text-xs font-black uppercase text-text-main tracking-widest mb-6 flex items-center gap-2">
                     <Archive className="w-5 h-5 text-amber-500" />
                     {language === 'ar' ? 'السلع غير المباعة (أكثر من 3 أشهر)' : language === 'fr' ? 'Stock dormant (> 3 mois)' : 'Dormant Stock (> 3 months)'}
@@ -919,11 +928,11 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                             </div>
                             <div>
                               <div className="text-sm font-bold text-text-main line-clamp-1" title={tp.name}>{tp.name}</div>
-                              <div className="text-[10px] text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {t.inStock}</div>
+                              <div className="text-xs text-text-secondary font-medium tracking-tight uppercase">{tp.qty} {t.inStock}</div>
                             </div>
                           </div>
-                          <div className="text-right">
-                             <div className="text-sm font-black text-amber-600">{formatNumber(tp.totalValue)}</div>
+                          <div className="text-right shrink-0 whitespace-nowrap ml-2">
+                             <div className="text-lg font-black text-amber-600">{formatNumber(tp.totalValue)}</div>
                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
                           </div>
                         </div>
@@ -936,31 +945,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           )}
         </div>
 
-        {/* Sidebar Space */}
-        {permissions.supplierDebt && (
-          <div className="lg:col-span-1 space-y-6">
-             {/* Supplier Debt Card */}
-             <div className="bg-gradient-to-br from-white to-red-50 p-6 rounded-[2rem] border border-red-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-bl-full -z-10 transition-transform duration-500 group-hover:scale-110"></div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-2xl bg-red-100 text-danger flex items-center justify-center shadow-inner">
-                    <AlertCircle className="w-5 h-5" />
-                  </div>
-                  <div className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.totalSupplierDebt}</div>
-                </div>
-                
-                <div className="flex items-end gap-2 mb-6">
-                  <div className="text-4xl sm:text-5xl font-black text-text-main tracking-tight">{formatNumber(totalSupplierDebt)}</div>
-                  <div className="text-xl font-bold text-text-secondary mb-1">{t.currency}</div>
-                </div>
-                
-                <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-2 rounded-xl border border-red-100/50 shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-danger animate-pulse"></div>
-                  <div className="text-[10px] font-bold text-danger uppercase tracking-wider">{t.amountOwedToSuppliers}</div>
-                </div>
-             </div>
-          </div>
-        )}
+        
       </div>
     </div>
   );
