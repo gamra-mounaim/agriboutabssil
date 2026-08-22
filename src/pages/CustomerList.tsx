@@ -669,8 +669,9 @@ export default function CustomerList() {
                                              date: sale.date,
                                              items: (sale.items || []).map((i: any) => ({ name: i.name, qty: i.qty, price: i.price })),
                                              total: sale.total,
-                                             clientName: selectedCustomer?.name
-                                           }, language, settings);
+                                             clientName: selectedCustomer?.name,
+                                            clientPhone: selectedCustomer?.phone
+                                          }, language, settings);
                                          }
                                        } catch (e) {
                                          console.error("Print error:", e);
@@ -785,8 +786,9 @@ export default function CustomerList() {
                       total: selectedSaleToShow.total,
                       subtotal: selectedSaleToShow.subtotal,
                       discount: selectedSaleToShow.discount,
-                      clientName: selectedCustomer?.name
-                    }, language, settings);
+                      clientName: selectedCustomer?.name,
+                                            clientPhone: selectedCustomer?.phone
+                                          }, language, settings);
                   }}
                   className="flex-1 bg-accent text-white font-black py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                 >

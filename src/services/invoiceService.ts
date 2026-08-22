@@ -28,6 +28,7 @@ interface InvoiceData {
   subtotal?: number;
   discount?: number;
   clientName?: string;
+  clientPhone?: string;
   staffName?: string;
   paymentMethod?: string;
   paymentStatus?: 'PAID' | 'CREDIT' | 'PARTIAL';
