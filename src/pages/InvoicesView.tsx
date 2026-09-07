@@ -45,7 +45,7 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
     return () => clearTimeout(handler);
   }, [searchQuery, fetchSalesPage]);
 
-  const canViewAll = currentUserRole === 'admin' || currentUser?.email?.includes('1984') || (currentUser as any)?.username?.includes('1984');
+  const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
   const filteredSales = sales.filter(s => {
     if (!canViewAll && s.staffId !== currentUser?.id) return false;
     const customer = customers.find(c => c.id === s.customerId);

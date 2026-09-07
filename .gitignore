@@ -9,3 +9,6 @@ backups
 firebase.json
 refactor.cjs
 server_async.ts
+scratch_*.cjs
+query_*.cjs
+get_check_status.cjs

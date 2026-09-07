@@ -15,8 +15,13 @@ const pool = new Pool({
 });
 
 function convertQuery(sql: string) {
-  if (sql.includes('$1')) return sql;
+  if (!sql.includes('?')) return sql;
   let i = 1;
+  const existingParams = sql.match(/\$(\d+)/g);
+  if (existingParams) {
+    const maxIndex = Math.max(...existingParams.map(p => parseInt(p.slice(1), 10)));
+    i = maxIndex + 1;
+  }
   // Safer replace: ignores ? inside single quotes
   return sql.replace(/('[^']*')|\?/g, (match, quoted) => {
     if (quoted) return quoted;

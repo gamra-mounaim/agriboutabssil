@@ -50,14 +50,11 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
     }, language, settings);
   };
 
-  const is1984 = currentUser?.email?.includes('1984') || (currentUser as any)?.username?.includes('1984');
+  const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.history;
 
   const filteredSales = sales.filter(s => {
-    const staffEmail = appUsers.find(u => u.id === s.staffId)?.email?.toLowerCase() || '';
-    if (currentUserRole !== 'admin' && s.staffId !== currentUser?.id) {
-      if (!(is1984 && !staffEmail.includes('gamra'))) {
-        return false;
-      }
+    if (!canViewAll && s.staffId !== currentUser?.id) {
+      return false;
     }
     const d = new Date(s.date);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
@@ -73,11 +70,8 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
   });
 
     const filteredPayments = payments.filter(p => {
-    const staffEmail = appUsers.find(u => u.id === p.staffId)?.email?.toLowerCase() || '';
-    if (currentUserRole !== 'admin' && p.staffId !== currentUser?.id) {
-      if (!(is1984 && !staffEmail.includes('gamra'))) {
-        return false;
-      }
+    if (!canViewAll && p.staffId !== currentUser?.id) {
+      return false;
     }
     const d = new Date(p.date);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;
@@ -166,10 +160,8 @@ export default function HistoryView({ permissions, currentUserRole }: { permissi
   };
 
   const filteredActivities = (activities || []).filter(a => {
-    if (currentUserRole !== 'admin' && a.actorId !== currentUser?.id) {
-      if (!(is1984 && !(a.actorName || '').toLowerCase().includes('gamra'))) {
-        return false;
-      }
+    if (!canViewAll && a.actorId !== currentUser?.id) {
+      return false;
     }
     const d = new Date(a.timestamp);
     const matchesMonth = filterMonth === 0 || d.getMonth() + 1 === filterMonth;

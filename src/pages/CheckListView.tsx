@@ -27,6 +27,8 @@ export default function CheckListView() {
   const { fetchData } = useStore();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
+  const [tempAmount, setTempAmount] = useState<string>('');
 
   const handleStatusChange = async (
     type: string,
@@ -307,27 +309,52 @@ export default function CheckListView() {
                     </div>
                   </td>
                   <td className="p-5">
-                    <div
-                      onClick={() => {
-                        const newAmountStr = window.prompt(language === "ar" ? "أدخل المبلغ الجديد:" : language === "fr" ? "Entrez le nouveau montant:" : "Enter new amount:", String(check.total));
-                        if (newAmountStr !== null) {
-                          const newAmount = parseFloat(newAmountStr);
-                          if (!isNaN(newAmount) && newAmount > 0) {
-                            handleAmountChange(check.type, check.id, newAmount);
+                    {editingAmountId === check.id ? (
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        autoFocus
+                        disabled={updatingId === check.id}
+                        className="bg-transparent border-b-2 border-accent focus:outline-none text-xs font-black text-text-main text-center w-24"
+                        value={tempAmount}
+                        onChange={(e) => setTempAmount(e.target.value)}
+                        onBlur={() => {
+                          const val = parseFloat(tempAmount);
+                          if (!isNaN(val) && val > 0 && val !== check.total) {
+                            handleAmountChange(check.type, check.id, val);
                           }
-                        }
-                      }}
-                      className={cn(
-                        "inline-block px-3 py-1 rounded-full text-xs font-black whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity",
-                        check.partyRole === "customer"
-                          ? "bg-success/10 text-success"
-                          : "bg-danger/10 text-danger",
-                      )}
-                      title={language === "ar" ? "انقر لتعديل المبلغ" : "Click to edit amount"}
-                    >
-                      {check.partyRole === "customer" ? "+" : "-"}
-                      {formatNumber(check.total)} {t.currency}
-                    </div>
+                          setEditingAmountId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseFloat(tempAmount);
+                            if (!isNaN(val) && val > 0 && val !== check.total) {
+                              handleAmountChange(check.type, check.id, val);
+                            }
+                            setEditingAmountId(null);
+                          } else if (e.key === 'Escape') {
+                            setEditingAmountId(null);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div
+                        onClick={() => {
+                          setEditingAmountId(check.id);
+                          setTempAmount(String(check.total));
+                        }}
+                        className={cn(
+                          "inline-block px-3 py-1 rounded-full text-xs font-black whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity",
+                          check.partyRole === "customer"
+                            ? "bg-success/10 text-success"
+                            : "bg-danger/10 text-danger",
+                        )}
+                        title={language === "ar" ? "انقر لتعديل المبلغ" : "Click to edit amount"}
+                      >
+                        {check.partyRole === "customer" ? "+" : "-"}
+                        {formatNumber(check.total)} {t.currency}
+                      </div>
+                    )}
                   </td>
                                     <td className="p-5">
                     {editingDateId === check.id ? (

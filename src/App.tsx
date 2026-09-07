@@ -89,17 +89,17 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-import CheckListView from './pages/CheckListView';
-import StaffManagement from './pages/StaffManagement';
-import SettingsManagement from './pages/SettingsManagement';
-import HistoryView from './pages/HistoryView';
-import SupplierList from './pages/SupplierList';
-import CustomerList from './pages/CustomerList';
-import POS from './pages/POS';
-import Inventory from './pages/Inventory';
-import FinancialDashboardView from './pages/FinancialDashboardView';
-import InvoicesView from './pages/InvoicesView';
-import DamagesView from './pages/DamagesView';
+const CheckListView = React.lazy(() => import('./pages/CheckListView'));
+const StaffManagement = React.lazy(() => import('./pages/StaffManagement'));
+const SettingsManagement = React.lazy(() => import('./pages/SettingsManagement'));
+const HistoryView = React.lazy(() => import('./pages/HistoryView'));
+const SupplierList = React.lazy(() => import('./pages/SupplierList'));
+const CustomerList = React.lazy(() => import('./pages/CustomerList'));
+const POS = React.lazy(() => import('./pages/POS'));
+const Inventory = React.lazy(() => import('./pages/Inventory'));
+const FinancialDashboardView = React.lazy(() => import('./pages/FinancialDashboardView'));
+const InvoicesView = React.lazy(() => import('./pages/InvoicesView'));
+const DamagesView = React.lazy(() => import('./pages/DamagesView'));
 
 import { Product, Category, SaleItem, Sale, Customer, Supplier, UserProfile, Payment, moroccanBanks, View, TransactionRecord, ActivityLog, CheckDoc, Notification } from './types';
 
@@ -821,7 +821,14 @@ export default function App() {
                   <p className="text-sm font-mono uppercase tracking-widest">{(t as any).restrictedAccess}</p>
                 </div>
               ) : (
-                <>
+                <React.Suspense fallback={
+                  <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                    <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs font-bold text-text-secondary uppercase tracking-widest animate-pulse">
+                      {language === 'ar' ? 'جاري التحميل...' : language === 'fr' ? 'Chargement...' : 'Loading...'}
+                    </span>
+                  </div>
+                }>
                   {view === 'inventory' && <Inventory permissions={userPermissions} />}
                   {view === 'pos' && <POS />}
                   {view === 'customers' && <CustomerList />}
@@ -842,7 +849,7 @@ export default function App() {
                   {view === 'settings' && (
                     <SettingsManagement isDriveConnected={isDriveConnected} backingUpToDrive={backingUpToDrive} handleGoogleConnect={handleGoogleConnect} handleDriveBackup={handleDriveBackup} latestBackup={latestBackup} setBackingUpToDrive={setBackingUpToDrive} />
                   )}
-                </>
+                </React.Suspense>
               )}
             </motion.div>
           </AnimatePresence>

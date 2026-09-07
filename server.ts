@@ -435,6 +435,42 @@ async function startServer() {
   // --- Products API ---
   app.get("/api/products", async (req, res) => {
     try {
+      if (req.query.page) {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const search = req.query.search ? `%${req.query.search}%` : null;
+        
+        let query = `
+          SELECT 
+            p.*, 
+            c.name as categoryName,
+            COALESCE(sales.sold_qty, 0) as sold_qty
+          FROM products p 
+          LEFT JOIN categories c ON p.category_id = c.id
+          LEFT JOIN (
+            SELECT product_id, SUM(qty) as sold_qty 
+            FROM sale_items 
+            GROUP BY product_id
+          ) sales ON p.id = sales.product_id
+        `;
+        let countQuery = 'SELECT COUNT(*) as count FROM products p';
+        let params: any[] = [];
+        
+        if (search) {
+          query += ' WHERE p.name ILIKE ? OR p.barcode ILIKE ?';
+          countQuery += ' WHERE p.name ILIKE ? OR p.barcode ILIKE ?';
+          params.push(search, search);
+        }
+        
+        query += ' ORDER BY p.name ASC LIMIT ? OFFSET ?';
+        
+        const totalResult = await db.prepare(countQuery).get(...params) as any;
+        const total = totalResult?.count ? parseInt(totalResult.count) : 0;
+        const products = await db.prepare(query).all(...params, limit, (page - 1) * limit);
+        
+        return res.json({ data: toCamel(products), total, page, limit });
+      }
+
       const query = `
         SELECT 
           p.*, 
@@ -1023,10 +1059,6 @@ async function startServer() {
   });
 
   // --- Categories API ---
-  app.get("/api/categories", async (req, res) => {
-    const categories = await db.prepare('SELECT * FROM categories').all();
-    res.json(toCamel(categories));
-  });
 
   app.post("/api/categories", validate(schemas.categorySchema), async (req, res) => {
     const { name } = req.body;
@@ -1050,34 +1082,6 @@ async function startServer() {
   });
 
   // --- Customers API ---
-  app.get("/api/products", async (req, res) => {
-    if (!req.query.page) {
-      const products = await db.prepare('SELECT * FROM products ORDER BY name ASC').all();
-      return res.json(toCamel(products));
-    }
-    
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
-    const search = req.query.search ? `%${req.query.search}%` : null;
-    
-    let query = 'SELECT * FROM products';
-    let countQuery = 'SELECT COUNT(*) as count FROM products';
-    let params: any[] = [];
-    
-    if (search) {
-      query += ' WHERE name LIKE ? OR barcode LIKE ?';
-      countQuery += ' WHERE name LIKE ? OR barcode LIKE ?';
-      params.push(search, search);
-    }
-    
-    query += ' ORDER BY name ASC LIMIT ? OFFSET ?';
-    
-    const total = (await db.prepare(countQuery).get(...params) as any).count;
-    const products = await db.prepare(query).all(...params, limit, (page - 1) * limit);
-    
-    res.json({ data: toCamel(products), total, page, limit });
-  });
-
   app.get("/api/customers", async (req, res) => {
     if (!req.query.page) {
       const customers = await db.prepare('SELECT c.*, COALESCE((SELECT SUM(total) FROM sales WHERE customer_id = c.id), 0) as total_spent FROM customers c ORDER BY total_spent DESC, name ASC').all();
