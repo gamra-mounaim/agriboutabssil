@@ -517,13 +517,20 @@ export default function POS() {
       </div>
 
       {/* --- Right: Checkout / Receipt Panel --- */}
-      <div className="w-full lg:w-[420px] h-full flex flex-col bg-card border border-border-subtle rounded-3xl shadow-2xl relative z-10">
-        <div className="p-6 border-b border-border-subtle flex items-center justify-between bg-bg-base/20 rounded-t-3xl backdrop-blur-sm">
+      <div className="w-full lg:w-[470px] xl:w-[520px] shrink-0 h-full flex flex-col bg-card border border-border-subtle rounded-2xl shadow-xl relative z-10">
+        <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between bg-bg-base/40 rounded-t-2xl">
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">{language === 'ar' ? "فاتورة" : language === 'fr' ? "TICKET" : "Receipt"}</span>
-             <h3 className="text-sm font-bold text-text-main uppercase tracking-widest">{language === 'ar' ? "سلة التسوق" : language === 'fr' ? "PANIER ACTUEL" : "Current Cart"}</h3>
+             <span className="text-[9px] font-black text-text-secondary uppercase tracking-[0.2em]">{language === 'ar' ? "فاتورة" : language === 'fr' ? "TICKET" : "Receipt"}</span>
+             <h3 className="text-xs font-bold text-text-main uppercase tracking-widest flex items-center gap-2">
+               <span>{language === 'ar' ? "سلة التسوق" : language === 'fr' ? "PANIER ACTUEL" : "Current Cart"}</span>
+               {cart.length > 0 && (
+                 <span className="bg-accent text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-xs">
+                   {cart.length} {language === 'ar' ? 'سلعة' : language === 'fr' ? 'articles' : 'items'}
+                 </span>
+               )}
+             </h3>
            </div>
-           <div className="flex items-center gap-3">
+           <div className="flex items-center gap-2">
              <button 
                 onClick={() => {
                   const newActive = !isFlahActive;
@@ -535,83 +542,91 @@ export default function POS() {
                   }
                 }}
                 className={cn(
-                  "p-2 border rounded-lg transition-all flex items-center gap-2",
-                  isFlahActive ? "bg-accent text-white border-accent" : "bg-white text-text-secondary border-border-subtle"
+                  "px-2.5 py-1.5 border rounded-lg transition-all flex items-center gap-1.5 text-xs shadow-xs",
+                  isFlahActive ? "bg-accent text-white border-accent shadow-accent/20" : "bg-white text-text-secondary border-border-subtle hover:bg-bg-base"
                 )}
              >
-               <Sparkles className="w-4 h-4" />
-               <span className="text-[10px] font-bold uppercase tracking-widest">{isFlahActive ? (language === 'ar' ? 'فلاح نشط' : 'FLAH ON') : 'FLAH 10%'}</span>
+               <Sparkles className="w-3.5 h-3.5" />
+               <span className="text-[9px] font-black uppercase tracking-wider">{isFlahActive ? (language === 'ar' ? 'فلاح نشط' : 'FLAH ON') : 'FLAH 10%'}</span>
              </button>
-             <div className="bg-accent/10 text-accent p-2 rounded-xl">
-               <ShoppingCart className="w-5 h-5" />
+             <div className="bg-accent/10 text-accent p-1.5 rounded-lg">
+               <ShoppingCart className="w-4 h-4" />
              </div>
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-1.5 custom-scrollbar">
           <AnimatePresence initial={false}>
             {cart.map(item => (
               <motion.div 
                 key={item.productId}
-                initial={{ x: 20, opacity: 0 }}
+                initial={{ x: 15, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -20, opacity: 0 }}
-                className="group flex flex-col p-4 rounded-2xl bg-bg-base/30 hover:bg-bg-base/60 transition-colors border border-border-subtle/30"
+                exit={{ x: -15, opacity: 0 }}
+                className="group flex items-center justify-between p-2.5 rounded-xl bg-bg-base/40 hover:bg-white hover:shadow-xs transition-all border border-border-subtle/50 hover:border-accent/40 gap-2"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
-                    <span className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors leading-tight">{item.name}</span>
-                    <span className="text-[10px] font-bold text-text-secondary uppercase mt-0.5 tracking-wider">
-                      {formatNumber(item.price)} {t.currency} / {(item as any).unitLabel || (language === 'ar' ? 'وحدة' : language === 'fr' ? 'unité' : 'unit')}
-                    </span>
-                  </div>
-                  <div className="font-black text-[14px] text-text-main tracking-tight">
-                    {formatNumber((item.price * item.qty))}
-                  </div>
+                {/* Product Name & Unit Price */}
+                <div className={cn("flex-1 min-w-0 flex flex-col", language === 'ar' ? "text-right" : "text-left")}>
+                  <span className="font-bold text-[12px] text-text-main group-hover:text-accent transition-colors truncate leading-tight" title={item.name}>
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-semibold text-text-secondary mt-0.5">
+                    {formatNumber(item.price)} <span className="text-[9px] opacity-75">{t.currency}</span> / {(item as any).unitLabel || (language === 'ar' ? 'وحدة' : language === 'fr' ? 'unité' : 'unit')}
+                  </span>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 bg-white border border-border-subtle rounded-xl p-0.5 shadow-sm">
-                    <button 
-                      onClick={() => updateCartQty(item.productId, item.qty - 1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-bg-base text-text-secondary transition-colors"
-                    >
-                      -
-                    </button>
-                    <input 
-                      type="number"
-                      min="1"
-                      value={item.qty}
-                      onFocus={e => e.target.select()}
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        if (!isNaN(val) && val > 0) {
-                          updateCartQty(item.productId, val);
-                        }
-                      }}
-                      className="w-10 text-center text-xs font-black text-text-main bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <button 
-                      onClick={() => updateCartQty(item.productId, item.qty + 1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-bg-base text-text-secondary transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
+                {/* Quantity Controls */}
+                <div className="flex items-center gap-0.5 bg-white border border-border-subtle rounded-lg p-0.5 shadow-2xs shrink-0">
                   <button 
-                    onClick={() => removeFromCart(item.productId)}
-                    className="p-1.5 text-text-secondary hover:text-danger hover:bg-red-50 rounded-lg transition-all"
+                    onClick={() => updateCartQty(item.productId, item.qty - 1)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-bg-base text-text-secondary text-xs font-bold transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    -
+                  </button>
+                  <input 
+                    type="number"
+                    min="1"
+                    value={item.qty}
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val > 0) {
+                        updateCartQty(item.productId, val);
+                      }
+                    }}
+                    className="w-8 text-center text-xs font-black text-text-main bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button 
+                    onClick={() => updateCartQty(item.productId, item.qty + 1)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-bg-base text-text-secondary text-xs font-bold transition-colors"
+                  >
+                    +
                   </button>
                 </div>
+
+                {/* Subtotal */}
+                <div className="text-right shrink-0 min-w-[65px]">
+                  <div className="font-black text-[12px] text-text-main tracking-tight">
+                    {formatNumber((item.price * item.qty))}
+                  </div>
+                  <span className="text-[8px] text-text-secondary font-bold uppercase">{t.currency}</span>
+                </div>
+
+                {/* Delete button */}
+                <button 
+                  onClick={() => removeFromCart(item.productId)}
+                  className="p-1.5 text-text-secondary hover:text-danger hover:bg-red-50 rounded-lg transition-colors shrink-0 opacity-60 hover:opacity-100"
+                  title={language === 'ar' ? 'حذف' : 'Supprimer'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
             ))}
           </AnimatePresence>
           {cart.length === 0 && (
-            <div className="h-full min-h-[250px] flex flex-col items-center justify-center text-text-secondary opacity-30 px-10 text-center">
-              <div className="w-16 h-16 rounded-full border-4 border-dashed border-border-subtle mb-6 flex items-center justify-center rotate-12">
-                <Package className="w-8 h-8 -rotate-12" />
+            <div className="h-full min-h-[160px] flex flex-col items-center justify-center text-text-secondary opacity-30 px-6 text-center">
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-border-subtle mb-3 flex items-center justify-center rotate-12">
+                <Package className="w-6 h-6 -rotate-12" />
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
                 {language === 'ar' ? "أضف منتجات للبدء بالعملية" : language === 'fr' ? "PRÊT POUR LA PROCHAINE TRANSACTION" : "Ready for next transaction"}
@@ -620,7 +635,7 @@ export default function POS() {
           )}
         </div>
 
-        <div className="p-8 border-t border-border-subtle bg-bg-base/30 space-y-5 rounded-b-3xl">
+        <div className="px-5 py-4 border-t border-border-subtle bg-bg-base/40 space-y-3 rounded-b-2xl">
           {/* Payment Method Tabs */}
           <div className="grid grid-cols-4 gap-1 bg-white p-1 rounded-2xl border border-border-subtle shadow-inner">
             {(['cash', 'card', 'debt', 'check'] as const).map(method => (
@@ -848,32 +863,35 @@ export default function POS() {
           </div>
 
           {/* Pricing Summary */}
-          <div className="space-y-3 pt-2 border-t border-border-subtle/50">
+          <div className="space-y-2 pt-1 border-t border-border-subtle/60">
             <div className="flex justify-between items-center px-1">
                <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">{t.subtotal}</span>
-               <span className="text-xs font-bold text-text-main">{formatNumber(subtotal)}</span>
+               <span className="text-xs font-bold text-text-main">{formatNumber(subtotal)} {t.currency}</span>
             </div>
             
             <div className="flex justify-between items-center px-1">
                <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">{t.discount}</span>
-               <input 
-                  type="number" 
-                  className="w-20 bg-transparent text-right text-xs font-black text-danger outline-none border-b border-transparent focus:border-danger"
-                  value={discount || ''} onChange={e => setDiscount(e.target.value)}
-                />
+               <div className="flex items-center gap-1">
+                 <input 
+                    type="number" 
+                    className="w-16 bg-white border border-border-subtle rounded-md px-1.5 py-0.5 text-right text-xs font-black text-danger outline-none focus:border-danger"
+                    value={discount || ''} onChange={e => setDiscount(e.target.value)}
+                  />
+                 <span className="text-[10px] font-bold text-text-secondary">{t.currency}</span>
+               </div>
             </div>
 
-            <div className="flex flex-wrap items-baseline justify-between py-2 border-t border-border-subtle/30 mt-2 gap-2">
-              <span className="text-3xl md:text-4xl font-black text-text-main tracking-tighter break-all">{formatNumber(total)}</span>
-              <span className="text-sm font-bold text-text-secondary uppercase">{t.currency}</span>
+            <div className="flex flex-wrap items-baseline justify-between py-1 border-t border-border-subtle/40 gap-2">
+              <span className="text-2xl md:text-3xl font-black text-text-main tracking-tight break-all">{formatNumber(total)}</span>
+              <span className="text-xs font-black text-accent uppercase tracking-wider">{t.currency}</span>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                  <button 
                   disabled={cart.length === 0}
                   onClick={handlePrintProforma}
-                  className="bg-bg-base border border-border-subtle text-text-main font-black text-[10px] uppercase tracking-widest py-3 px-2 rounded-xl hover:bg-accent hover:text-white hover:border-accent transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:hover:bg-bg-base disabled:hover:text-text-main disabled:hover:border-border-subtle"
+                  className="bg-white border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-accent hover:text-white hover:border-accent transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   {language === 'ar' ? 'وصل تحضير' : 'Devis'}
@@ -881,23 +899,23 @@ export default function POS() {
                  <button 
                   disabled={cart.length === 0}
                   onClick={handleHoldCart}
-                  className="bg-bg-base border border-border-subtle text-text-main font-black text-[10px] uppercase tracking-widest py-3 px-2 rounded-xl hover:bg-warning hover:text-white hover:border-warning transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:hover:bg-bg-base disabled:hover:text-text-main disabled:hover:border-border-subtle"
+                  className="bg-white border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-warning hover:text-white hover:border-warning transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
                 >
                   <CalendarClock className="w-3.5 h-3.5" />
                   {language === 'ar' ? 'في الانتظار' : 'Attente'}
                 </button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                  <button 
                   onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); setCustomerSearchQuery(''); }}
-                  className="bg-white border border-border-subtle text-text-secondary font-black text-[10px] uppercase tracking-widest p-4 rounded-xl hover:bg-danger hover:text-white hover:border-danger transition-all w-24"
+                  className="bg-white border border-border-subtle text-text-secondary font-black text-[9px] uppercase tracking-wider py-2.5 px-3 rounded-lg hover:bg-danger hover:text-white hover:border-danger transition-all w-20 shadow-2xs"
                 >
                   {t.clear || 'Clear'}
                 </button>
                 <button 
                   disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId) || isCheckingOut}
                   onClick={checkout}
-                  className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
+                  className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-wider py-2.5 rounded-lg shadow-md shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
                 >
                   {t.checkout}
                 </button>
