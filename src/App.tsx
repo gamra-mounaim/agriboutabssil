@@ -508,13 +508,9 @@ export default function App() {
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-accent opacity-70 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2.5rem]" />
           
           <div className="text-center space-y-4">
-            <div className="inline-flex p-1.5 rounded-[2rem] bg-white/10 dark:bg-black/20 border border-border-subtle mb-2 overflow-hidden w-24 h-24 items-center justify-center shadow-xl mx-auto group-hover:scale-110 transition-transform duration-500 ease-out backdrop-blur-md">
-              <Logo className="w-full h-full p-2 text-accent" />
+            <div className="inline-flex p-3 rounded-2xl bg-white border border-border-subtle mb-2 overflow-hidden w-48 h-20 items-center justify-center shadow-xl mx-auto group-hover:scale-105 transition-transform duration-500 ease-out">
+              <Logo className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-4xl font-black tracking-tight font-sans">
-              <span>AGRI</span>{' '}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-accent to-blue-500">BOUTABSSIL</span>
-            </h1>
             <p className="text-text-secondary text-[10px] font-bold uppercase tracking-[0.2em] mt-2 bg-text-secondary/5 py-1.5 px-4 rounded-full inline-block border border-border-subtle backdrop-blur-sm">
               {t.tagline}
             </p>
@@ -576,18 +572,9 @@ export default function App() {
 
       {/* Sidebar */}
       <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50 relative">
-        <div className="p-6 hidden md:block">
-          <div className="flex items-center gap-3">
-             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center border border-accent/20 shadow-lg overflow-hidden group">
-                <Logo className="w-full h-full transition-transform group-hover:scale-110 p-1" />
-             </div>
-             <div>
-                <h1 className="text-[17px] font-black leading-none tracking-tight flex flex-col">
-                   <span className="text-text-main">AGRI</span>
-                   <span className="text-accent text-[12px] mt-0.5">BOUTABSSIL</span>
-                </h1>
-                <div className="h-[2px] w-8 bg-accent mt-2 rounded-full"></div>
-             </div>
+        <div className="p-4 hidden md:block">
+          <div className="bg-white rounded-2xl p-2 border border-accent/20 shadow-md flex items-center justify-center overflow-hidden h-14">
+            <Logo className="h-full w-auto max-w-full object-contain" />
           </div>
         </div>
         <div className="flex-1 px-4 py-4 space-y-2">

@@ -119,39 +119,45 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
 
-  // Header Left: Shop Branding & Coordinates
-  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  // Header Left: Official Shop Logo & Coordinates
   const shopAddress = settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || '15, Avenue des FAR, Quartier Industriel, Agadir, Maroc';
   const shopPhone = settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '05 28 84 12 34';
   const shopEmail = settings?.shopEmail || settings?.shop_email || SHOP_DETAILS.email || 'contact@agriboutabssil.ma';
 
-  let brandX = margin;
+  let addressY = 32;
   if (SHOP_DETAILS.logo) {
     try {
-      doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 14, 13, 13);
-      brandX = margin + 16;
+      // Official logo has aspect ratio 170/75 = ~2.27
+      const logoW = 38;
+      const logoH = 16.75;
+      doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 11, logoW, logoH);
+      addressY = 32;
     } catch {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 14, 13, 13);
-        brandX = margin + 16;
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 11, 38, 16.75);
+        addressY = 32;
       } catch (e) {
-        brandX = margin;
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(22, 101, 52);
+        doc.text(shopName, margin, 19);
+        addressY = 25;
       }
     }
+  } else {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(22, 101, 52);
+    doc.text(shopName, margin, 19);
+    addressY = 25;
   }
-
-  // Shop Name & Tagline
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(22, 101, 52); // Forest/Emerald
-  doc.text(shopName, brandX, 19);
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
-  doc.text(shopAddress, brandX, 24);
-  doc.text(`Tél: ${shopPhone}`, brandX, 28.5);
-  doc.text(`Email: ${shopEmail}`, brandX, 33);
+  doc.text(shopAddress, margin, addressY);
+  doc.text(`Tél: ${shopPhone}`, margin, addressY + 4.5);
+  doc.text(`Email: ${shopEmail}`, margin, addressY + 9);
 
   // Header Right: Document Title & Numbers
   const docTitle = isProforma ? 'BON DE PRÉPARATION' : 'FACTURE';
