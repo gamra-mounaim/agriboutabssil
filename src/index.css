@@ -19,53 +19,44 @@
 }
 
 :root {
-  --bg-base: #f8fafc;
+  --bg-base: #f1f5f9; /* Slate 100 - Clean, calm, high contrast for white cards */
   --sidebar: #ffffff;
   --text-main: #0f172a;
   --text-secondary: #64748b;
   --accent: #059669; /* Emerald 600 - Agri Green */
-  --border-subtle: rgba(226, 232, 240, 0.9);
-  --card: rgba(255, 255, 255, 0.94);
+  --border-subtle: #e2e8f0;
+  --card: #ffffff;
 }
 
 .dark {
-  --bg-base: #0b1329;
-  --sidebar: #0f172a;
+  --bg-base: #0f172a; /* Slate 900 - Deep, professional, zero glare */
+  --sidebar: #090e1a;
   --text-main: #f8fafc;
   --text-secondary: #94a3b8;
   --accent: #10b981; /* Emerald 500 */
-  --border-subtle: rgba(30, 41, 59, 0.85);
-  --card: rgba(15, 23, 42, 0.92);
+  --border-subtle: #1e293b;
+  --card: #1e293b;
 }
 
 body {
   @apply text-text-main transition-colors duration-300 antialiased;
   font-family: var(--font-sans);
   background-color: var(--bg-base);
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(158, 42%, 93%, 0.8) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(199, 45%, 94%, 0.5) 0, transparent 50%), 
-    radial-gradient(at 100% 100%, hsla(142, 35%, 94%, 0.6) 0, transparent 50%);
-  background-attachment: fixed;
   overflow-x: hidden;
 }
 
 .dark body {
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(158, 60%, 12%, 0.25) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(199, 60%, 12%, 0.2) 0, transparent 50%),
-    radial-gradient(at 50% 100%, hsla(142, 50%, 10%, 0.25) 0, transparent 50%);
+  background-color: var(--bg-base);
 }
 
 .bg-card {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   background-color: var(--card);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 .dark .bg-card {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
 }
 
 /* Scrollbar Styling */
