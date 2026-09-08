@@ -29,6 +29,7 @@ interface InvoiceData {
   discount?: number;
   clientName?: string;
   clientPhone?: string;
+  clientAddress?: string;
   staffName?: string;
   paymentMethod?: string;
   paymentStatus?: 'PAID' | 'CREDIT' | 'PARTIAL';
@@ -113,67 +114,69 @@ const drawArabicCell = (doc: jsPDF, data: any, color?: string) => {
 };
 
 export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', settings?: any, isProforma: boolean = false) => {
-  // Always use French for invoices as requested
-  const t = translations.fr;
-  const isAr = false;
-  
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
+  const margin = 15;
 
-  // Header background
-  doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, pageWidth, 28, 'F');
+  // Header Left: Shop Branding & Coordinates
+  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
+  const shopAddress = settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || '15, Avenue des FAR, Quartier Industriel, Agadir, Maroc';
+  const shopPhone = settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '05 28 84 12 34';
+  const shopEmail = settings?.shopEmail || settings?.shop_email || SHOP_DETAILS.email || 'contact@agriboutabssil.ma';
 
-  // Brand Name & Logo
-  try {
-    if (SHOP_DETAILS.logo) {
+  let brandX = margin;
+  if (SHOP_DETAILS.logo) {
+    try {
+      doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 14, 13, 13);
+      brandX = margin + 16;
+    } catch {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 5, 10, 10);
-      } catch (err) {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 5, 10, 10);
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 14, 13, 13);
+        brandX = margin + 16;
+      } catch (e) {
+        brandX = margin;
       }
     }
-  } catch (e) {
-    console.error('Error adding logo to PDF:', e);
   }
 
-  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
-  doc.setFontSize(12);
-  doc.setTextColor(30, 41, 59);
+  // Shop Name & Tagline
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(shopName, margin + 12, 9);
-  
-  doc.setFontSize(6);
-  doc.setTextColor(100, 116, 139);
-  doc.setFont('helvetica', 'normal');
-  doc.text(SHOP_DETAILS.tagline || 'Solutions Agricoles & Industrielles', margin + 12, 13);
+  doc.setTextColor(22, 101, 52); // Forest/Emerald
+  doc.text(shopName, brandX, 19);
 
-  doc.setFontSize(14);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(shopAddress, brandX, 24);
+  doc.text(`Tél: ${shopPhone}`, brandX, 28.5);
+  doc.text(`Email: ${shopEmail}`, brandX, 33);
+
+  // Header Right: Document Title & Numbers
+  const docTitle = isProforma ? 'BON DE PRÉPARATION' : 'FACTURE';
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.setFont('helvetica', 'bold');
-  doc.text(isProforma ? 'BON DE PRÉPARATION' : 'FACTURE', margin + 12, 21);
+  doc.text(docTitle, pageWidth - margin, 19, { align: 'right' });
 
-  // Shop Info (Right)
-  const shopX = pageWidth - margin;
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.setFont('helvetica', 'normal');
-  doc.text(settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || 'votre adresse ici', shopX, 8, { align: 'right' });
-  doc.text(`Tél: ${settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '06 00 00 00 00'}`, shopX, 12, { align: 'right' });
-  
-  // Date & Time
+  const invoiceNum = isProforma
+    ? (data.invoiceNumber ? `DEV-${data.invoiceNumber}` : data.saleId.slice(0, 8).toUpperCase())
+    : (data.invoiceNumber ? `INV-${data.invoiceNumber.toString().padStart(5, '0')}` : data.saleId.slice(0, 8).toUpperCase());
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text(`N° Facture: ${invoiceNum}`, pageWidth - margin, 26, { align: 'right' });
+
   const invoiceDate = data.date ? new Date(data.date) : new Date();
-  const dateStr = invoiceDate.toLocaleDateString('fr-FR');
-  const timeStr = invoiceDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(`DATE: ${dateStr}`, shopX, 18, { align: 'right' });
-  doc.text(`HEURE: ${timeStr}`, shopX, 22, { align: 'right' });
+  const dateStr = invoiceDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Date: ${dateStr}`, pageWidth - margin, 31, { align: 'right' });
 
-  let currentY = 32;
-
+  // Client Information Card (Right aligned underneath date/invoice number)
   const walkingCustomers = [
     translations.en.walkingCustomer,
     translations.fr.walkingCustomer,
@@ -181,226 +184,250 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     'Client Passager'
   ];
 
-  // Bill To Background Box
   const hasClient = data.clientName && data.clientName.trim() !== '' && !walkingCustomers.includes(data.clientName);
-  
-  // Calculate heights to draw a unified box
-  let boxHeight = 22;
-  let clientNameHScale = 0;
-  let clientImgProps = null;
-  let clientImgW = 50;
-  
-  if (hasClient) {
-    if (containsArabic(data.clientName || '')) {
-      const clientImg = renderTextToImg(data.clientName || '', { size: 12, bold: true, color: '#1e293b' });
-      clientImgProps = (doc as any).getImageProperties(clientImg);
-      clientNameHScale = clientImgProps.height / clientImgProps.width;
-      boxHeight = Math.max(22, (clientImgW * clientNameHScale) + 12);
-    } else {
-      boxHeight = 24;
-    }
-    if (data.clientPhone && data.clientPhone.trim() !== '') {
-      boxHeight += 6;
-    }
-  }
+  const clientDisplayName = hasClient ? data.clientName! : 'Client Passager';
+  const clientPhone = data.clientPhone && data.clientPhone.trim() !== '' ? data.clientPhone : null;
+  const clientAddress = data.clientAddress && data.clientAddress.trim() !== '' ? data.clientAddress : null;
 
-  // Draw light grey box for professional look
+  const clientBoxW = 90;
+  const clientBoxX = pageWidth - margin - clientBoxW;
+  const clientBoxY = 38;
+  
+  let clientBoxH = 18;
+  if (clientAddress) clientBoxH += 5;
+  if (clientPhone) clientBoxH += 6;
+
+  // Background Box
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, currentY - 4, pageWidth - (margin * 2), boxHeight, 2, 2, 'FD');
+  doc.roundedRect(clientBoxX, clientBoxY, clientBoxW, clientBoxH, 2.5, 2.5, 'FD');
 
-  // Bill To details
-  if (hasClient) {
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    doc.text('CLIENT:', margin + 4, currentY + 2);
-    
-    doc.setFontSize(14);
-    doc.setTextColor(30, 41, 59);
-    
-    let nextTextY = currentY + 8;
-    if (clientImgProps) {
-      doc.addImage(clientImgProps.data, 'PNG', margin + 4, currentY + 3, clientImgW, clientImgW * clientNameHScale);
-      nextTextY = currentY + 4 + (clientImgW * clientNameHScale);
-    } else {
-      doc.setFont('helvetica', 'bold');
-      doc.text(data.clientName || '', margin + 4, currentY + 8);
-      nextTextY = currentY + 14;
-    }
-    
-    if (data.clientPhone && data.clientPhone.trim() !== '') {
-      doc.setFontSize(9);
-      doc.setTextColor(100, 116, 139);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Tél: ' + data.clientPhone, margin + 4, nextTextY);
-    }
-  }
+  let currentClientTextY = clientBoxY + 5.5;
 
-  // Invoice Number (Right side inside the box)
-  if (!isProforma) {
-    const invoiceNum = data.invoiceNumber 
-      ? data.invoiceNumber.toString().padStart(6, '0') 
-      : data.saleId.toUpperCase().slice(0, 8);
-      
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('FACTURE N°', pageWidth - margin - 4, currentY + 2, { align: 'right' });
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 41, 59);
-    doc.text(invoiceNum, pageWidth - margin - 4, currentY + 8, { align: 'right' });
+  // Client Name Row
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Client: ', clientBoxX + 4, currentClientTextY);
+
+  if (containsArabic(clientDisplayName)) {
+    const clientImg = renderTextToImg(clientDisplayName, { size: 10, bold: true, color: '#0f172a' });
+    const clientImgProps = (doc as any).getImageProperties(clientImg);
+    const imgH = 4;
+    const imgW = Math.min((clientImgProps.width * imgH) / clientImgProps.height, clientBoxW - 22);
+    doc.addImage(clientImg, 'PNG', clientBoxX + 16, currentClientTextY - 3.2, imgW, imgH);
   } else {
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('DOCUMENT', pageWidth - margin - 4, currentY + 2, { align: 'right' });
-    
-    doc.setFontSize(12);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 41, 59);
-    doc.text('PRÉPARATION', pageWidth - margin - 4, currentY + 8, { align: 'right' });
+    doc.setTextColor(15, 23, 42);
+    doc.text(clientDisplayName, clientBoxX + 16, currentClientTextY);
   }
 
-  currentY += boxHeight + 4;
+  // Client Address Row (if available)
+  if (clientAddress) {
+    currentClientTextY += 5;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Adresse: ${clientAddress}`, clientBoxX + 4, currentClientTextY);
+  }
 
+  // Client Phone Row (Prominent)
+  if (clientPhone) {
+    currentClientTextY += 6;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Tél Client: ${clientPhone}`, clientBoxX + 4, currentClientTextY);
+  }
 
-    // Items Table
+  const tableStartY = Math.max(clientBoxY + clientBoxH + 6, 66);
+
+  // Products Table (Structured Grid with light sage green / slate header)
   autoTable(doc, {
-    startY: currentY,
-    head: [['Designation', 'Qté', 'Prix Unitaire', 'Total']],
+    startY: tableStartY,
+    head: [['Désignation', 'Qté', 'Prix Unitaire DH', 'Total DH']],
     body: data.items.map(item => [
       item.name,
       item.qty.toString(),
-      `${formatNumber(item.price)} DH`,
-      `${formatNumber(item.qty * item.price)} DH`
+      formatNumber(item.price),
+      formatNumber(item.qty * item.price)
     ]),
     theme: 'grid',
-    headStyles: { 
-      fillColor: [255, 255, 255], 
-      textColor: [0, 0, 0], 
-      halign: 'center',
+    headStyles: {
+      fillColor: [216, 235, 224], // Elegant light sage green
+      textColor: [15, 23, 42],     // Crisp dark slate
+      halign: 'left',
       fontStyle: 'bold',
-      fontSize: 10,
-      lineWidth: 0.5,
-      lineColor: [100, 116, 139]
+      fontSize: 9,
+      lineWidth: 0.25,
+      lineColor: [180, 205, 195]
     },
-    styles: { 
-      fontSize: 9, 
-      cellPadding: 6,
+    styles: {
+      fontSize: 8.5,
+      cellPadding: 4.5,
       textColor: [15, 23, 42],
-      fontStyle: 'bold',
-      lineWidth: 0.1,
-      lineColor: [203, 213, 225]
+      lineWidth: 0.15,
+      lineColor: [203, 213, 225],
+      valign: 'middle'
     },
-    columnStyles: { 
-      0: { fontStyle: 'bold' },
-      1: { halign: 'center', fontStyle: 'bold' },
-      2: { halign: 'right', fontStyle: 'bold' },
-      3: { halign: 'right', fontStyle: 'bold' }
-    }
+    columnStyles: {
+      0: { cellWidth: 'auto', fontStyle: 'normal' },
+      1: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
+      2: { cellWidth: 35, halign: 'right', fontStyle: 'normal' },
+      3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (hookData) => {
+      prepareArabicCell(hookData);
+    },
+    didDrawCell: (hookData) => {
+      drawArabicCell(doc, hookData);
+    },
+    margin: { left: margin, right: margin, bottom: 28 }
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 10;
-  
-  // Check if we have enough space for the totals box (max 40mm)
-  if (finalY + 40 > pageHeight - 15) {
-    doc.addPage();
-    finalY = 20;
-  }
-  
-  // Totals Area
-  const boxW = 80;
-  const boxX = pageWidth - margin - boxW;
-  doc.setDrawColor(241, 245, 249);
-  doc.setFillColor(252, 252, 252);
-
+  let finalY = (doc as any).lastAutoTable.finalY + 6;
   const discountVal = data.discount || 0;
   const subtotalVal = data.subtotal || (data.total + discountVal);
 
+  // Avoid overflow into footer
+  if (finalY + (discountVal > 0 ? 36 : 22) > pageHeight - 26) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  // Totals Area (Right Aligned)
+  const totalsBoxW = 76;
+  const totalsBoxX = pageWidth - margin - totalsBoxW;
+
   if (discountVal > 0) {
-    doc.roundedRect(boxX, finalY, boxW, 35, 2, 2, 'FD');
-    
+    // Has Remise
+    const boxHeight = 27;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(totalsBoxX, finalY, totalsBoxW, boxHeight, 2, 2, 'FD');
+
     // Subtotal Row
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('TOTAL BRUT (TTC):', boxX + 5, finalY + 8);
-    doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text(`${formatNumber(subtotalVal)} DH`, pageWidth - margin - 5, finalY + 8, { align: 'right' });
+    doc.text('Sous-Total:', totalsBoxX + 4, finalY + 6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text(`${formatNumber(subtotalVal)} DH`, pageWidth - margin - 4, finalY + 6.5, { align: 'right' });
 
     // Discount Row
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text('REMISE (TAKHFID):', boxX + 5, finalY + 14);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Remise:', totalsBoxX + 4, finalY + 12.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(220, 38, 38);
-    doc.text(`-${formatNumber(discountVal)} DH`, pageWidth - margin - 5, finalY + 14, { align: 'right' });
+    doc.text(`-${formatNumber(discountVal)} DH`, pageWidth - margin - 4, finalY + 12.5, { align: 'right' });
 
     // Divider
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.3);
-    doc.line(boxX + 5, finalY + 18, pageWidth - margin - 5, finalY + 18);
+    doc.line(totalsBoxX + 4, finalY + 15.5, pageWidth - margin - 4, finalY + 15.5);
 
-    // Total Net Row
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('helvetica', 'normal');
-    doc.text('NET À PAYER (TTC):', boxX + 5, finalY + 24);
-    
-    doc.setFontSize(16);
+    // Total Net Row (highlighted sage green background)
+    doc.setFillColor(216, 235, 224);
+    doc.roundedRect(totalsBoxX + 2, finalY + 17.5, totalsBoxW - 4, 7.5, 1.5, 1.5, 'F');
+
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 31, { align: 'right' });
+    doc.text('TOTAL NET À PAYER (DH):', totalsBoxX + 4, finalY + 22.5);
+
+    doc.setFontSize(10.5);
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 4, finalY + 22.5, { align: 'right' });
   } else {
-    doc.roundedRect(boxX, finalY, boxW, 25, 2, 2, 'FD');
-    
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('helvetica', 'normal');
-    doc.text('TOTAL NET À PAYER (TTC):', boxX + 5, finalY + 10);
-    
-    doc.setFontSize(18);
-    doc.setTextColor(15, 23, 42); // Darker black
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 5, finalY + 20, { align: 'right' });
-  }
+    // No Remise: Single clean box with soft sage tint
+    const boxHeight = 14;
+    doc.setFillColor(216, 235, 224);
+    doc.setDrawColor(180, 205, 195);
+    doc.roundedRect(totalsBoxX, finalY, totalsBoxW, boxHeight, 2, 2, 'FD');
 
-  // Display paid amount and remaining debt if a check amount is set
-  if (data.checkAmount !== undefined && data.checkAmount !== null && data.checkAmount < data.total) {
-    const finalRowY = finalY + (discountVal > 0 ? 43 : 33);
-    
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('helvetica', 'normal');
-    doc.text('PAYÉ PAR CHÈQUE:', boxX - 10, finalRowY);
-    
-    doc.setFontSize(11);
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY, { align: 'right' });
+    doc.text('TOTAL NET À PAYER (DH):', totalsBoxX + 4, finalY + 9);
 
-    doc.setFontSize(9);
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('helvetica', 'normal');
-    doc.text('RESTE À PAYER (CRÉDIT):', boxX - 10, finalRowY + 6);
-    
     doc.setFontSize(11);
-    doc.setTextColor(220, 38, 38); // Red color for debt
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${formatNumber(data.total - data.checkAmount)} DH`, pageWidth - margin - 5, finalRowY + 6, { align: 'right' });
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${formatNumber(data.total)} DH`, pageWidth - margin - 4, finalY + 9, { align: 'right' });
   }
 
+  // Payment details / Check remaining debt (if applicable)
+  let payY = finalY + (discountVal > 0 ? 32 : 18);
+  if (data.checkAmount !== undefined && data.checkAmount !== null && data.checkAmount < data.total) {
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Payé par chèque:', totalsBoxX + 4, payY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text(`${formatNumber(data.checkAmount)} DH`, pageWidth - margin - 4, payY, { align: 'right' });
+
+    payY += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Reste à payer (Crédit):', totalsBoxX + 4, payY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38);
+    doc.text(`${formatNumber(data.total - data.checkAmount)} DH`, pageWidth - margin - 4, payY, { align: 'right' });
+  }
+
+  // Payment method and staff on the bottom-left opposite totals
   if (data.paymentMethod) {
     doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text(`Mode de paiement: ${data.paymentMethod}`, margin, finalY + 10);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Mode de règlement: ${data.paymentMethod}`, margin, finalY + 6);
+    if (data.staffName) {
+      doc.text(`Vendeur: ${data.staffName}`, margin, finalY + 11);
+    }
   }
 
-  // Footer
-  doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`${shopName} - ${SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+  // Footer on all pages (No signature/cachet, elegant business activities message)
+  const totalPages = (doc.internal as any).getNumberOfPages ? (doc.internal as any).getNumberOfPages() : 1;
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+
+    // Subtle divider line
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+
+    // Line 1: Business activities description
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text(
+      "Vente de Matériel d'Irrigation • Pompage Solaire • Fertilisants & Équipements Agricoles",
+      pageWidth / 2,
+      pageHeight - 14,
+      { align: 'center' }
+    );
+
+    // Line 2: Professional appreciation and partnership
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      "Merci pour votre confiance ! AGRI BOUTABSSIL, votre partenaire pour l'excellence agricole.",
+      pageWidth / 2,
+      pageHeight - 9,
+      { align: 'center' }
+    );
+
+    // Page counter if multi-page
+    if (totalPages > 1) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
+    }
+  }
 
   const prefix = isProforma ? 'Bon_Preparation' : 'Facture';
   const fileName = `${prefix}_${data.saleId.slice(0, 8)}.pdf`;

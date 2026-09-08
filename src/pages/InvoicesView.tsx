@@ -31,6 +31,8 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
       subtotal: sale.subtotal,
       discount: sale.discount,
       clientName: customer?.name,
+      clientPhone: customer?.phone,
+      clientAddress: customer?.address,
       staffName: staff?.email,
       paymentMethod: sale.paymentMethod?.toUpperCase(),
       checkNumber: sale.checkNumber,

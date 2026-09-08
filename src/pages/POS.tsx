@@ -177,6 +177,7 @@ export default function POS() {
             ? customers.find(c => c.id === selectedCustomerId)?.name 
             : (customerName || t.walkingCustomer),
           clientPhone: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.phone : undefined,
+          clientAddress: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.address : undefined,
           staffName: user?.email || user?.username || '',
           paymentMethod: paymentMethod.toUpperCase(),
           checkNumber: paymentMethod === 'check' ? checkNumber : undefined,
@@ -277,6 +278,7 @@ export default function POS() {
       discount: discountVal,
       clientName: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.name : customerName,
       clientPhone: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.phone : undefined,
+      clientAddress: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.address : undefined,
       staffName: user?.name || user?.username || 'Staff'
     };
     generateInvoicePDF(data, language, settings, true);
