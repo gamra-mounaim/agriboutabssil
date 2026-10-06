@@ -694,14 +694,7 @@ export default function CustomerList() {
                                          console.error("Print error:", e);
                                        }
                                      } else {
-                                       generateTransactionReceiptPDF({
-                                         customerName: selectedCustomer.name,
-                                         type: item.type,
-                                         amount: item.amount,
-                                         date: item.date,
-                                         description: item.description,
-                                         saleId: item.id
-                                       }, language, settings);
+                                       generateTransactionReceiptPDF({ customerName: selectedCustomer.name, type: item.type, amount: item.amount, date: item.date, description: item.description, saleId: item.id, paymentMethod: (item as any).payment_method, checkNumber: (item as any).check_number, checkOwner: (item as any).check_owner, checkDueDate: (item as any).check_due_date }, language, settings);
                                      }
                                    }}
                                    className="p-2 hover:bg-white rounded-lg transition-colors group/print border border-transparent hover:border-border-subtle"
@@ -1103,6 +1096,8 @@ export default function CustomerList() {
 
 
 // --- View: History ---
+
+
 
 
 

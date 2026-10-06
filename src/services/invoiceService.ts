@@ -1,4 +1,4 @@
-import { jsPDF } from 'jspdf';
+﻿import { jsPDF } from 'jspdf';
 
 export const formatNumber = (val: any) => {
   if (val === undefined || val === null) return '0';
@@ -737,11 +737,15 @@ export const generateHistoryReportPDF = (data: HistoryReportData, language: stri
 
 interface TransactionReceiptData {
   customerName: string;
-  type: 'DEBT' | 'PAYMENT';
+  type: 'DEBT' | 'PAYMENT' | 'CHARGE' | 'SALE';
   amount: number;
   date: string;
   description: string;
   saleId?: string;
+  paymentMethod?: string;
+  checkNumber?: string;
+  checkOwner?: string;
+  checkDueDate?: string;
 }
 
 export const generateTransactionReceiptPDF = (data: TransactionReceiptData, language: string = 'en', settings?: any) => {
@@ -858,13 +862,25 @@ export const generateTransactionReceiptPDF = (data: TransactionReceiptData, lang
   currentY += 30;
 
   // Description and Amount using AutoTable for a clean look
-  const tableHead = isAr ? [['المبلغ', 'التفاصيل']] : [['Désignation', 'Montant']];
-  const tableBody = isAr ? [
-    [`${data.amount.toFixed(2)} DH`, data.description]
-  ] : [
-    [data.description, `${data.amount.toFixed(2)} DH`]
-  ];
+  let displayDescription = data.description;
+  if (displayDescription === 'Payment Received') {
+    if (isAr) {
+      displayDescription = data.paymentMethod === 'CHECK' ? 'دفع بواسطة شيك' : 'دفع نقدي';
+      if (data.checkNumber) displayDescription += ` رقم ` + data.checkNumber;
+      if (data.checkOwner) displayDescription += ` - ` + data.checkOwner;
+    } else {
+      displayDescription = data.paymentMethod === 'CHECK' ? 'Paiement par chèque' : 'Paiement en espèces';
+      if (data.checkNumber) displayDescription += ` N° ` + data.checkNumber;
+      if (data.checkOwner) displayDescription += ` - ` + data.checkOwner;
+    }
+  }
 
+  const tableHead = isAr ? [['البيان', 'المبلغ']] : [['Désignation', 'Montant']];
+  const tableBody = isAr ? [
+    [`${data.amount.toFixed(2)} DH`, displayDescription]
+  ] : [
+    [displayDescription, `${data.amount.toFixed(2)} DH`]
+  ];
   autoTable(doc, {
     startY: currentY,
     head: tableHead,
@@ -1047,3 +1063,6 @@ export const generateDamagesReportPDF = (data: any[], totalValue: number, langua
 
   doc.save(`Damaged_Goods_Report_${Date.now()}.pdf`);
 };
+
+
+
