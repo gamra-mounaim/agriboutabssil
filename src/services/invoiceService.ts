@@ -757,72 +757,73 @@ export const generateTransactionReceiptPDF = (data: TransactionReceiptData, lang
     tagline: SHOP_DETAILS.tagline || 'SOLUTIONS AGRICOLES & INDUSTRIELLES'
   };
 
-  const doc = new jsPDF('p', 'mm', 'a4');
+  // Use A5 format for a more professional receipt look
+  const doc = new jsPDF('p', 'mm', 'a5');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
+  const margin = 15;
 
   // Header background
   doc.setFillColor(248, 250, 252);
-  doc.rect(0, 0, pageWidth, 28, 'F');
+  doc.rect(0, 0, pageWidth, 24, 'F');
 
   // Brand Name & Logo
   try {
     if (SHOP_DETAILS.logo) {
       try {
-        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 5, 10, 10);
+        doc.addImage(SHOP_DETAILS.logo, 'PNG', margin, 5, 8, 8);
       } catch (err) {
-        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 5, 10, 10);
+        doc.addImage(SHOP_DETAILS.logo, 'JPEG', margin, 5, 8, 8);
       }
     }
   } catch (e) {
     console.error('Error adding logo to PDF:', e);
   }
 
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.text(shop.name, margin + 12, 9);
+  doc.text(shop.name, margin + 10, 9);
   
-  doc.setFontSize(6);
+  doc.setFontSize(5);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(shop.tagline, margin + 12, 13);
+  doc.text(shop.tagline, margin + 10, 12);
 
   // Shop Info (Right)
   const shopX = pageWidth - margin;
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   doc.text(shop.address, shopX, 8, { align: 'right' });
-  doc.text(`Tél: ${shop.phone}`, shopX, 12, { align: 'right' });
+  doc.text(`Tél: ${shop.phone}`, shopX, 11, { align: 'right' });
   
   // Document Title
   const isReturn = data.description.toLowerCase().includes('retour');
   let title = data.type === 'PAYMENT' ? (isReturn ? 'BON DE RETOUR' : 'REÇU DE PAIEMENT') : 'BON DE DÉBIT';
   if (isAr) {
-     title = data.type === 'PAYMENT' ? (isReturn ? 'وصل إرجاع' : 'وصل سداد') : 'وصل دين';
+     title = data.type === 'PAYMENT' ? (isReturn ? 'وصل إرجاع' : 'وصل أداء') : 'وصل دين';
   }
 
-  let currentY = 45;
+  let currentY = 35;
   
   if (isAr) {
-     const titleImg = renderTextToImg(title, { size: 16, bold: true, color: '#0f172a' });
+     const titleImg = renderTextToImg(title, { size: 14, bold: true, color: '#0f172a' });
      const imgProps = (doc as any).getImageProperties(titleImg);
-     const titleW = 50;
+     const titleW = 40;
      const titleH = imgProps.height * titleW / imgProps.width;
      doc.addImage(titleImg, 'PNG', pageWidth/2 - titleW/2, currentY, titleW, titleH);
-     currentY += titleH + 10;
+     currentY += titleH + 8;
   } else {
-     doc.setFontSize(16);
+     doc.setFontSize(14);
      doc.setTextColor(15, 23, 42);
      doc.setFont('helvetica', 'bold');
      doc.text(title, pageWidth / 2, currentY, { align: 'center' });
-     currentY += 15;
+     currentY += 12;
   }
 
   // Ref & Date
   const refText = `RÉF: #${data.saleId?.slice(0, 8).toUpperCase() || Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(71, 85, 105);
   doc.text(refText, margin, currentY);
@@ -831,35 +832,35 @@ export const generateTransactionReceiptPDF = (data: TransactionReceiptData, lang
   doc.setFont('helvetica', 'normal');
   doc.text(`${isAr ? 'التاريخ' : 'Date'}: ${dateStr}`, pageWidth - margin, currentY, { align: 'right' });
 
-  currentY += 10;
+  currentY += 8;
 
   // Customer Info Box
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 20, 2, 2, 'FD');
+  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 16, 2, 2, 'FD');
   
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   if (isAr) {
-    const custLabelImg = renderTextToImg('العميل:', { size: 8, color: '#94a3b8' });
-    doc.addImage(custLabelImg, 'PNG', pageWidth - margin - 15, currentY + 4, 8, 3);
+    const custLabelImg = renderTextToImg('العميل:', { size: 7, color: '#94a3b8' });
+    doc.addImage(custLabelImg, 'PNG', pageWidth - margin - 15, currentY + 3, 6, 2.5);
   } else {
-    doc.text('CLIENT:', margin + 5, currentY + 7);
+    doc.text('CLIENT:', margin + 4, currentY + 5);
   }
 
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   if (isAr || containsArabic(data.customerName)) {
-    const custNameImg = renderTextToImg(data.customerName, { size: 12, bold: true, color: '#1e293b' });
+    const custNameImg = renderTextToImg(data.customerName, { size: 10, bold: true, color: '#1e293b' });
     const props = (doc as any).getImageProperties(custNameImg);
-    const w = Math.min(80, props.width * 5 / props.height);
-    doc.addImage(custNameImg, 'PNG', isAr ? pageWidth - margin - 5 - w : margin + 5, currentY + 9, w, 5);
+    const w = Math.min(70, props.width * 4 / props.height);
+    doc.addImage(custNameImg, 'PNG', isAr ? pageWidth - margin - 4 - w : margin + 4, currentY + 7, w, 4);
   } else {
-    doc.text(data.customerName, margin + 5, currentY + 14);
+    doc.text(data.customerName, margin + 4, currentY + 11);
   }
 
-  currentY += 30;
+  currentY += 24;
 
   // Description and Amount using AutoTable for a clean look
   let displayDescription = data.description;
@@ -881,48 +882,67 @@ export const generateTransactionReceiptPDF = (data: TransactionReceiptData, lang
   ] : [
     [displayDescription, `${data.amount.toFixed(2)} DH`]
   ];
+
   autoTable(doc, {
     startY: currentY,
     head: tableHead,
     body: tableBody,
     theme: 'grid',
     headStyles: { fillColor: [71, 85, 105], textColor: 255 },
-    styles: { fontSize: 10, cellPadding: 8 },
+    styles: { fontSize: 9, cellPadding: 6 },
     columnStyles: { 
-      0: isAr ? { halign: 'center', cellWidth: 40 } : { halign: 'left' },
-      1: isAr ? { halign: 'right' } : { halign: 'right', cellWidth: 40 }
+      0: isAr ? { halign: 'center', cellWidth: 35 } : { halign: 'left' },
+      1: isAr ? { halign: 'right' } : { halign: 'right', cellWidth: 35 }
     },
     didParseCell: (data) => prepareArabicCell(data),
     didDrawCell: (data) => drawArabicCell(doc, data)
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 15;
+  currentY = (doc as any).lastAutoTable.finalY + 12;
 
   // Big Amount Box
-  const boxW = 70;
+  const boxW = 60;
   const boxX = pageWidth - margin - boxW;
   doc.setDrawColor(241, 245, 249);
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(boxX, currentY, boxW, 20, 2, 2, 'FD');
+  doc.roundedRect(boxX, currentY, boxW, 16, 2, 2, 'FD');
   
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.setFont('helvetica', 'normal');
-  doc.text(isAr ? 'الإجمالي:' : 'MONTANT TOTAL:', boxX + 5, currentY + 8);
+  doc.text(isAr ? 'المبلغ الإجمالي:' : 'MONTANT TOTAL:', boxX + 4, currentY + 6);
   
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   if (data.type === 'PAYMENT') doc.setTextColor(22, 163, 74);
   else doc.setTextColor(220, 38, 38);
   
-  doc.text(`${data.amount.toFixed(2)} DH`, boxX + boxW - 5, currentY + 14, { align: 'right' });
+  doc.text(`${data.amount.toFixed(2)} DH`, boxX + boxW - 4, currentY + 12, { align: 'right' });
+
+  // Add Cachet & Signature section
+  currentY += 28;
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  if (isAr) {
+    const sigImg = renderTextToImg('الختم والتوقيع', { size: 8, bold: true, color: '#1e293b' });
+    doc.addImage(sigImg, 'PNG', margin + 10, currentY, 15, 4);
+  } else {
+    doc.text('Cachet & Signature', margin + 10, currentY);
+  }
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineDashPattern([1, 1], 0);
+  // Drawing a dotted line for signature
+  doc.line(margin + 5, currentY + 15, margin + 45, currentY + 15);
+  doc.setLineDashPattern([], 0);
 
   // Footer
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.setFont('helvetica', 'normal');
-  const footerText = isAr ? 'شكرا لتعاملكم معنا' : 'Merci de votre confiance';
-  doc.text(footerText, pageWidth / 2, pageHeight - 15, { align: 'center' });
+  const footerText = isAr ? 'شكرا لثقتكم بنا' : 'Merci de votre confiance';
+  doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' });
 
   const filename = `${isReturn ? 'Retour' : 'Recu'}_${new Date().getTime()}.pdf`;
   doc.save(filename);
