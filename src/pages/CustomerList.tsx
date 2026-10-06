@@ -299,6 +299,23 @@ export default function CustomerList() {
     (c.phone && c.phone.includes(searchCustomer))
   ).sort((a, b) => b.debt - a.debt);
 
+  const displayHistory = useMemo(() => {
+    if (!customerHistory) return [];
+    return customerHistory.filter(item => {
+      if (item.type === 'DEBT') {
+        const match = item.description.match(/facture #(\d+)/i);
+        if (match) {
+          const invoiceNum = match[1];
+          const matchingSale = customerHistory.find(h => h.type === 'SALE' && h.description.includes('Sale #' + invoiceNum));
+          if (matchingSale && matchingSale.amount === item.amount) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  }, [customerHistory]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -591,14 +608,14 @@ export default function CustomerList() {
                       
                       {loadingHistory ? (
                         <div className="py-12 text-center text-text-secondary text-xs font-mono animate-pulse tracking-widest">LOADING_TRANSACTIONS...</div>
-                      ) : (customerHistory?.length || 0) === 0 ? (
+                      ) : (displayHistory?.length || 0) === 0 ? (
                         <div className="py-20 text-center text-text-secondary text-sm border-2 border-dashed border-border-subtle rounded-3xl opacity-50 flex flex-col items-center gap-4">
                           <Archive className="w-8 h-8 opacity-40" />
                           {t.historyEmpty}
                         </div>
                       ) : (
                         <div className="space-y-3 pr-1 overflow-y-auto max-h-[350px] no-scrollbar">
-                           {(customerHistory || []).map((item) => (
+                           {(displayHistory || []).map((item) => (
                              <div key={item.id} className="group bg-bg-base/40 p-5 rounded-2xl flex justify-between items-center text-sm border border-border-subtle/40 hover:bg-white hover:border-accent/20 transition-all shadow-sm">
                                <div className={cn("flex flex-col gap-0.5", language === 'ar' && "text-right")}>
                                  <div className="text-[11px] font-black uppercase tracking-widest text-text-secondary opacity-60 flex items-center gap-2">
@@ -703,7 +720,7 @@ export default function CustomerList() {
 
               <div className="p-6 bg-[#fafafa] border-t border-border-subtle flex flex-col gap-4">
                 <div className="flex gap-3 mb-3">
-                  <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: customerHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
+                  <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: displayHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
                     <Download className="w-3.5 h-3.5 text-accent" /> {t.generateStatement}
                   </button>
                   <button onClick={() => openReturnModal(selectedCustomer)} className="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
@@ -1086,3 +1103,6 @@ export default function CustomerList() {
 
 
 // --- View: History ---
+
+
+
