@@ -544,12 +544,19 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden bg-bg-base text-text-main">
+      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden bg-slate-950 text-text-main">
+        {/* Modern Equipment Showcase Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter blur-[1px] brightness-[0.75] contrast-[1.05]"
+          style={{ backgroundImage: `url('/agri-bg-showcase.jpg')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-900/50 backdrop-blur-[2px]" />
+
         {/* Modern Ambient Background Glows */}
-        <div className="absolute top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-pulse-slow"></div>
-        <div className="absolute bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60"></div>
+        <div className="absolute top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-pulse-slow pointer-events-none"></div>
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 pointer-events-none"></div>
         
-        <div className="w-full max-w-md space-y-8 bg-card/60 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl relative z-10 group">
+        <div className="w-full max-w-md space-y-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] relative z-10 group">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-accent opacity-70 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2.5rem]" />
           
           <div className="text-center space-y-4">
@@ -610,6 +617,11 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden relative">
+      {/* Subtle Professional Ambient Background Watermark */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.05] dark:opacity-[0.07] pointer-events-none filter contrast-125 z-0"
+        style={{ backgroundImage: `url('/agri-bg-ambient.jpg')` }}
+      />
       {/* Ambient Glassmorphism Background Orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-60 animate-pulse-slow pointer-events-none z-0" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[120px] opacity-60 pointer-events-none z-0" />
