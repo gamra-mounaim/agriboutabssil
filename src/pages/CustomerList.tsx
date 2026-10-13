@@ -20,8 +20,15 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsToolti
 const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function CustomerList() {
-  const { products, customers, sales, payments, checks, settings, fetchData: onRefresh, setMessage } = useStore();
+  const { products, customers, sales, payments, checks, settings, appUsers, fetchData: onRefresh, setMessage } = useStore();
   const { language, user } = useAuthStore();
+
+  const profile = appUsers?.find((u: any) => u.id === (user?.id || (user as any)?.uid));
+  const canViewProfits = profile?.role === 'admin' || profile?.role === 'manager' || profile?.permissions?.profits !== false;
+
+  useEffect(() => {
+    onRefresh();
+  }, []);
 
   const t = translations[language];
   const [activeTab, setActiveTab] = useState<'list' | 'checks'>('list');
@@ -32,6 +39,7 @@ export default function CustomerList() {
   const [dueDate, setDueDate] = useState('');
   const [searchCustomer, setSearchCustomer] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const currentSelectedCustomer = customers.find(c => c.id === selectedCustomer?.id) || selectedCustomer;
   const [customerHistory, setCustomerHistory] = useState<TransactionRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [adjustModal, setAdjustModal] = useState<{ type: 'pay' | 'charge', customer: Customer } | null>(null);
@@ -418,7 +426,7 @@ export default function CustomerList() {
                    </div>
                 </div>
                 
-                <div className={cn("p-6 rounded-[1.5rem] mb-6 relative overflow-hidden", c.debt > 0 ? "bg-red-50" : "bg-emerald-50")}>
+                <div className={cn("p-6 rounded-[1.5rem] mb-4 relative overflow-hidden", c.debt > 0 ? "bg-red-50" : "bg-emerald-50")}>
                    <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl -translate-y-8 translate-x-8", c.debt > 0 ? "bg-danger/10" : "bg-success/10")} />
                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1 opacity-60">{t.debt}</p>
                    <div className="flex items-baseline gap-1 relative z-10">
@@ -434,6 +442,41 @@ export default function CustomerList() {
                      </div>
                    )}
                 </div>
+
+                {/* Cumulative Profit Badge */}
+                {canViewProfits && (
+                  <div className="p-4 rounded-[1.25rem] mb-5 bg-gradient-to-br from-emerald-50/90 via-emerald-50/50 to-teal-50/40 border border-emerald-200/70 relative overflow-hidden transition-all group-hover:border-emerald-300/90 group-hover:shadow-sm">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl -translate-y-8 translate-x-8 pointer-events-none" />
+                    
+                    <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 shrink-0 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-600">
+                          <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-900/80 truncate">
+                          {t.totalCustomerProfit}
+                        </span>
+                      </div>
+                      <span className="text-[8px] font-black uppercase tracking-wider text-emerald-700/70 bg-emerald-100/70 px-2 py-0.5 rounded-full shrink-0">
+                        {t.profitFromFirstTx}
+                      </span>
+                    </div>
+
+                    <div className={cn("flex items-baseline justify-between pt-2 border-t border-emerald-200/50 relative z-10", language === 'ar' && "flex-row-reverse")}>
+                      <div className="flex items-baseline gap-1">
+                        <span className={cn("text-2xl font-black tracking-tight font-mono", (c.totalProfit || 0) >= 0 ? "text-emerald-600" : "text-amber-600")}>
+                          {(c.totalProfit || 0) > 0 ? `+${formatNumber(c.totalProfit)}` : formatNumber(c.totalProfit || 0)}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase">{t.currency}</span>
+                      </div>
+                      {(c.totalSpent || 0) > 0 && (
+                        <span className="text-[10px] font-bold text-text-secondary/70">
+                          {t.sales}: <span className="font-mono text-text-main font-black">{formatNumber(c.totalSpent)}</span> {t.currency}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <button onClick={() => { setAdjustModal({ type: 'pay', customer: c }); setAdjustAmount(''); }} className="bg-accent text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10 active:scale-95 transition-all hover:bg-accent/90">
@@ -451,7 +494,7 @@ export default function CustomerList() {
                     }} 
                     className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
                   >
-                    <span>{language === 'ar' ? 'تصفية كامل الدين' : 'Clear Full Debt'}</span>
+                    <span>{t.clearFullDebt}</span>
                     <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
                     <CheckCircle className="w-4 h-4" />
                   </button>
@@ -555,7 +598,7 @@ export default function CustomerList() {
                   </form>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={cn("grid grid-cols-1 gap-4", canViewProfits ? "md:grid-cols-4" : "md:grid-cols-3")}>
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{t.totalAccrued}</div>
                         <div className="text-xl font-black font-mono text-text-main">
@@ -571,9 +614,23 @@ export default function CustomerList() {
                       <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
                         <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">{t.remainingBalance}</div>
                         <div className={cn("text-xl font-black font-mono", selectedCustomer.debt > 0 ? "text-danger" : "text-success")}>
-                          {formatNumber(selectedCustomer.debt)} {t.currency}
+                          {formatNumber(currentSelectedCustomer?.debt || selectedCustomer.debt)} {t.currency}
                         </div>
                       </div>
+                      {canViewProfits && (
+                        <div className={cn("p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200/70 relative overflow-hidden", language === 'ar' && "text-right")}>
+                          <div className="text-[10px] text-emerald-800 font-black uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                            {t.totalCustomerProfit}
+                          </div>
+                          <div className="text-xl font-black font-mono text-emerald-600">
+                            {(currentSelectedCustomer?.totalProfit || 0) > 0 ? `+${formatNumber(currentSelectedCustomer?.totalProfit)}` : formatNumber(currentSelectedCustomer?.totalProfit || 0)} {t.currency}
+                          </div>
+                          <div className="text-[9px] font-semibold text-emerald-700/60 mt-1">
+                            {t.profitFromFirstTx}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -731,7 +788,7 @@ export default function CustomerList() {
                     }} 
                     className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
                   >
-                    <span>{language === 'ar' ? 'تصفية كامل الدين' : 'Clear Full Debt'}</span>
+                    <span>{t.clearFullDebt}</span>
                     <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
                     <CheckCircle className="w-4 h-4" />
                   </button>

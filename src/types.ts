@@ -75,6 +75,8 @@ export interface Customer {
   address?: string;
   due_date?: string;
   dueDate?: string;
+  totalSpent?: number;
+  totalProfit?: number;
 }
 
 export interface Supplier {

@@ -1084,13 +1084,13 @@ async function startServer() {
   // --- Customers API ---
   app.get("/api/customers", async (req, res) => {
     if (!req.query.page) {
-      const customers = await db.prepare('SELECT c.*, COALESCE((SELECT SUM(total) FROM sales WHERE customer_id = c.id), 0) as total_spent FROM customers c ORDER BY total_spent DESC, name ASC').all();
+      const customers = await db.prepare(`SELECT c.*, COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) as total_spent, COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) as total_profit FROM customers c ORDER BY total_spent DESC, name ASC`).all();
       return res.json(toCamel(customers));
     }
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const total = (await db.prepare('SELECT COUNT(*) as count FROM customers').get() as any).count;
-    const customers = await db.prepare('SELECT c.*, COALESCE((SELECT SUM(total) FROM sales WHERE customer_id = c.id), 0) as total_spent FROM customers c ORDER BY total_spent DESC, name ASC LIMIT ? OFFSET ?').all(limit, (page - 1) * limit);
+    const customers = await db.prepare(`SELECT c.*, COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) as total_spent, COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) as total_profit FROM customers c ORDER BY total_spent DESC, name ASC LIMIT ? OFFSET ?`).all(limit, (page - 1) * limit);
     res.json({ data: toCamel(customers), total, page, limit });
   });
 
