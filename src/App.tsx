@@ -544,13 +544,14 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden bg-slate-950 text-text-main">
-        {/* Modern Equipment Showcase Background Image */}
+      <div className="h-screen w-screen flex flex-col items-center justify-center relative overflow-hidden bg-slate-900 text-text-main">
+        {/* Crystal Clear Farm & Solar Pumping Background Image */}
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter blur-[1px] brightness-[0.75] contrast-[1.05]"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat filter brightness-[0.92] contrast-[1.08] transition-all duration-700"
           style={{ backgroundImage: `url('/agri-bg-showcase.jpg')` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-900/50 backdrop-blur-[2px]" />
+        {/* Soft elegant vignette so products and farm remain fully visible */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/45 pointer-events-none" />
 
         {/* Modern Ambient Background Glows */}
         <div className="absolute top-[-15%] left-[-10%] w-[50vw] h-[50vw] bg-accent/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-pulse-slow pointer-events-none"></div>
@@ -617,9 +618,9 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden relative">
-      {/* Subtle Professional Ambient Background Watermark */}
+      {/* Crisp Professional Farm & Equipment Background Watermark */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.05] dark:opacity-[0.07] pointer-events-none filter contrast-125 z-0"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.16] dark:opacity-[0.20] pointer-events-none filter brightness-95 contrast-110 z-0"
         style={{ backgroundImage: `url('/agri-bg-ambient.jpg')` }}
       />
       {/* Ambient Glassmorphism Background Orbs */}
