@@ -168,6 +168,51 @@ export default function App() {
     return false;
   };
 
+  const [inventoryTarget, setInventoryTarget] = useState<{
+    searchQuery?: string;
+    productId?: string;
+    autoOpenAdjustment?: boolean;
+    autoOpenEdit?: boolean;
+  } | null>(null);
+
+  const handleNotificationClick = (note: any) => {
+    if (!note.isRead || note.isRead === 0) {
+      markAsRead(note.id);
+    }
+    setShowNotifications(false);
+
+    if (note.type === 'STOCK') {
+      const rawName = note.message.includes(':') 
+        ? note.message.split(':')[0].trim() 
+        : note.message.trim();
+
+      const matchedProduct = products.find(p => 
+        p.name.trim().toLowerCase() === rawName.toLowerCase()
+      ) || products.find(p => 
+        p.name.toLowerCase().includes(rawName.toLowerCase()) || 
+        rawName.toLowerCase().includes(p.name.toLowerCase())
+      );
+
+      if (canAccess('inventory')) {
+        setInventoryTarget({
+          searchQuery: matchedProduct ? matchedProduct.name : rawName,
+          productId: matchedProduct?.id,
+          autoOpenAdjustment: true
+        });
+        setView('inventory');
+      } else {
+        setMessage({
+          text: language === 'ar' ? "ليس لديك صلاحية الوصول للمخزون" : language === 'fr' ? "Accès à l'inventaire non autorisé" : "Access to inventory not authorized",
+          type: 'error'
+        });
+      }
+    } else if (note.type === 'DEBT') {
+      if (canAccess('customers')) {
+        setView('customers');
+      }
+    }
+  };
+
   useEffect(() => {
     if ((profile?.role === 'admin' || profile?.role === 'manager') && view === 'pos' && canAccess('financials')) {
        setView('financials');
@@ -720,14 +765,15 @@ export default function App() {
                         notifications.map(note => (
                           <div 
                             key={note.id} 
+                            onClick={() => handleNotificationClick(note)}
                             className={cn(
-                               "p-4 transition-colors group border-b border-border-subtle last:border-0",
-                               (!note.isRead || note.isRead === 0) ? "bg-accent/5 hover:bg-accent/10" : "bg-transparent hover:bg-bg-base/50"
+                               "p-4 transition-all group border-b border-border-subtle last:border-0 cursor-pointer select-none",
+                               (!note.isRead || note.isRead === 0) ? "bg-accent/5 hover:bg-accent/15" : "bg-transparent hover:bg-bg-base/70"
                             )}
                             dir={language === 'ar' ? 'rtl' : 'ltr'}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={cn("p-2 rounded-xl mt-1", note.type === 'STOCK' ? "bg-orange-50 text-orange-500" : "bg-blue-50 text-blue-500")}>
+                              <div className={cn("p-2 rounded-xl mt-1 transition-transform group-hover:scale-110", note.type === 'STOCK' ? "bg-orange-50 text-orange-500" : "bg-blue-50 text-blue-500")}>
                                 {note.type === 'STOCK' ? <Package className="w-4 h-4" /> : <Users className="w-4 h-4" />}
                               </div>
                               <div className={cn("flex-1 min-w-0", language === 'ar' ? "text-right" : "text-left")}>
@@ -735,7 +781,10 @@ export default function App() {
                                   <p className={cn("text-[12px] line-clamp-1", (!note.isRead || note.isRead === 0) ? "font-black text-text-main" : "font-semibold text-text-main/80")}>
                                     {note.type === 'STOCK' && language === 'ar' ? 'تنبيه مخزون منخفض' : note.type === 'STOCK' && language === 'fr' ? 'Alerte Stock Faible' : note.type === 'STOCK' ? 'Low Stock Alert' : note.title}
                                   </p>
-                                  {(!note.isRead || note.isRead === 0) && <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-1.5" />}
+                                  <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                                    {(!note.isRead || note.isRead === 0) && <span className="w-2 h-2 rounded-full bg-accent" />}
+                                    <ArrowRight className={cn("w-3.5 h-3.5 text-accent opacity-0 group-hover:opacity-100 transition-opacity", language === 'ar' && "rotate-180")} />
+                                  </div>
                                 </div>
                                 <p className={cn("text-[11px] line-clamp-2 mt-1 leading-relaxed", (!note.isRead || note.isRead === 0) ? "text-text-main/90 font-medium" : "text-text-secondary")}>
                                     {note.type === 'STOCK' && note.message.includes('Current quantity is') ? (
@@ -746,15 +795,23 @@ export default function App() {
                                         </>
                                     ) : note.message}
                                 </p>
-                                {(!note.isRead || note.isRead === 0) && (
-                                  <button 
-                                    onClick={() => markAsRead(note.id)}
-                                    className="mt-2.5 text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 px-2 py-1 rounded-md hover:bg-accent hover:text-white"
-                                  >
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    {t.markAsRead}
-                                  </button>
-                                )}
+                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                  <span className="text-[9px] font-bold text-accent/80 group-hover:text-accent flex items-center gap-1 uppercase tracking-wider">
+                                    {language === 'ar' ? 'انقر لتعديل المخزون' : language === 'fr' ? 'Cliquer pour ajuster le stock' : 'Click to adjust stock'}
+                                  </span>
+                                  {(!note.isRead || note.isRead === 0) && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        markAsRead(note.id);
+                                      }}
+                                      className="text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 px-2 py-1 rounded-md hover:bg-accent hover:text-white"
+                                    >
+                                      <CheckCircle className="w-3.5 h-3.5" />
+                                      {t.markAsRead}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -816,7 +873,13 @@ export default function App() {
                     </span>
                   </div>
                 }>
-                  {view === 'inventory' && <Inventory permissions={userPermissions} />}
+                  {view === 'inventory' && (
+                    <Inventory 
+                      permissions={userPermissions} 
+                      initialTarget={inventoryTarget}
+                      onClearTarget={() => setInventoryTarget(null)}
+                    />
+                  )}
                   {view === 'pos' && <POS />}
                   {view === 'customers' && <CustomerList />}
                   {view === 'suppliers' && <SupplierList permissions={userPermissions} />}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Archive, ArrowRightLeft, FolderOpen, Plus, Edit2, Trash2, 
@@ -82,7 +82,18 @@ const getTypeBadgeClass = (type: string) => {
   return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:border-slate-800";
 };
 
-export default function Inventory({ permissions }: { permissions: any }) {
+interface InventoryProps {
+  permissions: any;
+  initialTarget?: {
+    searchQuery?: string;
+    productId?: string;
+    autoOpenAdjustment?: boolean;
+    autoOpenEdit?: boolean;
+  } | null;
+  onClearTarget?: () => void;
+}
+
+export default function Inventory({ permissions, initialTarget, onClearTarget }: InventoryProps) {
   const { products, categories, suppliers, fetchData: onRefresh, setMessage } = useStore();
   const { language, user } = useAuthStore();
   const t = translations[language];
@@ -141,6 +152,46 @@ export default function Inventory({ permissions }: { permissions: any }) {
     return products.filter(p => p.qty <= (p.minStock ?? 5));
   }, [products]);
   const showLowStockAlert = lowStockProductsAlert.length > 0 && !hasDismissedLowStock;
+
+  // --- External Target Focus (from Notifications) ---
+  const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialTarget) return;
+
+    if (initialTarget.searchQuery) {
+      setSearchQuery(initialTarget.searchQuery);
+      setFilterCategoryId('');
+      setFilterStockStatus('all');
+      setShowGrouped(false);
+    }
+
+    if (initialTarget.productId) {
+      if (products.length === 0) return; // Wait until products are loaded
+
+      setHighlightedProductId(initialTarget.productId);
+      const timer = setTimeout(() => {
+        setHighlightedProductId(null);
+      }, 6000);
+
+      const prod = products.find(p => p.id === initialTarget.productId);
+      if (prod) {
+        if (initialTarget.autoOpenAdjustment && permissions.editStock) {
+          setAdjProduct(prod);
+          setAdjCostPrice(prod.costPrice?.toString() || '0');
+          setAdjSupplierId(prod.supplierId || '');
+          setAdjType('in');
+          setShowAdjModal(true);
+        } else if (initialTarget.autoOpenEdit && permissions.editStock) {
+          startEditing(prod);
+        }
+      }
+      onClearTarget?.();
+      return () => clearTimeout(timer);
+    } else {
+      onClearTarget?.();
+    }
+  }, [initialTarget, products, permissions.editStock]);
 
   // ============================================================================
   // Handlers
@@ -747,10 +798,14 @@ export default function Inventory({ permissions }: { permissions: any }) {
                     const category = categories.find(c => c.id === p.categoryId);
                     return (
                       <tr key={p.id} className={cn(
-                        "border-b border-border-subtle last:border-0 transition-colors group text-[13px]",
-                        p.qty === 0 ? "bg-red-50/30 hover:bg-red-50/50 dark:bg-red-900/10 dark:hover:bg-red-900/20" : 
-                        p.qty <= (p.minStock ?? 5) ? "bg-orange-50/30 hover:bg-orange-50/50 dark:bg-orange-900/10 dark:hover:bg-orange-900/20" : 
-                        "hover:bg-bg-base/30"
+                        "border-b border-border-subtle last:border-0 transition-all duration-300 group text-[13px]",
+                        highlightedProductId === p.id 
+                          ? "ring-2 ring-accent bg-accent/20 dark:bg-accent/30 shadow-md font-bold" 
+                          : p.qty === 0 
+                            ? "bg-red-50/30 hover:bg-red-50/50 dark:bg-red-900/10 dark:hover:bg-red-900/20" 
+                            : p.qty <= (p.minStock ?? 5) 
+                              ? "bg-orange-50/30 hover:bg-orange-50/50 dark:bg-orange-900/10 dark:hover:bg-orange-900/20" 
+                              : "hover:bg-bg-base/30"
                       )}>
                         <td className="p-4">
                           <div className="font-semibold text-text-main">{p.name}</div>
@@ -839,7 +894,24 @@ export default function Inventory({ permissions }: { permissions: any }) {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="bg-card border border-border-subtle rounded-3xl p-8 w-full max-w-md shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-text-main tracking-tight">{t.stockAdjustment}</h3>
-                <button onClick={() => setShowAdjModal(false)} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
+                <div className="flex items-center gap-2">
+                  {permissions.editStock && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const p = adjProduct;
+                        setShowAdjModal(false);
+                        startEditing(p);
+                      }}
+                      className="text-[10px] font-bold text-accent bg-accent/10 hover:bg-accent hover:text-white px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+                      title={language === 'ar' ? "تعديل بيانات المنتج" : language === 'fr' ? "Modifier les détails du produit" : "Edit product details"}
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      <span>{language === 'ar' ? "تعديل المنتج" : language === 'fr' ? "Modifier" : "Edit"}</span>
+                    </button>
+                  )}
+                  <button onClick={() => setShowAdjModal(false)} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
+                </div>
               </div>
               <div className="mb-6 p-4 bg-bg-base/50 rounded-2xl border border-border-subtle">
                 <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1">{language === 'ar' ? 'المنتج' : 'Product'}</div>

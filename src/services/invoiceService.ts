@@ -1,4 +1,4 @@
-﻿import { jsPDF } from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 export const formatNumber = (val: any) => {
   if (val === undefined || val === null) return '0';
@@ -120,6 +120,7 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
   const margin = 15;
 
   // Header Left: Official Shop Logo & Coordinates
+  const shopName = settings?.shopName || settings?.shop_name || SHOP_DETAILS.name || 'AGRI BOUTABSSIL';
   const shopAddress = settings?.shopAddress || settings?.shop_address || SHOP_DETAILS.address || '15, Avenue des FAR, Quartier Industriel, Agadir, Maroc';
   const shopPhone = settings?.shopPhone || settings?.shop_phone || SHOP_DETAILS.phone || '05 28 84 12 34';
   const shopEmail = settings?.shopEmail || settings?.shop_email || SHOP_DETAILS.email || 'contact@agriboutabssil.ma';
