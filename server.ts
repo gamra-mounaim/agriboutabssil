@@ -1100,6 +1100,9 @@ async function startServer() {
     const id = uuidv4();
     try {
       await db.prepare('INSERT INTO customers (id, name, email, phone, address, debt, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, name, email || '', phone || '', address || '', debt || 0, finalDueDate);
+      if (debt && Number(debt) !== 0) {
+        await db.prepare("INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, 'DEBT', ?, 'Solde initial / Dette d ouverture')").run(uuidv4(), id, Number(debt));
+      }
       logActivity(req, 'CUSTOMER', 'create', `Client ajouté : ${name} (Dette initiale : ${debt || 0})`, 'system', 'System');
       res.json({ status: "success", id });
     } catch (error: any) {
@@ -1581,7 +1584,7 @@ async function startServer() {
           'customer' as party_role
         FROM sales s
         LEFT JOIN customers c ON s.customer_id = c.id
-        WHERE LOWER(s.payment_method) = 'check'
+        WHERE LOWER(s.payment_method) = 'check' OR (LOWER(s.payment_method) = 'mixte' AND COALESCE(s.check_amount, 0) > 0)
         
         UNION ALL
         
@@ -1635,6 +1638,31 @@ async function startServer() {
       else if (type === 'payment') tableName = 'payments';
       else if (type === 'supplier_payment') tableName = 'supplier_history';
       else return res.status(400).json({ status: "error", message: "Invalid check type" });
+
+      if (type === 'payment') {
+        const payment = await db.prepare('SELECT customer_id, amount, check_number, check_status FROM payments WHERE id = ?').get(id) as any;
+        if (payment && payment.customer_id && payment.check_status !== status) {
+          if (status === 'REJECTED' || status === 'BOUNCED') {
+            await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(payment.amount, payment.customer_id);
+            await db.prepare("INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, 'DEBT', ?, ?)").run(uuidv4(), payment.customer_id, payment.amount, `Chèque impayé / rejeté #${payment.check_number || ''}`);
+          } else if ((payment.check_status === 'REJECTED' || payment.check_status === 'BOUNCED') && (status === 'CASHED' || status === 'PENDING')) {
+            await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(payment.amount, payment.customer_id);
+            await db.prepare("INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, 'PAYMENT', ?, ?)").run(uuidv4(), payment.customer_id, payment.amount, `Chèque régularisé #${payment.check_number || ''}`);
+          }
+        }
+      } else if (type === 'sale') {
+        const sale = await db.prepare('SELECT customer_id, total, check_amount, check_number, check_status FROM sales WHERE id = ?').get(id) as any;
+        const checkVal = Number(sale?.check_amount !== undefined && sale?.check_amount !== null ? sale.check_amount : sale?.total || 0);
+        if (sale && sale.customer_id && sale.check_status !== status && checkVal > 0) {
+          if (status === 'REJECTED' || status === 'BOUNCED') {
+            await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(checkVal, sale.customer_id);
+            await db.prepare("INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, 'DEBT', ?, ?)").run(uuidv4(), sale.customer_id, checkVal, `Chèque de vente rejeté #${sale.check_number || ''}`);
+          } else if ((sale.check_status === 'REJECTED' || sale.check_status === 'BOUNCED') && (status === 'CASHED' || status === 'PENDING')) {
+            await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(checkVal, sale.customer_id);
+            await db.prepare("INSERT INTO customer_history (id, customer_id, type, amount, description) VALUES (?, ?, 'PAYMENT', ?, ?)").run(uuidv4(), sale.customer_id, checkVal, `Chèque de vente régularisé #${sale.check_number || ''}`);
+          }
+        }
+      }
 
       await db.prepare(`UPDATE ${tableName} SET check_status = $1 WHERE id = $2`).run(status, id);
       res.json({ status: "success", message: "Status updated" });
@@ -1764,18 +1792,37 @@ async function startServer() {
   });
 
   app.post("/api/sales", validate(schemas.saleSchema), async (req, res) => {
-    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner, checkDueDate, checkAmount } = req.body;
+    const { total, subtotal, discount, paymentMethod, customerId, customerName, staffId, items, checkNumber, checkOwner, checkDueDate, checkAmount, cashAmount, debtAmount } = req.body;
     const saleId = uuidv4();
 
     const transaction = async () => {
       // 0. Get next invoice number
       const nextInvoice = ((await db.prepare('SELECT COALESCE(MAX(invoice_number), 0) + 1 as next FROM sales').get()) as any).next;
 
+      let finalCash = 0;
+      let finalCheck = 0;
+      let addedDebt = 0;
+
+      if (paymentMethod === 'debt') {
+        addedDebt = total;
+      } else if (paymentMethod === 'cash') {
+        finalCash = total;
+      } else if (paymentMethod === 'check') {
+        finalCheck = checkAmount !== undefined && checkAmount !== null ? Number(checkAmount) : total;
+        if (finalCheck < total) {
+          addedDebt = total - finalCheck;
+        }
+      } else if (paymentMethod === 'mixte') {
+        finalCash = Number(cashAmount || 0);
+        finalCheck = Number(checkAmount || 0);
+        addedDebt = debtAmount !== undefined && debtAmount !== null ? Number(debtAmount) : Math.max(0, total - finalCash - finalCheck);
+      }
+
       // 1. Create Sale Record
       await db.prepare(`
-        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner, check_due_date, check_amount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner, checkDueDate || null, paymentMethod === 'check' && checkAmount !== undefined && checkAmount !== null ? checkAmount : total);
+        INSERT INTO sales (id, invoice_number, total, subtotal, discount, payment_method, customer_id, customer_name, staff_id, check_number, check_owner, check_due_date, check_amount, cash_amount, debt_amount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(saleId, nextInvoice, total, subtotal, discount, paymentMethod, customerId, customerName, staffId, checkNumber, checkOwner, checkDueDate || null, finalCheck, finalCash, addedDebt);
 
       // 2. Create Items & Update Stock
       for (const item of items) {
@@ -1819,32 +1866,28 @@ async function startServer() {
       }
 
       // 3. Update Customer Debt
-      let addedDebt = 0;
-      if (paymentMethod === 'debt') {
-        addedDebt = total;
-      } else if (paymentMethod === 'check' && req.body.checkAmount !== undefined && req.body.checkAmount !== null) {
-        if (req.body.checkAmount < total) {
-          addedDebt = total - req.body.checkAmount;
-        }
-      }
-
       if (addedDebt > 0 && customerId) {
         await db.prepare('UPDATE customers SET debt = debt + ? WHERE id = ?').run(addedDebt, customerId);
+        let debtDesc = `Facture #${nextInvoice} (Crédit)`;
+        if (paymentMethod === 'check') debtDesc = `Reste de la facture #${nextInvoice} (Chèque)`;
+        else if (paymentMethod === 'mixte') debtDesc = `Facture #${nextInvoice} (Paiement mixte - Reste crédit : ${addedDebt} DH)`;
         await db.prepare(`
           INSERT INTO customer_history (id, customer_id, type, amount, description)
           VALUES (?, ?, 'DEBT', ?, ?)
-        `).run(uuidv4(), customerId, addedDebt, paymentMethod === 'check' ? `Reste de la facture #${nextInvoice} (Chèque)` : `Facture #${nextInvoice} (Crédit)`);
+        `).run(uuidv4(), customerId, addedDebt, debtDesc);
       }
 
       logActivity(req, 'SALE', 'create', `Nouvelle vente - Facture N° ${nextInvoice} - Total : ${total}`, staffId, 'Staff');
     };
 
     try {
-      await transaction();
+      await db.transaction(async () => {
+        await transaction();
+      });
       // Get the created serial number to return it
       const serial = ((await db.prepare('SELECT invoice_number FROM sales WHERE id = ?').get(saleId)) as any).invoice_number;
       res.json({ status: "success", id: saleId, invoiceNumber: serial });
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
     }
   });

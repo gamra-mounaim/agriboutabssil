@@ -325,6 +325,54 @@ export async function initDb() {
     await db.prepare("ALTER TABLE customer_history ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
   } catch (e) {}
 
+  // Mixed payment columns
+  try {
+    await db.prepare("ALTER TABLE sales ADD COLUMN cash_amount REAL DEFAULT 0").run();
+    await db.prepare("ALTER TABLE sales ADD COLUMN debt_amount REAL DEFAULT 0").run();
+  } catch (e) {}
+
+  // Database Performance Indexes
+  try {
+    await db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales (customer_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_date ON sales (date);
+      CREATE INDEX IF NOT EXISTS idx_sales_invoice_number ON sales (invoice_number);
+      CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items (sale_id);
+      CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items (product_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_history_customer_id ON customer_history (customer_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_history_date ON customer_history (date);
+      CREATE INDEX IF NOT EXISTS idx_payments_customer_id ON payments (customer_id);
+      CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON stock_movements (product_id);
+      CREATE INDEX IF NOT EXISTS idx_products_barcode ON products (barcode);
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products (category_id);
+      CREATE INDEX IF NOT EXISTS idx_products_supplier ON products (supplier_id);
+      CREATE INDEX IF NOT EXISTS idx_supplier_history_supplier_id ON supplier_history (supplier_id);
+      CREATE INDEX IF NOT EXISTS idx_product_lots_product_id ON product_lots (product_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications (is_read);
+    `);
+  } catch (e) {
+    console.warn("Index creation notice:", e);
+  }
+
+  // Initial customer debt synchronization for customer_history
+  try {
+    const customersWithUnloggedDebt = await db.prepare(`
+      SELECT c.id, c.debt, c.created_at 
+      FROM customers c 
+      WHERE c.debt != 0 
+      AND NOT EXISTS (SELECT 1 FROM customer_history WHERE customer_id = c.id)
+      AND NOT EXISTS (SELECT 1 FROM sales WHERE customer_id = c.id)
+    `).all();
+    for (const cust of customersWithUnloggedDebt) {
+      await db.prepare(`
+        INSERT INTO customer_history (id, customer_id, type, amount, description, date)
+        VALUES ($1, $2, 'DEBT', $3, 'Solde initial / Dette d\'ouverture', $4)
+      `).run('init_' + cust.id, cust.id, cust.debt, cust.created_at || new Date());
+    }
+  } catch (e) {
+    console.warn("Initial debt history sync notice:", e);
+  }
+
   // Auto-sync lots for products without lots
   try {
     const unlotProducts = await db.prepare(`
@@ -386,10 +434,7 @@ export async function initDb() {
       'admin@pos.local',
       adminPerms
     );
-  } else {
-    // Force reset admin password to yassir2019
-    await db.prepare('UPDATE users SET password = $1, permissions = $2 WHERE id = $3').run(adminHash, adminPerms, admin.id);
-    console.log("Admin password has been reset to yassir2019");
+    console.log("Admin account initialized successfully");
   }
 
   // await seedData(); // Disabled to ensure database starts completely empty for production

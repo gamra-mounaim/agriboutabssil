@@ -22,6 +22,7 @@ export default function CheckListView() {
   const [checkTypeFilter, setCheckTypeFilter] = useState<
     "all" | "customer" | "supplier"
   >("all");
+  const [showOnlyUrgent, setShowOnlyUrgent] = useState(false);
   const t = translations[language] as any;
 
   const { fetchData } = useStore();
@@ -46,40 +47,57 @@ export default function CheckListView() {
     }
   };
 
-  const filteredChecks = checks.filter((c) => {
-    if (!searchTerm)
-      return checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      (c.checkNumber || "").toLowerCase().includes(searchLower) ||
-      (c.checkOwner || "").toLowerCase().includes(searchLower) ||
-      (c.partyName || "").toLowerCase().includes(searchLower);
-    const matchesType =
-      checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
-    return matchesSearch && matchesType;
-  }).sort((a, b) => {
-    const isAPending = (a as any).checkStatus === "PENDING" || !(a as any).checkStatus;
-    const isBPending = (b as any).checkStatus === "PENDING" || !(b as any).checkStatus;
-    if (isAPending && !isBPending) return -1;
-    if (!isAPending && isBPending) return 1;
-    return 0;
-  });
-
-  
   const checksDueSoon = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const twoDaysFromNow = new Date(today);
-    twoDaysFromNow.setDate(today.getDate() + 2);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(today.getDate() + 7);
 
-    return filteredChecks.filter(c => {
+    return checks.filter(c => {
       if ((c as any).checkStatus && (c as any).checkStatus !== 'PENDING') return false;
       if (!(c as any).checkDueDate) return false;
       const dueDate = new Date((c as any).checkDueDate);
       dueDate.setHours(0, 0, 0, 0);
-      return dueDate <= twoDaysFromNow;
+      return dueDate <= sevenDaysFromNow;
     });
-  }, [filteredChecks]);
+  }, [checks]);
+
+  const urgentTotal = useMemo(() => {
+    return checksDueSoon.reduce((acc, c) => acc + (c.total || 0), 0);
+  }, [checksDueSoon]);
+
+  const filteredChecks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    return checks.filter((c) => {
+      if (showOnlyUrgent) {
+        if ((c as any).checkStatus && (c as any).checkStatus !== 'PENDING') return false;
+        if (!(c as any).checkDueDate) return false;
+        const dueDate = new Date((c as any).checkDueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate > sevenDaysFromNow) return false;
+      }
+      if (!searchTerm)
+        return checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        (c.checkNumber || "").toLowerCase().includes(searchLower) ||
+        (c.checkOwner || "").toLowerCase().includes(searchLower) ||
+        (c.partyName || "").toLowerCase().includes(searchLower);
+      const matchesType =
+        checkTypeFilter === "all" || c.partyRole === checkTypeFilter;
+      return matchesSearch && matchesType;
+    }).sort((a, b) => {
+      const isAPending = (a as any).checkStatus === "PENDING" || !(a as any).checkStatus;
+      const isBPending = (b as any).checkStatus === "PENDING" || !(b as any).checkStatus;
+      if (isAPending && !isBPending) return -1;
+      if (!isAPending && isBPending) return 1;
+      return 0;
+    });
+  }, [checks, searchTerm, checkTypeFilter, showOnlyUrgent]);
 
   const handleDateChange = async (type: string, id: string, newDate: string) => {
     setUpdatingId(id);
@@ -184,6 +202,39 @@ export default function CheckListView() {
         </div>
       </div>
 
+
+      {checksDueSoon.length > 0 && (
+        <div className="bg-gradient-to-r from-red-500/10 via-amber-500/10 to-transparent border-2 border-red-500/30 rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-3.5">
+            <div className="bg-red-500 p-3 rounded-2xl text-white shadow-md shadow-red-500/30 animate-pulse">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm md:text-base font-black text-red-700 dark:text-red-400 uppercase tracking-wider">
+                {t.checksDueAlertTitle || "Rappel Échéances Chèques & Effets"}
+              </h4>
+              <p className="text-xs font-bold text-text-secondary mt-0.5">
+                {language === 'ar' 
+                  ? `يوجد ${checksDueSoon.length} شيك(ات) متأخرة أو تستحق خلال 7 أيام بمجموع ${formatNumber(urgentTotal)} ${t.currency}` 
+                  : `${checksDueSoon.length} chèque(s) en retard ou arrivant à échéance d'ici 7 jours (Total : ${formatNumber(urgentTotal)} ${t.currency})`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowOnlyUrgent(!showOnlyUrgent)}
+            className={cn(
+              "px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2",
+              showOnlyUrgent 
+                ? "bg-text-main text-white hover:bg-black"
+                : "bg-red-600 hover:bg-red-700 text-white shadow-red-600/30"
+            )}
+          >
+            {showOnlyUrgent 
+              ? (language === 'ar' ? 'عرض جميع الشيكات' : 'Afficher Tous les Chèques')
+              : (language === 'ar' ? `تصفية الشيكات العاجلة (${checksDueSoon.length})` : `Filtrer les Chèques Urgents (${checksDueSoon.length})`)}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white p-4 rounded-3xl border border-border-subtle shadow-sm flex items-center justify-between">
@@ -381,6 +432,36 @@ export default function CheckListView() {
                           : (language === 'ar' ? 'أدخل التاريخ' : 'Select date')}
                       </div>
                     )}
+                    {(() => {
+                      if (!(check as any).checkDueDate || (check as any).checkStatus === 'CASHED' || (check as any).checkStatus === 'REJECTED') return null;
+                      const today = new Date();
+                      today.setHours(0,0,0,0);
+                      const due = new Date((check as any).checkDueDate);
+                      due.setHours(0,0,0,0);
+                      const diff = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      if (diff < 0) {
+                        return (
+                          <span className="block text-[9px] font-black uppercase text-red-600 bg-red-100 rounded-md px-1.5 py-0.5 mt-1 animate-pulse">
+                            {language === 'ar' ? `متأخر (${Math.abs(diff)} ي)` : `En retard (${Math.abs(diff)} j)`}
+                          </span>
+                        );
+                      }
+                      if (diff === 0) {
+                        return (
+                          <span className="block text-[9px] font-black uppercase text-amber-700 bg-amber-100 rounded-md px-1.5 py-0.5 mt-1 font-bold">
+                            {language === 'ar' ? 'اليوم !' : 'Aujourd\'hui !'}
+                          </span>
+                        );
+                      }
+                      if (diff <= 7) {
+                        return (
+                          <span className="block text-[9px] font-black uppercase text-orange-700 bg-orange-100 rounded-md px-1.5 py-0.5 mt-1">
+                            {language === 'ar' ? `خلال ${diff} أيام` : `Dans ${diff} j`}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                     <div className="text-[10px] text-text-secondary mt-0.5">{new Date(check.date).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                   </td>
                   <td className="p-5">

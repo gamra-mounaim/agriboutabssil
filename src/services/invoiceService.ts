@@ -38,6 +38,7 @@ interface InvoiceData {
   checkOwner?: string;
   checkAmount?: number;
   cashAmount?: number;
+  debtAmount?: number;
 }
 
 // Helper to render text (especially Arabic) to a high-quality data URL via canvas
@@ -389,7 +390,10 @@ export const generateInvoicePDF = (data: InvoiceData, language: string = 'en', s
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Mode de règlement: ${data.paymentMethod}`, margin, finalY + 6);
+    const paymentLabel = data.paymentMethod === 'MIXTE' 
+      ? `Mode de règlement: MIXTE (Esp: ${data.cashAmount || 0} DH | Chq: ${data.checkAmount || 0} DH | Crédit: ${data.debtAmount || 0} DH)`
+      : `Mode de règlement: ${data.paymentMethod}`;
+    doc.text(paymentLabel, margin, finalY + 6);
     if (data.staffName) {
       doc.text(`Vendeur: ${data.staffName}`, margin, finalY + 11);
     }

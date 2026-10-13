@@ -4,8 +4,8 @@ export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   price: z.number().min(0, "Price must be positive"),
   costPrice: z.number().min(0, "Cost price must be positive"),
-  qty: z.number().int(),
-  minStock: z.number().int().min(0),
+  qty: z.number(),
+  minStock: z.number().min(0),
   barcode: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
   supplier: z.string().optional().nullable(),
@@ -15,7 +15,7 @@ export const productSchema = z.object({
 export const saleSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
-    qty: z.number().int().min(1),
+    qty: z.number().positive(),
     price: z.number().min(0),
     name: z.string()
   })).min(1, "Sale must have at least one item"),
@@ -30,6 +30,9 @@ export const saleSchema = z.object({
   checkOwner: z.string().optional().nullable(),
   checkDueDate: z.string().optional().nullable(),
   checkStatus: z.string().optional().nullable(),
+  checkAmount: z.number().optional().nullable(),
+  cashAmount: z.number().optional().nullable(),
+  debtAmount: z.number().optional().nullable(),
 });
 
 export const categorySchema = z.object({

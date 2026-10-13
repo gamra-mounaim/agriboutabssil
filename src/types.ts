@@ -64,12 +64,15 @@ export interface Sale {
   checkOwner?: string;
   checkAmount?: number;
   cashAmount?: number;
+  debtAmount?: number;
 }
 
 export interface Customer {
   id: string;
   name: string;
   debt: number;
+  creditLimit?: number;
+  credit_limit?: number;
   email?: string;
   phone?: string;
   address?: string;

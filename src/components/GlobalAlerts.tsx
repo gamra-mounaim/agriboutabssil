@@ -11,15 +11,15 @@ export function GlobalAlerts() {
   const checksDueSoon = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(today.getDate() + 3);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(today.getDate() + 7);
 
     return checks.filter(c => {
       if ((c as any).checkStatus && (c as any).checkStatus !== 'PENDING') return false;
       if (!(c as any).checkDueDate) return false;
       const dueDate = new Date((c as any).checkDueDate);
       dueDate.setHours(0, 0, 0, 0);
-      return dueDate <= threeDaysFromNow;
+      return dueDate <= sevenDaysFromNow;
     }).sort((a: any, b: any) => new Date(a.checkDueDate).getTime() - new Date(b.checkDueDate).getTime());
   }, [checks]);
 
@@ -72,14 +72,35 @@ export function GlobalAlerts() {
               <div className="flex flex-wrap gap-2">
                 {checksDueSoon.map((c: any) => {
                   const dueDate = new Date(c.checkDueDate);
-                  const isOverdue = dueDate < new Date();
+                  const nowDay = new Date();
+                  nowDay.setHours(0, 0, 0, 0);
+                  const checkDay = new Date(dueDate);
+                  checkDay.setHours(0, 0, 0, 0);
+                  const diffDays = Math.round((checkDay.getTime() - nowDay.getTime()) / (1000 * 60 * 60 * 24));
+                  const isOverdue = diffDays < 0;
+                  const isToday = diffDays === 0;
+
                   return (
                     <div key={c.id} className={cn(
-                      "px-3 py-1.5 rounded-lg text-[11px] font-bold border flex items-center gap-2",
-                      isOverdue ? "bg-red-500 text-white border-red-600 shadow-sm" : "bg-white/60 dark:bg-black/20 border-red-500/30 text-red-700 dark:text-red-300"
+                      "px-3 py-1.5 rounded-xl text-[11px] font-black border flex items-center gap-2 shadow-xs",
+                      isOverdue 
+                        ? "bg-red-600 text-white border-red-700 animate-pulse" 
+                        : isToday
+                        ? "bg-amber-500 text-white border-amber-600"
+                        : "bg-white/90 dark:bg-black/40 border-red-500/30 text-red-700 dark:text-red-300"
                     )}>
-                      <span className="max-w-[120px] truncate">{c.checkOwner || c.partyName}</span>
-                      <span className="opacity-75">{dueDate.toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      <span className="font-mono text-[9px] uppercase px-1 py-0.5 rounded bg-black/10">
+                        {c.partyRole === 'supplier' ? (language === 'ar' ? 'مورد' : 'Fournisseur') : (language === 'ar' ? 'زبون' : 'Client')}
+                      </span>
+                      <span className="max-w-[130px] truncate">{c.checkOwner || c.partyName || c.checkNumber || 'Chèque'}</span>
+                      <span className="font-bold">{c.total || 0} DH</span>
+                      <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded", isOverdue ? "bg-black/30 text-white" : isToday ? "bg-black/20 text-white" : "bg-red-100 text-red-700")}>
+                        {isOverdue 
+                          ? (language === 'ar' ? `متأخر (${Math.abs(diffDays)} ي)` : `En retard (${Math.abs(diffDays)} j)`)
+                          : isToday 
+                          ? (language === 'ar' ? 'اليوم !' : 'Aujourd\'hui !')
+                          : (language === 'ar' ? `خلال ${diffDays} أيام` : `Dans ${diffDays} j`)}
+                      </span>
                     </div>
                   );
                 })}

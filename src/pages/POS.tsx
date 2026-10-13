@@ -33,7 +33,10 @@ export default function POS() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all');
   const [discount, setDiscount] = useState<string>('0');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'debt' | 'check'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'debt' | 'check' | 'mixte'>('cash');
+  const [mixteCash, setMixteCash] = useState<string>('');
+  const [mixteCheck, setMixteCheck] = useState<string>('');
+  const [showLossModal, setShowLossModal] = useState<boolean>(false);
   const [checkNumber, setCheckNumber] = useState('');
   const [checkOwner, setCheckOwner] = useState('');
   const [checkBank, setCheckBank] = useState('');
@@ -144,6 +147,53 @@ export default function POS() {
   const cashReceived = parseFloat(receivedAmount) || 0;
   const change = Math.max(0, cashReceived - total);
 
+  // Cost and margin analysis for loss prevention
+  const totalCost = cart.reduce((sum, item) => {
+    const prod = products.find(p => p.id === item.productId);
+    const cost = (prod?.costPrice !== undefined && prod?.costPrice !== null) ? prod.costPrice : item.price;
+    return sum + (cost * item.qty);
+  }, 0);
+
+  const lossItems = cart.filter(item => {
+    const prod = products.find(p => p.id === item.productId);
+    return prod && prod.costPrice > 0 && item.price < prod.costPrice;
+  });
+
+  const isSellingAtLoss = (total < totalCost) || lossItems.length > 0;
+  const estimatedLoss = Math.max(0, totalCost - total);
+
+  // Mixed payment values
+  const mixteCashVal = parseFloat(mixteCash) || 0;
+  const mixteCheckVal = parseFloat(mixteCheck) || 0;
+  const mixteDebtVal = Math.max(0, total - mixteCashVal - mixteCheckVal);
+
+  const handleCheckoutInitiate = () => {
+    if (cart.length === 0 || isCheckingOut) return;
+
+    if (paymentMethod === 'debt' && !selectedCustomerId) {
+      setMessage({ text: language === 'ar' ? "يرجى تحديد الزبون للدفع بالكريدي" : "Veuillez sélectionner un client pour le crédit", type: 'error' });
+      return;
+    }
+
+    if (paymentMethod === 'mixte') {
+      if (!selectedCustomerId) {
+        setMessage({ text: t.selectCustomerRequiredForMixte || "Veuillez sélectionner un client pour le paiement mixte.", type: 'error' });
+        return;
+      }
+      if (mixteCashVal + mixteCheckVal > total) {
+        setMessage({ text: language === 'ar' ? "مجموع الكاش والشيك أكبر من مبلغ الفاتورة" : "La somme Espèces + Chèque dépasse le total de la facture", type: 'error' });
+        return;
+      }
+    }
+
+    if (isSellingAtLoss) {
+      setShowLossModal(true);
+      return;
+    }
+
+    checkout();
+  };
+
   const checkout = async () => {
     if (cart.length === 0 || isCheckingOut) return;
     setIsCheckingOut(true);
@@ -158,10 +208,12 @@ export default function POS() {
         customerName: selectedCustomerId ? null : customerName,
         staffId: user?.id || user?.uid || 'anonymous',
         items: cart,
-        checkNumber: paymentMethod === 'check' ? checkNumber : null,
-        checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null,
-        checkDueDate: paymentMethod === 'check' ? checkDueDate : null,
-        checkAmount: paymentMethod === 'check' && checkAmount ? parseFloat(checkAmount) : null
+        checkNumber: (paymentMethod === 'check' || (paymentMethod === 'mixte' && mixteCheckVal > 0)) ? checkNumber : null,
+        checkOwner: (paymentMethod === 'check' || (paymentMethod === 'mixte' && mixteCheckVal > 0)) ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : null,
+        checkDueDate: (paymentMethod === 'check' || (paymentMethod === 'mixte' && mixteCheckVal > 0)) ? checkDueDate : null,
+        checkAmount: paymentMethod === 'check' ? (checkAmount ? parseFloat(checkAmount) : total) : (paymentMethod === 'mixte' ? mixteCheckVal : null),
+        cashAmount: paymentMethod === 'mixte' ? mixteCashVal : (paymentMethod === 'cash' ? total : 0),
+        debtAmount: paymentMethod === 'mixte' ? mixteDebtVal : (paymentMethod === 'debt' ? total : 0)
       });
 
       if (saleResult.status === 'success') {
@@ -180,9 +232,11 @@ export default function POS() {
           clientAddress: selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.address : undefined,
           staffName: user?.email || user?.username || '',
           paymentMethod: paymentMethod.toUpperCase(),
-          checkNumber: paymentMethod === 'check' ? checkNumber : undefined,
-          checkOwner: paymentMethod === 'check' ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : undefined,
-          checkAmount: paymentMethod === 'check' && checkAmount ? parseFloat(checkAmount) : undefined
+          cashAmount: paymentMethod === 'mixte' ? mixteCashVal : undefined,
+          checkAmount: paymentMethod === 'mixte' ? mixteCheckVal : (paymentMethod === 'check' && checkAmount ? parseFloat(checkAmount) : undefined),
+          debtAmount: paymentMethod === 'mixte' ? mixteDebtVal : undefined,
+          checkNumber: (paymentMethod === 'check' || (paymentMethod === 'mixte' && mixteCheckVal > 0)) ? checkNumber : undefined,
+          checkOwner: (paymentMethod === 'check' || (paymentMethod === 'mixte' && mixteCheckVal > 0)) ? (checkBank && checkBank !== 'بنك آخر...' ? `${checkBank} | ${checkOwner}` : checkOwner) : undefined,
         };
 
         setCart([]);
@@ -195,6 +249,9 @@ export default function POS() {
         setCheckOwner('');
         setCheckBank('');
         setCheckAmount('');
+        setMixteCash('');
+        setMixteCheck('');
+        setShowLossModal(false);
         setIsFlahActive(false);
         setOriginalPrices({});
         setShowSuccess(true);
@@ -569,9 +626,22 @@ export default function POS() {
               >
                 {/* Product Name & Unit Price */}
                 <div className={cn("flex-1 min-w-0 flex flex-col", language === 'ar' ? "text-right" : "text-left")}>
-                  <span className="font-bold text-[12px] text-text-main group-hover:text-accent transition-colors truncate leading-tight" title={item.name}>
-                    {item.name}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-[12px] text-text-main group-hover:text-accent transition-colors truncate leading-tight" title={item.name}>
+                      {item.name}
+                    </span>
+                    {(() => {
+                      const prod = products.find(p => p.id === item.productId);
+                      if (prod && prod.costPrice > 0 && item.price < prod.costPrice) {
+                        return (
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 shrink-0">
+                            ⚠️ {t.sellingAtLossBadge || "Vente à perte"}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                   <span className="text-[10px] font-semibold text-text-secondary mt-0.5">
                     {formatNumber(item.price)} <span className="text-[9px] opacity-75">{t.currency}</span> / {(item as any).unitLabel || (language === 'ar' ? 'وحدة' : language === 'fr' ? 'unité' : 'unit')}
                   </span>
@@ -639,8 +709,8 @@ export default function POS() {
 
         <div className="px-5 py-4 border-t border-border-subtle bg-bg-base/40 space-y-3 rounded-b-2xl">
           {/* Payment Method Tabs */}
-          <div className="grid grid-cols-4 gap-1 bg-white p-1 rounded-2xl border border-border-subtle shadow-inner">
-            {(['cash', 'card', 'debt', 'check'] as const).map(method => (
+          <div className="grid grid-cols-5 gap-1 bg-white p-1 rounded-2xl border border-border-subtle shadow-inner">
+            {(['cash', 'card', 'debt', 'check', 'mixte'] as const).map(method => (
                <button
                 key={method}
                 onClick={() => setPaymentMethod(method)}
@@ -811,6 +881,98 @@ export default function POS() {
                 </div>
              )}
 
+             {paymentMethod === 'mixte' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-white/80 p-3 rounded-2xl border border-border-subtle">
+                  <div className="text-[10px] font-black uppercase text-text-secondary tracking-widest px-1 flex items-center justify-between">
+                    <span>{language === 'ar' ? 'تفاصيل الدفع المختلط' : 'Détail Paiement Mixte'}</span>
+                    <span className="text-accent">{formatNumber(total)} {t.currency}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">
+                        💵 {t.mixteCash || "Montant Espèces"}
+                      </label>
+                      <input 
+                        type="number"
+                        placeholder="0.00"
+                        className="w-full bg-white border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
+                        value={mixteCash || ''} 
+                        onChange={e => setMixteCash(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">
+                        🏦 {t.mixteCheck || "Montant Chèque"}
+                      </label>
+                      <input 
+                        type="number"
+                        placeholder="0.00"
+                        className="w-full bg-white border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
+                        value={mixteCheck || ''} 
+                        onChange={e => setMixteCheck(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {parseFloat(mixteCheck) > 0 && (
+                    <div className="p-2.5 rounded-xl bg-bg-base/60 border border-border-subtle space-y-2">
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'البنك' : 'Banque'}</label>
+                        <select 
+                          className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                          value={checkBank || ''} onChange={e => setCheckBank(e.target.value)}
+                        >
+                          <option value="">{language === 'ar' ? 'اختر البنك' : 'Choisir la banque'}</option>
+                          {moroccanBanks.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkNumber}</label>
+                          <input 
+                            placeholder="N° Chèque"
+                            className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                            value={checkNumber || ''} onChange={e => setCheckNumber(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الاستحقاق' : 'Échéance'}</label>
+                          <input 
+                            type="date"
+                            className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                            value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkOwner}</label>
+                        <input 
+                          placeholder={t.customerName}
+                          className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                          value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between text-xs font-bold">
+                    <span className="text-[9px] uppercase tracking-wider text-orange-800">
+                      📝 {t.mixteDebt || "Reste à Crédit (Dette)"} :
+                    </span>
+                    <span className="font-black text-orange-900 text-sm">
+                      {formatNumber(mixteDebtVal)} {t.currency}
+                    </span>
+                  </div>
+
+                  {!selectedCustomerId && (
+                    <div className="text-[10px] font-bold text-danger px-1">
+                      ⚠️ {t.selectCustomerRequiredForMixte || "Veuillez sélectionner un client pour le paiement mixte."}
+                    </div>
+                  )}
+                </div>
+             )}
+
              {paymentMethod === 'check' && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="space-y-1.5">
@@ -883,6 +1045,18 @@ export default function POS() {
                </div>
             </div>
 
+            {isSellingAtLoss && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-2 flex items-center justify-between text-red-700 animate-pulse">
+                <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {language === 'ar' ? 'تنبيه : بيع بالخسارة' : 'Alerte : Vente à perte'}
+                </span>
+                <span className="text-xs font-black">
+                  -{formatNumber(estimatedLoss)} {t.currency}
+                </span>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-baseline justify-between py-1 border-t border-border-subtle/40 gap-2">
               <span className="text-2xl md:text-3xl font-black text-text-main tracking-tight break-all">{formatNumber(total)}</span>
               <span className="text-xs font-black text-accent uppercase tracking-wider">{t.currency}</span>
@@ -915,8 +1089,8 @@ export default function POS() {
                   {t.clear || 'Clear'}
                 </button>
                 <button 
-                  disabled={cart.length === 0 || (paymentMethod === 'debt' && !selectedCustomerId) || isCheckingOut}
-                  onClick={checkout}
+                  disabled={cart.length === 0 || ((paymentMethod === 'debt' || paymentMethod === 'mixte') && !selectedCustomerId) || isCheckingOut}
+                  onClick={handleCheckoutInitiate}
                   className="flex-1 bg-accent text-white font-black text-xs uppercase tracking-wider py-2.5 rounded-lg shadow-md shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 active:shadow-none transition-all disabled:opacity-30 disabled:grayscale disabled:translate-y-0 disabled:shadow-none"
                 >
                   {t.checkout}
@@ -926,6 +1100,99 @@ export default function POS() {
           </div>
         </div>
       </div>
+
+      {/* Loss Warning Confirmation Modal */}
+      <AnimatePresence>
+        {showLossModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border-2 border-danger flex flex-col"
+            >
+              <div className="p-5 bg-danger/10 border-b border-danger/20 flex items-center gap-3">
+                <div className="bg-danger text-white p-3 rounded-2xl shrink-0 shadow-md animate-pulse">
+                  <ShieldAlert className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-danger uppercase tracking-wider">
+                    {t.lossWarningTitle || "Attention : Vente à perte !"}
+                  </h3>
+                  <p className="text-xs font-semibold text-text-secondary mt-0.5">
+                    {t.lossWarningMsg || "Le montant de la vente est inférieur au coût d'achat des produits. Perte estimée :"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-bg-base/70 border border-border-subtle text-center">
+                  <div>
+                    <span className="block text-[9px] font-black uppercase text-text-secondary">{language === 'ar' ? 'سعر البيع' : 'Prix Vente'}</span>
+                    <span className="text-sm font-black text-text-main">{formatNumber(total)} {t.currency}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-black uppercase text-text-secondary">{language === 'ar' ? 'تكلفة الشراء' : "Coût d'Achat"}</span>
+                    <span className="text-sm font-black text-text-main">{formatNumber(totalCost)} {t.currency}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-black uppercase text-danger">{language === 'ar' ? 'الخسارة المقدرة' : 'Perte Estimée'}</span>
+                    <span className="text-sm font-black text-danger">-{formatNumber(estimatedLoss)} {t.currency}</span>
+                  </div>
+                </div>
+
+                {lossItems.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase text-text-secondary tracking-wider">
+                      {t.lossWarningProducts || "Articles vendus sous le prix d'achat :"}
+                    </span>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                      {lossItems.map(it => {
+                        const prod = products.find(p => p.id === it.productId);
+                        const cost = prod?.costPrice || 0;
+                        const diff = (it.price - cost) * it.qty;
+                        return (
+                          <div key={it.productId} className="flex items-center justify-between p-2 rounded-xl bg-danger/5 border border-danger/20 text-xs">
+                            <span className="font-bold text-text-main truncate max-w-[180px]">{it.name} (x{it.qty})</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] text-text-secondary">Achat: {formatNumber(cost)} | Vente: {formatNumber(it.price)}</span>
+                              <span className="font-black text-danger">{formatNumber(diff)} {t.currency}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-text-secondary italic">
+                  {language === 'ar' 
+                    ? "هل أنت متأكد من رغبتك في تسجيل هذه العملية على الرغم من الخسارة؟" 
+                    : "Êtes-vous sûr de vouloir valider cette vente malgré la perte financière ?"}
+                </p>
+              </div>
+
+              <div className="p-4 bg-bg-base/40 border-t border-border-subtle flex gap-3">
+                <button
+                  onClick={() => setShowLossModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-border-subtle bg-white hover:bg-bg-base text-text-main font-black text-xs uppercase tracking-wider transition-all"
+                >
+                  {t.cancelLossSale || "Annuler & Modifier"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLossModal(false);
+                    checkout();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-danger hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-danger/20 transition-all"
+                >
+                  {t.confirmLossSale || "Confirmer la vente malgré la perte"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Drafts Modal */}
       <AnimatePresence>
