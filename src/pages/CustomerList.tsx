@@ -626,8 +626,13 @@ export default function CustomerList() {
                           <div className="text-xl font-black font-mono text-emerald-600">
                             {(currentSelectedCustomer?.totalProfit || 0) > 0 ? `+${formatNumber(currentSelectedCustomer?.totalProfit)}` : formatNumber(currentSelectedCustomer?.totalProfit || 0)} {t.currency}
                           </div>
-                          <div className="text-[9px] font-semibold text-emerald-700/60 mt-1">
-                            {t.profitFromFirstTx}
+                          <div className="flex items-center justify-between text-[9px] font-semibold text-emerald-700/70 mt-1 gap-2">
+                            <span>{t.profitFromFirstTx}</span>
+                            {customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0) > 0 && (
+                              <span className="text-rose-600 font-black">
+                                {t.discount}: -{formatNumber(customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0))} {t.currency}
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -683,12 +688,24 @@ export default function CustomerList() {
                                        <CreditCard className="w-3 h-3" /> {t.check} #{item.check_number}
                                      </span>
                                    )}
+                                   {Number(item.discount || 0) > 0 && (
+                                     <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 font-black px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
+                                       {t.discount}: -{formatNumber(item.discount)} {t.currency}
+                                     </span>
+                                   )}
                                  </div>
-                                 <div className={cn("text-lg font-black tracking-tighter", 
-                                   String(item.type).toUpperCase() === 'PAYMENT' ? "text-success" : 
-                                   (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-500" : "text-danger")
-                                 )}>
-                                    {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
+                                 <div className="flex items-baseline gap-2">
+                                   <div className={cn("text-lg font-black tracking-tighter", 
+                                     String(item.type).toUpperCase() === 'PAYMENT' ? "text-success" : 
+                                     (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-500" : "text-danger")
+                                   )}>
+                                      {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
+                                   </div>
+                                   {Number(item.discount || 0) > 0 && (
+                                     <div className="text-[11px] font-bold text-text-secondary line-through opacity-60">
+                                       {formatNumber(Number(item.amount) + Number(item.discount))} {t.currency}
+                                     </div>
+                                   )}
                                  </div>
                                  <div className="text-[10px] font-bold text-text-secondary/70 mt-1 flex items-center gap-1.5">
                                    <CalendarClock className="w-3 h-3" /> {new Date(item.date).toLocaleString()}
@@ -835,7 +852,19 @@ export default function CustomerList() {
                 </div>
 
                 <div className="pt-6 border-t border-border-subtle space-y-2">
-                  <div className="flex justify-between items-center px-2">
+                  {Number(selectedSaleToShow.discount || 0) > 0 && (
+                    <>
+                      <div className="flex justify-between items-center px-2 text-xs font-bold text-text-secondary">
+                        <span className="uppercase tracking-widest">{t.subtotal}</span>
+                        <span className="font-mono">{formatNumber(selectedSaleToShow.subtotal || (selectedSaleToShow.total + selectedSaleToShow.discount))} {t.currency}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-2 text-xs font-bold text-rose-600">
+                        <span className="uppercase tracking-widest">{t.discount}</span>
+                        <span className="font-mono">-{formatNumber(selectedSaleToShow.discount)} {t.currency}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between items-center px-2 pt-2 border-t border-border-subtle/50">
                      <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.total}</span>
                      <span className="text-2xl font-black text-accent tracking-tighter">{formatNumber(selectedSaleToShow.total)} {t.currency}</span>
                   </div>

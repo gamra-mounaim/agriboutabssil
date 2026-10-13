@@ -1228,7 +1228,9 @@ async function startServer() {
           check_number,
           check_due_date,
           check_owner,
-          NULL as invoice_number
+          NULL as invoice_number,
+          0 as discount,
+          amount as subtotal
         FROM customer_history 
         WHERE customer_id = ?
         
@@ -1244,7 +1246,9 @@ async function startServer() {
           check_number,
           NULL as check_due_date,
           check_owner,
-          invoice_number
+          invoice_number,
+          COALESCE(discount, 0) as discount,
+          COALESCE(subtotal, total + COALESCE(discount, 0)) as subtotal
         FROM sales 
         WHERE customer_id = ?
         

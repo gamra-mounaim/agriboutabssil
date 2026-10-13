@@ -153,6 +153,8 @@ export interface TransactionRecord {
   amount: number;
   date: string;
   description: string;
+  discount?: number;
+  subtotal?: number;
 }
 
 export interface ActivityLog {
