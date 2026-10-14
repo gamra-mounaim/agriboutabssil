@@ -278,6 +278,23 @@ export async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS customer_returns (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT,
+      customer_name TEXT,
+      product_id TEXT,
+      product_name TEXT,
+      qty REAL NOT NULL,
+      price REAL NOT NULL,
+      cost_price REAL DEFAULT 0,
+      total_refund REAL NOT NULL,
+      profit_loss REAL DEFAULT 0,
+      action TEXT DEFAULT 'debt',
+      description TEXT,
+      actor TEXT,
+      date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   try {
@@ -349,6 +366,8 @@ export async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_supplier_history_supplier_id ON supplier_history (supplier_id);
       CREATE INDEX IF NOT EXISTS idx_product_lots_product_id ON product_lots (product_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications (is_read);
+      CREATE INDEX IF NOT EXISTS idx_customer_returns_customer_id ON customer_returns (customer_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_returns_date ON customer_returns (date);
     `);
   } catch (e) {
     console.warn("Index creation notice:", e);

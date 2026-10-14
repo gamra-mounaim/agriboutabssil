@@ -1084,13 +1084,30 @@ async function startServer() {
   // --- Customers API ---
   app.get("/api/customers", async (req, res) => {
     if (!req.query.page) {
-      const customers = await db.prepare(`SELECT c.*, COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) as total_spent, COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) as total_profit FROM customers c ORDER BY total_spent DESC, name ASC`).all();
+      const customers = await db.prepare(`
+        SELECT c.*, 
+          COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(cr.total_refund) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_spent, 
+          COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
+            - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) 
+            - COALESCE((SELECT SUM(cr.profit_loss) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_profit 
+        FROM customers c 
+        ORDER BY total_spent DESC, name ASC
+      `).all();
       return res.json(toCamel(customers));
     }
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const total = (await db.prepare('SELECT COUNT(*) as count FROM customers').get() as any).count;
-    const customers = await db.prepare(`SELECT c.*, COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) as total_spent, COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) as total_profit FROM customers c ORDER BY total_spent DESC, name ASC LIMIT ? OFFSET ?`).all(limit, (page - 1) * limit);
+    const customers = await db.prepare(`
+      SELECT c.*, 
+        COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(cr.total_refund) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_spent, 
+        COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
+          - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) 
+          - COALESCE((SELECT SUM(cr.profit_loss) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_profit 
+      FROM customers c 
+      ORDER BY total_spent DESC, name ASC 
+      LIMIT ? OFFSET ?
+    `).all(limit, (page - 1) * limit);
     res.json({ data: toCamel(customers), total, page, limit });
   });
 
@@ -1132,7 +1149,9 @@ async function startServer() {
     };
 
     try {
-      await transaction();
+      await db.transaction(async () => {
+        await transaction();
+      });
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
@@ -1178,18 +1197,42 @@ async function startServer() {
       const product = (await db.prepare('SELECT name, cost_price FROM products WHERE id = ?').get(productId)) as any;
       if (!product) throw new Error("Product not found");
 
-      const totalValue = qty * price;
+      const numQty = Number(qty);
+      const numPrice = Number(price);
+      const totalValue = numQty * numPrice;
+      const costPrice = Number(product.cost_price || 0);
+      const profitLoss = (numPrice - costPrice) * numQty;
 
       // 1. Put products back into stock
-      await db.prepare('UPDATE products SET qty = qty + ? WHERE id = ?').run(qty, productId);
+      await db.prepare('UPDATE products SET qty = qty + ? WHERE id = ?').run(numQty, productId);
 
       // 2. Log stock movement
       await db.prepare(`
         INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, timestamp, actor, cost_price)
         VALUES (?, ?, ?, 'IN', ?, ?, CURRENT_TIMESTAMP, ?, ?)
-      `).run(movementId, productId, product.name, qty, `Customer Return: ${customerName}`, actor || 'System', product.cost_price || 0);
+      `).run(movementId, productId, product.name, numQty, `Customer Return: ${customerName}`, actor || 'System', costPrice);
 
-      // 3. Update Customer Debt if action is 'debt' (only if not a walking customer)
+      // 3. Record in customer_returns for accurate deduction from profits & sales
+      await db.prepare(`
+        INSERT INTO customer_returns (id, customer_id, customer_name, product_id, product_name, qty, price, cost_price, total_refund, profit_loss, action, description, actor)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        returnId,
+        id === 'walking' ? null : id,
+        customerName,
+        productId,
+        product.name,
+        numQty,
+        numPrice,
+        costPrice,
+        totalValue,
+        profitLoss,
+        action || 'debt',
+        description || '',
+        actor || 'System'
+      );
+
+      // 4. Update Customer Debt if action is 'debt' (only if not a walking customer)
       if (action === 'debt' && id !== 'walking') {
         await db.prepare('UPDATE customers SET debt = debt - ? WHERE id = ?').run(totalValue, id);
         
@@ -1197,16 +1240,16 @@ async function startServer() {
         await db.prepare(`
           INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
           VALUES (?, ?, 'PAYMENT', ?, ?, 'CASH')
-        `).run(returnId, id, totalValue, `Retour: ${qty} x ${product.name} (${description || 'Non spécifié'})`);
+        `).run(uuidv4(), id, totalValue, `Retour: ${numQty} x ${product.name} (${description || 'Non spécifié'})`);
       } else if (id !== 'walking') {
         // If cash refund for a registered customer, debt remains the same, log with 0 value to show record of transaction
         await db.prepare(`
           INSERT INTO customer_history (id, customer_id, type, amount, description, payment_method)
           VALUES (?, ?, 'PAYMENT', 0, ?, 'CASH')
-        `).run(returnId, id, `Retour Cash: ${qty} x ${product.name} (Remboursé ${totalValue} DH)`);
+        `).run(uuidv4(), id, `Retour Cash: ${numQty} x ${product.name} (Remboursé ${totalValue} DH)`);
       }
 
-      logActivity(req, 'RETURN', 'create', `Retour de ${qty}x ${product.name} par ${customerName} (Valeur : ${totalValue})`, 'system', 'System');
+      logActivity(req, 'RETURN', 'create', `Retour de ${numQty}x ${product.name} par ${customerName} (Valeur : ${totalValue} DH, Marge déduite : ${profitLoss} DH)`, actor || 'system', 'System');
     };
 
     try {
@@ -1933,7 +1976,7 @@ async function startServer() {
     // --- Stats API ---
   app.get("/api/stats", async (req, res) => {
     try {
-    const totalSales = ((await db.prepare('SELECT SUM(total) as total FROM sales').get()) as any).total || 0;
+    const totalSales = ((await db.prepare('SELECT COALESCE((SELECT SUM(total) FROM sales), 0) - COALESCE((SELECT SUM(total_refund) FROM customer_returns), 0) as total').get()) as any).total || 0;
     const transactions = ((await db.prepare('SELECT COUNT(*) as count FROM sales').get()) as any).count || 0;
     const totalStock = ((await db.prepare('SELECT SUM(qty) as total FROM products').get()) as any).total || 0;
     const inventoryValue = ((await db.prepare('SELECT SUM(cost_price * qty) as total FROM products').get()) as any).total || 0;
@@ -2001,7 +2044,28 @@ async function startServer() {
         }
       });
 
-      breakdown.total = breakdown.cash + breakdown.debt + breakdown.check + breakdown.card;
+      // Deduct customer returns profit from the period breakdown
+      const returnsByMethod = await db.prepare(`
+        SELECT 
+          CASE 
+            WHEN action = 'debt' THEN 'debt'
+            ELSE 'cash'
+          END as method,
+          COALESCE(SUM(profit_loss), 0) as profit_loss
+        FROM customer_returns
+        ${dateConditionSale.replace(/WHERE date /g, 'WHERE date ').replace(/s\.date/g, 'date')}
+        GROUP BY action
+      `).all() as any[];
+
+      returnsByMethod.forEach((row) => {
+        const method = (row.method || 'cash').toLowerCase();
+        const pLoss = Number(row.profit_loss) || 0;
+        if (breakdown[method as keyof typeof breakdown] !== undefined) {
+          (breakdown[method as keyof typeof breakdown] as number) -= pLoss;
+        }
+      });
+
+      breakdown.total = Math.max(0, breakdown.cash + breakdown.debt + breakdown.check + breakdown.card);
       return breakdown;
     };
 
