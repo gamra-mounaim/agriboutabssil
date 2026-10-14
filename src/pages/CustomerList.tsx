@@ -17,7 +17,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Destructure common icons to avoid TS errors
-const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
+const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe, Receipt, Copy, Check, MessageSquare, ArrowRight, ArrowDownLeft, Tag } = LucideIcons;
 
 export default function CustomerList() {
   const { products, customers, sales, payments, checks, settings, appUsers, fetchData: onRefresh, setMessage } = useStore();
@@ -42,6 +42,8 @@ export default function CustomerList() {
   const currentSelectedCustomer = customers.find(c => c.id === selectedCustomer?.id) || selectedCustomer;
   const [customerHistory, setCustomerHistory] = useState<TransactionRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'ALL' | 'SALE' | 'PAYMENT'>('ALL');
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const [adjustModal, setAdjustModal] = useState<{ type: 'pay' | 'charge', customer: Customer } | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustMethod, setAdjustMethod] = useState<'CASH' | 'CHECK'>('CASH');
@@ -324,6 +326,64 @@ export default function CustomerList() {
     });
   }, [customerHistory]);
 
+  const getCustomerInitials = (fullName?: string) => {
+    if (!fullName) return 'CL';
+    const clean = fullName.trim().replace(/[^a-zA-Z0-9\s\u0600-\u06FF]/g, '');
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'CL';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const filteredDisplayHistory = useMemo(() => {
+    if (!displayHistory) return [];
+    if (historyFilter === 'SALE') return displayHistory.filter(item => item.type === 'SALE');
+    if (historyFilter === 'PAYMENT') return displayHistory.filter(item => item.type === 'PAYMENT');
+    return displayHistory;
+  }, [displayHistory, historyFilter]);
+
+  const historyCounts = useMemo(() => {
+    if (!displayHistory) return { all: 0, sales: 0, payments: 0 };
+    return {
+      all: displayHistory.length,
+      sales: displayHistory.filter(item => item.type === 'SALE').length,
+      payments: displayHistory.filter(item => item.type === 'PAYMENT').length
+    };
+  }, [displayHistory]);
+
+  const totalAccruedAmount = useMemo(() => {
+    return customerHistory.filter(h => h.type === 'DEBT').reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+  }, [customerHistory]);
+
+  const totalPaidAmount = useMemo(() => {
+    return customerHistory.filter(h => h.type === 'PAYMENT').reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+  }, [customerHistory]);
+
+  const totalDiscountsGiven = useMemo(() => {
+    return customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0);
+  }, [customerHistory]);
+
+  const customerDueDateInfo = useMemo(() => {
+    if (!selectedCustomer) return null;
+    const rawDate = selectedCustomer.dueDate || selectedCustomer.due_date;
+    if (!rawDate) return null;
+    const due = new Date(rawDate);
+    if (isNaN(due.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDateClean = new Date(due);
+    dueDateClean.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((dueDateClean.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      formatted: due.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
+      isOverdue: diffDays < 0,
+      isToday: diffDays === 0,
+      isNear: diffDays > 0 && diffDays <= 7,
+      diffDays
+    };
+  }, [selectedCustomer, language]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -549,271 +609,591 @@ export default function CustomerList() {
 
       {/* Customer Details Modal */}
       <AnimatePresence>
-        {selectedCustomer && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-text-main/20 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-border-subtle flex flex-col max-h-[80vh]">
-              <div className="p-8 border-b border-border-subtle flex justify-between items-start">
-                <div>
-                   <div className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">{t.customerDetails}</div>
-                   {isEditingProfile ? (
-                     <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.customerName}</label>
-                        <input className="text-2xl font-bold tracking-tight bg-bg-base border border-border-subtle rounded-lg px-3 py-1 w-full outline-none focus:border-accent" value={editForm.name || ''} onChange={e => setEditForm({...editForm, name: e.target.value})} />
-                     </div>
-                   ) : (
-                     <h3 className="text-3xl font-bold tracking-tight">{selectedCustomer.name}</h3>
-                   )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIsEditingProfile(!isEditingProfile)} className={cn("p-2 rounded-full transition-colors", isEditingProfile ? "bg-accent/10 text-accent" : "hover:bg-bg-base text-text-secondary")}>
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => setSelectedCustomer(null)} className="p-2 hover:bg-bg-base rounded-full transition-colors">
-                    <X className="w-5 h-5 text-text-secondary" />
-                  </button>
-                </div>
-              </div>
+        {selectedCustomer && (() => {
+          const currentDebt = currentSelectedCustomer?.debt ?? selectedCustomer.debt ?? 0;
+          const currentProfit = currentSelectedCustomer?.totalProfit ?? 0;
 
-              <div className="p-8 flex-1 overflow-auto space-y-8">
-                {isEditingProfile ? (
-                  <form onSubmit={handleUpdateProfile} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.phone}</label>
-                        <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.phone || ''} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.address}</label>
-                        <input className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.address || ''} onChange={e => setEditForm({...editForm, address: e.target.value})} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.dueDate}</label>
-                        <input type="date" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-accent" value={editForm.due_date || ''} onChange={e => setEditForm({...editForm, due_date: e.target.value})} />
-                      </div>
+          return (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.96, y: 8 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }} 
+                exit={{ opacity: 0, scale: 0.96, y: 8 }} 
+                transition={{ duration: 0.2 }}
+                className="bg-white dark:bg-card w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80 dark:border-border-subtle flex flex-col max-h-[90vh]"
+              >
+                {/* Header */}
+                <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 dark:border-border-subtle bg-slate-50/50 dark:bg-slate-800/20 flex justify-between items-start gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-emerald-600/20 shrink-0 ring-4 ring-emerald-50 dark:ring-emerald-950/40">
+                      {getCustomerInitials(selectedCustomer.name)}
                     </div>
-                    <div className="flex gap-4 pt-4 border-t border-border-subtle">
-                       <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-6 py-3 bg-bg-base text-text-secondary font-bold rounded-xl hover:bg-border-subtle transition-all uppercase text-[10px] tracking-widest">{t.cancel}</button>
-                       <button type="submit" className="flex-1 px-6 py-3 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all uppercase text-[10px] tracking-widest">{t.saveChanges}</button>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-[10px] font-black tracking-widest uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                          {t.customerDetails}
+                        </span>
+                        {currentDebt > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            Solde débiteur : {formatNumber(currentDebt)} {t.currency}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-900/50">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            Compte soldé
+                          </span>
+                        )}
+                      </div>
+                      {isEditingProfile ? (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-text-secondary uppercase">{t.customerName}</label>
+                          <input 
+                            className="text-xl font-black bg-bg-base border border-border-subtle rounded-xl px-3 py-1.5 w-full outline-none focus:ring-2 focus:ring-emerald-500" 
+                            value={editForm.name || ''} 
+                            onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                          />
+                        </div>
+                      ) : (
+                        <h3 className="text-2xl sm:text-3xl font-black text-text-main tracking-tight truncate">
+                          {selectedCustomer.name}
+                        </h3>
+                      )}
                     </div>
-                  </form>
-                ) : (
-                  <>
-                    <div className={cn("grid grid-cols-1 gap-4", canViewProfits ? "md:grid-cols-4" : "md:grid-cols-3")}>
-                      <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{t.totalAccrued}</div>
-                        <div className="text-xl font-black font-mono text-text-main">
-                          {formatNumber(customerHistory.filter(h => h.type === 'DEBT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button 
+                      onClick={() => setIsEditingProfile(!isEditingProfile)} 
+                      className={cn("p-2.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 text-xs font-bold", isEditingProfile ? "bg-accent/15 text-accent ring-2 ring-accent/30" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-text-secondary hover:text-text-main border border-border-subtle")}
+                      title={isEditingProfile ? t.cancel : (language === 'ar' ? 'تعديل' : 'Modifier')}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">{isEditingProfile ? t.cancel : (language === 'ar' ? 'تعديل' : 'Modifier')}</span>
+                    </button>
+                    <button 
+                      onClick={() => setSelectedCustomer(null)} 
+                      className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-text-secondary hover:text-text-main transition-colors border border-transparent hover:border-border-subtle"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
+                  {isEditingProfile ? (
+                    <form onSubmit={handleUpdateProfile} className="space-y-5 bg-slate-50/70 dark:bg-slate-800/30 p-6 rounded-2xl border border-border-subtle">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-accent" />
+                            {t.phone}
+                          </label>
+                          <input 
+                            className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-accent" 
+                            value={editForm.phone || ''} 
+                            onChange={e => setEditForm({...editForm, phone: e.target.value})} 
+                            placeholder="06XXXXXXXX"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-accent" />
+                            {t.address}
+                          </label>
+                          <input 
+                            className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-accent" 
+                            value={editForm.address || ''} 
+                            onChange={e => setEditForm({...editForm, address: e.target.value})} 
+                            placeholder="Ex: Douar..."
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                            <CalendarClock className="w-3.5 h-3.5 text-accent" />
+                            {t.dueDate}
+                          </label>
+                          <input 
+                            type="date" 
+                            className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-accent" 
+                            value={editForm.due_date || ''} 
+                            onChange={e => setEditForm({...editForm, due_date: e.target.value})} 
+                          />
                         </div>
                       </div>
-                      <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1">{t.totalPaid}</div>
-                        <div className="text-xl font-black font-mono text-success">
-                          {formatNumber(customerHistory.filter(h => h.type === 'PAYMENT').reduce((sum, h) => sum + h.amount, 0))} {t.currency}
-                        </div>
+                      <div className="flex gap-3 pt-3 border-t border-border-subtle">
+                         <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-text-secondary font-bold rounded-xl transition-all uppercase text-xs tracking-wider">{t.cancel}</button>
+                         <button type="submit" className="flex-1 px-5 py-2.5 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all uppercase text-xs tracking-wider shadow-md shadow-accent/20 flex items-center justify-center gap-2">
+                           <CheckCircle2 className="w-4 h-4" />
+                           {t.saveChanges}
+                         </button>
                       </div>
-                      <div className={cn("p-6 rounded-2xl bg-bg-base border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-accent font-black uppercase tracking-widest mb-1">{t.remainingBalance}</div>
-                        <div className={cn("text-xl font-black font-mono", selectedCustomer.debt > 0 ? "text-danger" : "text-success")}>
-                          {formatNumber(currentSelectedCustomer?.debt || selectedCustomer.debt)} {t.currency}
-                        </div>
-                      </div>
-                      {canViewProfits && (
-                        <div className={cn("p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200/70 relative overflow-hidden", language === 'ar' && "text-right")}>
-                          <div className="text-[10px] text-emerald-800 font-black uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                            {t.totalCustomerProfit}
+                    </form>
+                  ) : (
+                    <>
+                      {/* KPI Cards */}
+                      <div className={cn("grid grid-cols-2 gap-3.5", canViewProfits ? "md:grid-cols-4" : "md:grid-cols-3")}>
+                        {/* Total Accumulé */}
+                        <div className={cn("p-4.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-border-subtle flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary">{t.totalAccrued}</span>
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                              <Receipt className="w-3.5 h-3.5" />
+                            </div>
                           </div>
-                          <div className="text-xl font-black font-mono text-emerald-600">
-                            {(currentSelectedCustomer?.totalProfit || 0) > 0 ? `+${formatNumber(currentSelectedCustomer?.totalProfit)}` : formatNumber(currentSelectedCustomer?.totalProfit || 0)} {t.currency}
+                          <div>
+                            <div className="text-xl sm:text-2xl font-black text-text-main tabular-nums tracking-tight">
+                              {formatNumber(totalAccruedAmount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-text-secondary/70 mt-1">
+                              {language === 'ar' ? 'إجمالي المشتريات' : 'Total des achats'}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-[9px] font-semibold text-emerald-700/70 mt-1 gap-2">
-                            <span>{t.profitFromFirstTx}</span>
-                            {customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0) > 0 && (
-                              <span className="text-rose-600 font-black">
-                                {t.discount}: -{formatNumber(customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0))} {t.currency}
-                              </span>
+                        </div>
+
+                        {/* Total Payé */}
+                        <div className={cn("p-4.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/40 flex flex-col justify-between hover:border-emerald-300 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">{t.totalPaid}</span>
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
+                              {formatNumber(totalPaidAmount)} <span className="text-xs font-bold text-emerald-600/70">{t.currency}</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-emerald-700/70 mt-1">
+                              {language === 'ar' ? 'المبلغ المؤدى' : 'Encaissé avec succès'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Solde Restant */}
+                        <div className={cn(
+                          "p-4.5 rounded-2xl border flex flex-col justify-between transition-all shadow-xs",
+                          currentDebt > 0 
+                            ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/40 hover:border-rose-300" 
+                            : "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/40",
+                          language === 'ar' && "text-right"
+                        )}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={cn("text-[10px] font-black uppercase tracking-wider", currentDebt > 0 ? "text-rose-800 dark:text-rose-300" : "text-emerald-800 dark:text-emerald-300")}>
+                              {t.remainingBalance}
+                            </span>
+                            <div className={cn(
+                              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                              currentDebt > 0 ? "bg-rose-100/70 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400" : "bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400"
+                            )}>
+                              {currentDebt > 0 ? <AlertTriangle className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                            </div>
+                          </div>
+                          <div>
+                            <div className={cn("text-xl sm:text-2xl font-black tabular-nums tracking-tight", currentDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+                              {formatNumber(currentDebt)} <span className="text-xs font-bold opacity-80">{t.currency}</span>
+                            </div>
+                            <div className={cn("text-[10px] font-semibold mt-1", currentDebt > 0 ? "text-rose-700/70" : "text-emerald-700/70")}>
+                              {currentDebt > 0 ? (language === 'ar' ? 'مبلغ الدين المتبقي' : 'Reste à recouvrer') : (language === 'ar' ? 'لا يوجد أي دين' : 'Aucun impayé')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bénéfice Total */}
+                        {canViewProfits && (
+                          <div className={cn("p-4.5 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200/60 dark:border-teal-800/40 flex flex-col justify-between hover:border-teal-300 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-teal-800 dark:text-teal-300">{t.totalCustomerProfit}</span>
+                              <div className="w-7 h-7 rounded-lg bg-teal-100/70 dark:bg-teal-900/60 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                                <TrendingUp className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-400 tabular-nums tracking-tight">
+                                {currentProfit > 0 ? `+${formatNumber(currentProfit)}` : formatNumber(currentProfit)} <span className="text-xs font-bold text-teal-700/70">{t.currency}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-[9px] font-semibold text-teal-700/80 mt-1 gap-1 flex-wrap">
+                                <span>{t.profitFromFirstTx}</span>
+                                {totalDiscountsGiven > 0 && (
+                                  <span className="text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/40 px-1 rounded">
+                                    -{formatNumber(totalDiscountsGiven)} {t.currency}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Contact & Info Strip */}
+                      <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-border-subtle rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Téléphone */}
+                        <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                          <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.phone}</div>
+                            {selectedCustomer.phone ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <a href={`tel:${selectedCustomer.phone}`} className="text-sm font-black text-text-main hover:text-accent transition-colors font-mono tracking-tight">
+                                  {selectedCustomer.phone}
+                                </a>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    if (selectedCustomer.phone) {
+                                      navigator.clipboard.writeText(selectedCustomer.phone);
+                                      setCopiedPhone(true);
+                                      setTimeout(() => setCopiedPhone(false), 1800);
+                                    }
+                                  }}
+                                  className="p-1 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 rounded-md text-text-secondary hover:text-text-main transition-colors"
+                                  title={copiedPhone ? "Copié !" : "Copier le numéro"}
+                                >
+                                  {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+                                <a 
+                                  href={`https://wa.me/212${selectedCustomer.phone.replace(/\D/g, '').replace(/^0/, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 rounded-md text-emerald-600 transition-colors"
+                                  title="Contacter sur WhatsApp"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="text-sm font-semibold text-text-secondary/60">---</div>
                             )}
                           </div>
                         </div>
-                      )}
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className={cn("p-4 rounded-2xl bg-bg-base/50 border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <Phone className="w-3 h-3 text-accent" /> {t.phone}
+                        {/* Adresse */}
+                        <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.address}</div>
+                            <div className="text-sm font-black text-text-main truncate" title={selectedCustomer.address || ''}>
+                              {selectedCustomer.address || '---'}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm font-bold text-text-main">{selectedCustomer.phone || '---'}</div>
-                      </div>
-                      <div className={cn("p-4 rounded-2xl bg-bg-base/50 border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <MapPin className="w-3 h-3 text-accent" /> {t.address}
-                        </div>
-                        <div className="text-sm font-bold text-text-main">{selectedCustomer.address || '---'}</div>
-                      </div>
-                      <div className={cn("p-4 rounded-2xl bg-bg-base/50 border border-border-subtle", language === 'ar' && "text-right")}>
-                        <div className="text-[10px] text-text-secondary font-black uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <CalendarClock className="w-3.5 h-3.5 text-accent" /> {t.dueDate}
-                        </div>
-                        <div className="text-sm font-bold text-text-main">
-                          {selectedCustomer.dueDate || selectedCustomer.due_date 
-                            ? new Date(selectedCustomer.dueDate || selectedCustomer.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')
-                            : '---'}
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                        <h4 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">{t.financialHistory}</h4>
-                      </div>
-                      
-                      {loadingHistory ? (
-                        <div className="py-12 text-center text-text-secondary text-xs font-mono animate-pulse tracking-widest">LOADING_TRANSACTIONS...</div>
-                      ) : (displayHistory?.length || 0) === 0 ? (
-                        <div className="py-20 text-center text-text-secondary text-sm border-2 border-dashed border-border-subtle rounded-3xl opacity-50 flex flex-col items-center gap-4">
-                          <Archive className="w-8 h-8 opacity-40" />
-                          {t.historyEmpty}
+                        {/* Date d'échéance */}
+                        <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                          <div className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                            customerDueDateInfo?.isOverdue ? "bg-rose-100 dark:bg-rose-950/60 text-rose-600" : "bg-amber-50 dark:bg-amber-950/60 text-amber-600"
+                          )}>
+                            <CalendarClock className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.dueDate}</div>
+                            {customerDueDateInfo ? (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-black text-text-main">{customerDueDateInfo.formatted}</span>
+                                {customerDueDateInfo.isOverdue && (
+                                  <span className="text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 px-2 py-0.5 rounded-full">
+                                    {language === 'ar' ? `متأخر بـ ${Math.abs(customerDueDateInfo.diffDays)} يوم` : `En retard (${Math.abs(customerDueDateInfo.diffDays)}j)`}
+                                  </span>
+                                )}
+                                {customerDueDateInfo.isToday && (
+                                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                    {language === 'ar' ? 'اليوم' : "Aujourd'hui"}
+                                  </span>
+                                )}
+                                {customerDueDateInfo.isNear && (
+                                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                                    {language === 'ar' ? `خلال ${customerDueDateInfo.diffDays} أيام` : `Dans ${customerDueDateInfo.diffDays}j`}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-sm font-semibold text-text-secondary/60">---</div>
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="space-y-3 pr-1 overflow-y-auto max-h-[350px] no-scrollbar">
-                           {(displayHistory || []).map((item) => (
-                             <div key={item.id} className="group bg-bg-base/40 p-5 rounded-2xl flex justify-between items-center text-sm border border-border-subtle/40 hover:bg-white hover:border-accent/20 transition-all shadow-sm">
-                               <div className={cn("flex flex-col gap-0.5", language === 'ar' && "text-right")}>
-                                 <div className="text-[11px] font-black uppercase tracking-widest text-text-secondary opacity-60 flex items-center gap-2">
-                                   {item.type === 'SALE' && <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[9px]">FACTURE</span>}
-                                   {item.description}
-                                   {item.payment_method === 'CHECK' && (
-                                     <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[9px] font-black uppercase">
-                                       <CreditCard className="w-3 h-3" /> {t.check} #{item.check_number}
-                                     </span>
-                                   )}
-                                   {Number(item.discount || 0) > 0 && (
-                                     <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 font-black px-2 py-0.5 rounded text-[9px] uppercase tracking-wider">
-                                       {t.discount}: -{formatNumber(item.discount)} {t.currency}
-                                     </span>
-                                   )}
-                                 </div>
-                                 <div className="flex items-baseline gap-2">
-                                   <div className={cn("text-lg font-black tracking-tighter", 
-                                     String(item.type).toUpperCase() === 'PAYMENT' ? "text-success" : 
-                                     (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-500" : "text-danger")
+                      </div>
+
+                      {/* Financial History */}
+                      <div className="space-y-3.5">
+                        <div className="flex items-center justify-between border-b border-border-subtle pb-3 gap-3 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-text-main flex items-center gap-1.5">
+                              <History className="w-4 h-4 text-accent" />
+                              {t.financialHistory}
+                            </h4>
+                            <span className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-text-secondary px-2 py-0.5 rounded-full">
+                              {historyCounts.all} {language === 'ar' ? 'عملية' : 'opérations'}
+                            </span>
+                          </div>
+
+                          {/* Filter Tabs */}
+                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold text-text-secondary">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryFilter('ALL')}
+                              className={cn(
+                                "px-3 py-1 rounded-lg transition-all text-[11px]",
+                                historyFilter === 'ALL' ? "bg-white dark:bg-slate-700 text-text-main shadow-xs font-black" : "hover:text-text-main"
+                              )}
+                            >
+                              {language === 'ar' ? 'الكل' : 'Tous'} ({historyCounts.all})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHistoryFilter('SALE')}
+                              className={cn(
+                                "px-3 py-1 rounded-lg transition-all text-[11px]",
+                                historyFilter === 'SALE' ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs font-black" : "hover:text-text-main"
+                              )}
+                            >
+                              {language === 'ar' ? 'فواتير' : 'Factures'} ({historyCounts.sales})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHistoryFilter('PAYMENT')}
+                              className={cn(
+                                "px-3 py-1 rounded-lg transition-all text-[11px]",
+                                historyFilter === 'PAYMENT' ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs font-black" : "hover:text-text-main"
+                              )}
+                            >
+                              {language === 'ar' ? 'دفعات' : 'Règlements'} ({historyCounts.payments})
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {loadingHistory ? (
+                          <div className="py-14 text-center text-text-secondary text-xs font-mono animate-pulse tracking-widest">
+                            CHARGEMENT_HISTORIQUE...
+                          </div>
+                        ) : filteredDisplayHistory.length === 0 ? (
+                          <div className="py-14 text-center border-2 border-dashed border-border-subtle rounded-3xl opacity-60 flex flex-col items-center gap-3">
+                            <Archive className="w-8 h-8 opacity-40" />
+                            <p className="text-xs font-semibold text-text-secondary">{t.historyEmpty}</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5 pr-1 overflow-y-auto max-h-[300px] custom-scrollbar">
+                             {filteredDisplayHistory.map((item) => (
+                               <div 
+                                 key={item.id} 
+                                 className="group bg-slate-50/60 dark:bg-slate-800/30 p-3.5 sm:p-4 rounded-2xl flex justify-between items-center text-sm border border-border-subtle/60 hover:bg-white dark:hover:bg-slate-800 hover:border-accent/30 transition-all shadow-xs gap-3"
+                               >
+                                 <div className="flex items-center gap-3.5 min-w-0">
+                                   <div className={cn(
+                                     "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                                     item.type === 'PAYMENT' 
+                                       ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40" 
+                                       : item.type === 'SALE'
+                                       ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40"
+                                       : "bg-slate-100 dark:bg-slate-800 text-text-secondary border-border-subtle"
                                    )}>
-                                      {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} {t.currency}
+                                     {item.type === 'PAYMENT' ? (
+                                       <ArrowDownLeft className="w-5 h-5" />
+                                     ) : item.type === 'SALE' ? (
+                                       <FileText className="w-5 h-5" />
+                                     ) : (
+                                       <Receipt className="w-5 h-5" />
+                                     )}
                                    </div>
-                                   {Number(item.discount || 0) > 0 && (
-                                     <div className="text-[11px] font-bold text-text-secondary line-through opacity-60">
-                                       {formatNumber(Number(item.amount) + Number(item.discount))} {t.currency}
+
+                                   <div className={cn("min-w-0 flex flex-col gap-0.5", language === 'ar' && "text-right")}>
+                                     <div className="flex items-center gap-2 flex-wrap">
+                                       <span className="font-black text-text-main text-sm truncate">
+                                         {item.description || (item.type === 'SALE' ? `Facture #${item.id?.slice(0, 8)}` : 'Règlement')}
+                                       </span>
+                                       {item.type === 'SALE' && (
+                                         <span className="bg-blue-100/70 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                           {t.invoice}
+                                         </span>
+                                       )}
+                                       {item.payment_method === 'CHECK' && (
+                                         <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                                           <CreditCard className="w-3 h-3" /> {t.check} #{item.check_number || '---'}
+                                         </span>
+                                       )}
+                                       {Number(item.discount || 0) > 0 && (
+                                         <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold px-2 py-0.5 rounded-md text-[10px]">
+                                           {t.discount}: -{formatNumber(item.discount)} {t.currency}
+                                         </span>
+                                       )}
                                      </div>
-                                   )}
+
+                                     <div className="text-[11px] font-semibold text-text-secondary/70 flex items-center gap-1.5 flex-wrap">
+                                       <CalendarClock className="w-3.5 h-3.5 text-text-secondary/50" />
+                                       <span>
+                                         {new Date(item.date).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                         {' · '}
+                                         {new Date(item.date).toLocaleTimeString(language === 'ar' ? 'ar-MA' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                       </span>
+                                       {(item as any).check_owner && (
+                                         <span className="opacity-80">
+                                           • {(item as any).check_owner}
+                                         </span>
+                                       )}
+                                     </div>
+                                   </div>
                                  </div>
-                                 <div className="text-[10px] font-bold text-text-secondary/70 mt-1 flex items-center gap-1.5">
-                                   <CalendarClock className="w-3 h-3" /> {new Date(item.date).toLocaleString()}
+
+                                 <div className="flex items-center gap-3 shrink-0">
+                                   <div className="flex flex-col items-end">
+                                     <div className={cn(
+                                       "text-base font-black tabular-nums tracking-tight",
+                                       String(item.type).toUpperCase() === 'PAYMENT' 
+                                         ? "text-emerald-600 dark:text-emerald-400" 
+                                         : (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-600 dark:text-blue-400" : "text-rose-600 dark:text-rose-400")
+                                     )}>
+                                       {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
+                                     </div>
+                                     {Number(item.discount || 0) > 0 && (
+                                       <div className="text-[10px] font-semibold text-text-secondary line-through opacity-70">
+                                         {formatNumber(Number(item.amount) + Number(item.discount))} {t.currency}
+                                       </div>
+                                     )}
+                                   </div>
+
+                                   <div className="flex items-center gap-1">
+                                     {item.type === 'SALE' && (
+                                       <button 
+                                         onClick={async () => {
+                                           try {
+                                             let sale = sales.find((s: any) => s.id === item.id);
+                                             if (!sale) {
+                                                const allSales = await api.getSales();
+                                                sale = allSales.find((s: any) => s.id === item.id);
+                                             }
+                                             if (sale) {
+                                               if (!sale.items || sale.items.length === 0) {
+                                                 const items = await api.getSaleItems(sale.id);
+                                                 sale = { ...sale, items };
+                                               }
+                                               setSelectedSaleToShow(sale);
+                                             }
+                                           } catch (e) {
+                                             console.error("View error:", e);
+                                           }
+                                         }}
+                                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded-xl transition-colors text-text-secondary hover:text-accent border border-transparent hover:border-border-subtle"
+                                         title={t.view}
+                                       >
+                                         <Eye className="w-4 h-4" />
+                                       </button>
+                                     )}
+                                     <button 
+                                       onClick={async () => {
+                                         if (item.type === 'SALE') {
+                                           try {
+                                             let sale = sales.find((s: any) => s.id === item.id);
+                                             if (!sale) {
+                                                const allSales = await api.getSales();
+                                                sale = allSales.find((s: any) => s.id === item.id);
+                                             }
+                                             if (sale) {
+                                               if (!sale.items || sale.items.length === 0) {
+                                                 const items = await api.getSaleItems(sale.id);
+                                                 sale = { ...sale, items };
+                                               }
+                                               generateInvoicePDF({
+                                                 saleId: sale.id,
+                                                 invoiceNumber: sale.invoiceNumber,
+                                                 date: sale.date,
+                                                 items: (sale.items || []).map((i: any) => ({ name: i.name, qty: i.qty, price: i.price })),
+                                                 total: sale.total,
+                                                 clientName: selectedCustomer?.name,
+                                                 clientPhone: selectedCustomer?.phone
+                                               }, language, settings);
+                                             }
+                                           } catch (e) {
+                                             console.error("Print error:", e);
+                                           }
+                                         } else {
+                                           generateTransactionReceiptPDF({ 
+                                             customerName: selectedCustomer.name, 
+                                             type: item.type, 
+                                             amount: item.amount, 
+                                             date: item.date, 
+                                             description: item.description, 
+                                             saleId: item.id, 
+                                             paymentMethod: (item as any).payment_method, 
+                                             checkNumber: (item as any).check_number, 
+                                             checkOwner: (item as any).check_owner, 
+                                             checkDueDate: (item as any).check_due_date 
+                                           }, language, settings);
+                                         }
+                                       }}
+                                       className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700/60 rounded-xl transition-colors text-text-secondary hover:text-accent border border-transparent hover:border-border-subtle"
+                                       title="Imprimer le reçu"
+                                     >
+                                       <Printer className="w-4 h-4" />
+                                     </button>
+                                   </div>
                                  </div>
                                </div>
-                               <div className="flex items-center gap-1">
-                                 <button 
-                                   onClick={async () => {
-                                     if (item.type === 'SALE') {
-                                       try {
-                                         let sale = sales.find((s: any) => s.id === item.id);
-                                         if (!sale) {
-                                            const allSales = await api.getSales();
-                                            sale = allSales.find((s: any) => s.id === item.id);
-                                         }
-
-                                         if (sale) {
-                                           if (!sale.items || sale.items.length === 0) {
-                                             const items = await api.getSaleItems(sale.id);
-                                             sale = { ...sale, items };
-                                           }
-                                           setSelectedSaleToShow(sale);
-                                         }
-                                       } catch (e) {
-                                         console.error("View error:", e);
-                                       }
-                                     } 
-                                   }}
-                                   className={cn("p-2 hover:bg-white rounded-lg transition-colors group/view border border-transparent hover:border-border-subtle", item.type !== 'SALE' && "hidden")}
-                                   title={t.view}
-                                 >
-                                   <Eye className="w-4 h-4 text-text-secondary group-hover/view:text-accent" />
-                                 </button>
-                                 <button 
-                                   onClick={async () => {
-                                     if (item.type === 'SALE') {
-                                       try {
-                                         let sale = sales.find((s: any) => s.id === item.id);
-                                         if (!sale) {
-                                            const allSales = await api.getSales();
-                                            sale = allSales.find((s: any) => s.id === item.id);
-                                         }
-                                         
-                                         if (sale) {
-                                           if (!sale.items || sale.items.length === 0) {
-                                             const items = await api.getSaleItems(sale.id);
-                                             sale = { ...sale, items };
-                                           }
-                                           generateInvoicePDF({
-                                             saleId: sale.id,
-                                             invoiceNumber: sale.invoiceNumber,
-                                             date: sale.date,
-                                             items: (sale.items || []).map((i: any) => ({ name: i.name, qty: i.qty, price: i.price })),
-                                             total: sale.total,
-                                             clientName: selectedCustomer?.name,
-                                            clientPhone: selectedCustomer?.phone
-                                          }, language, settings);
-                                         }
-                                       } catch (e) {
-                                         console.error("Print error:", e);
-                                       }
-                                     } else {
-                                       generateTransactionReceiptPDF({ customerName: selectedCustomer.name, type: item.type, amount: item.amount, date: item.date, description: item.description, saleId: item.id, paymentMethod: (item as any).payment_method, checkNumber: (item as any).check_number, checkOwner: (item as any).check_owner, checkDueDate: (item as any).check_due_date }, language, settings);
-                                     }
-                                   }}
-                                   className="p-2 hover:bg-white rounded-lg transition-colors group/print border border-transparent hover:border-border-subtle"
-                                 >
-                                   <Printer className="w-4 h-4 text-text-secondary group-hover/print:text-accent" />
-                                 </button>
-                               </div>
-                             </div>
-                           ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="p-6 bg-[#fafafa] border-t border-border-subtle flex flex-col gap-4">
-                <div className="flex gap-3 mb-3">
-                  <button onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: selectedCustomer.debt, transactions: displayHistory, type: 'customer' }, language, settings)} className="flex-1 bg-white border border-border-subtle text-text-main font-bold py-3 rounded-xl hover:bg-bg-base transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm">
-                    <Download className="w-3.5 h-3.5 text-accent" /> {t.generateStatement}
-                  </button>
-                  <button onClick={() => openReturnModal(selectedCustomer)} className="flex-1 bg-accent text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
-                    <ArrowRightLeft className="w-3.5 h-3.5" /> {t.returnProduct}
-                  </button>
-                  <button onClick={() => setAdjustModal({ type: 'pay', customer: selectedCustomer })} className="flex-1 bg-success text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-1.5">
-                    {t.payDebt}
-                  </button>
+                             ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
-                {selectedCustomer.debt > 0 && (
-                  <button 
-                    onClick={() => {
-                      setAdjustModal({ type: 'pay', customer: selectedCustomer });
-                      setAdjustAmount(selectedCustomer.debt.toString());
-                    }} 
-                    className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
-                  >
-                    <span>{t.clearFullDebt}</span>
-                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                    <CheckCircle className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
+
+                {/* Footer Actions */}
+                <div className="p-5 sm:p-6 bg-slate-50/80 dark:bg-slate-900/60 border-t border-border-subtle flex flex-col gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button 
+                      onClick={() => generateStatementPDF({ entityName: selectedCustomer.name, remainingDebt: currentDebt, transactions: displayHistory, type: 'customer' }, language, settings)} 
+                      className="bg-white dark:bg-card border border-border-subtle text-text-main font-bold py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <Download className="w-4 h-4 text-accent" /> 
+                      {t.generateStatement}
+                    </button>
+                    <button 
+                      onClick={() => openReturnModal(selectedCustomer)} 
+                      className="bg-white dark:bg-card border border-border-subtle text-text-main font-bold py-3 px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <ArrowRightLeft className="w-4 h-4 text-accent" /> 
+                      {t.returnProduct}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setAdjustModal({ type: 'pay', customer: selectedCustomer });
+                        setAdjustAmount('');
+                      }} 
+                      className="bg-accent text-white font-bold py-3 px-4 rounded-xl hover:opacity-90 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-accent/20"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      {t.payDebt}
+                    </button>
+                  </div>
+
+                  {/* High-impact Full Settlement CTA */}
+                  {currentDebt > 0 && (
+                    <button 
+                      onClick={() => {
+                        setAdjustModal({ type: 'pay', customer: selectedCustomer });
+                        setAdjustAmount(currentDebt.toString());
+                      }} 
+                      className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3.5 px-6 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 active:scale-[0.99] transition-all flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                          <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                        </div>
+                        <span>{t.clearFullDebt}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-black/20 px-3.5 py-1.5 rounded-xl border border-white/10">
+                        <span className="text-sm font-black tabular-nums">{formatNumber(currentDebt)} {t.currency}</span>
+                        <CheckCircle className="w-4 h-4 text-emerald-300" />
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Sale Details Modal */}
