@@ -411,6 +411,161 @@ export async function initDb() {
     console.error("Error auto-syncing product_lots:", e);
   }
 
+  // Retroactive migration for ALL past returns from stock_movements
+  try {
+    const pastReturns = await db.prepare(`
+      SELECT 
+        sm.id as movement_id,
+        sm.product_id,
+        sm.product_name,
+        sm.quantity as qty,
+        COALESCE(sm.cost_price, p.cost_price, 0) as cost_price,
+        sm.timestamp as date,
+        sm.actor,
+        sm.reason,
+        COALESCE(p.price, 0) as current_product_price,
+        c.id as customer_id,
+        c.name as customer_name
+      FROM stock_movements sm
+      LEFT JOIN products p ON sm.product_id = p.id
+      LEFT JOIN customers c ON LOWER(TRIM(c.name)) = LOWER(TRIM(REPLACE(sm.reason, 'Customer Return: ', '')))
+      WHERE sm.reason LIKE 'Customer Return%'
+      AND NOT EXISTS (SELECT 1 FROM customer_returns cr WHERE cr.id = 'mig_' || sm.id)
+    `).all() as any[];
+
+    for (const ret of pastReturns) {
+      let refundAmount = 0;
+      let action = 'debt';
+
+      if (ret.customer_id) {
+        const historyMatch = await db.prepare(`
+          SELECT amount, description 
+          FROM customer_history 
+          WHERE customer_id = $1 
+          AND (description LIKE '%Retour%' OR description LIKE '%Remboursé%')
+          ORDER BY ABS(EXTRACT(EPOCH FROM (date - $2::timestamp))) ASC
+          LIMIT 1
+        `).get(ret.customer_id, ret.date) as any;
+
+        if (historyMatch && historyMatch.amount > 0) {
+          refundAmount = Number(historyMatch.amount);
+        } else if (historyMatch && historyMatch.description && historyMatch.description.includes('Remboursé')) {
+          action = 'cash';
+          const match = historyMatch.description.match(/Remboursé\s+([\d.]+)/i);
+          if (match && match[1]) {
+            refundAmount = parseFloat(match[1]);
+          }
+        }
+      }
+
+      const qty = Number(ret.qty) || 1;
+      const costPrice = Number(ret.cost_price) || 0;
+      let unitPrice = 0;
+
+      if (refundAmount > 0) {
+        unitPrice = refundAmount / qty;
+      } else {
+        unitPrice = Number(ret.current_product_price) || costPrice;
+        refundAmount = unitPrice * qty;
+      }
+
+      const profitLoss = (unitPrice - costPrice) * qty;
+
+      await db.prepare(`
+        INSERT INTO customer_returns (
+          id, customer_id, customer_name, product_id, product_name, 
+          qty, price, cost_price, total_refund, profit_loss, action, description, actor, date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `).run(
+        'mig_' + ret.movement_id,
+        ret.customer_id || null,
+        ret.customer_name || (ret.reason ? ret.reason.replace('Customer Return: ', '') : 'Client'),
+        ret.product_id,
+        ret.product_name,
+        qty,
+        unitPrice,
+        costPrice,
+        refundAmount,
+        profitLoss,
+        action,
+        ret.reason,
+        ret.actor || 'System',
+        ret.date
+      );
+    }
+
+    if (pastReturns.length > 0) {
+      console.log(`Successfully migrated ${pastReturns.length} past customer returns into customer_returns.`);
+    }
+  } catch (e) {
+    console.warn("Notice during past returns migration:", e);
+  }
+
+  // Also check customer_history for any standalone returns not in customer_returns
+  try {
+    const standaloneHistoryReturns = await db.prepare(`
+      SELECT ch.id, ch.customer_id, ch.amount, ch.description, ch.date, c.name as customer_name
+      FROM customer_history ch
+      LEFT JOIN customers c ON ch.customer_id = c.id
+      WHERE (ch.description LIKE 'Retour:%' OR ch.description LIKE 'Retour Cash:%')
+      AND NOT EXISTS (
+        SELECT 1 FROM customer_returns cr 
+        WHERE cr.customer_id = ch.customer_id 
+        AND ABS(EXTRACT(EPOCH FROM (cr.date - ch.date))) < 300
+      )
+    `).all() as any[];
+
+    for (const hRet of standaloneHistoryReturns) {
+      let refund = Number(hRet.amount) || 0;
+      let action = 'debt';
+      if (hRet.description && hRet.description.includes('Retour Cash:')) {
+        action = 'cash';
+        const match = hRet.description.match(/Remboursé\s+([\d.]+)/i);
+        if (match && match[1]) {
+          refund = parseFloat(match[1]);
+        }
+      }
+      if (refund <= 0) continue;
+
+      let parsedQty = 1;
+      let parsedProdName = hRet.description;
+      const qtyMatch = hRet.description.match(/Retour(?:\s+Cash)?:\s*([\d.]+)\s*x\s*([^(]+)/i);
+      if (qtyMatch) {
+        parsedQty = parseFloat(qtyMatch[1]) || 1;
+        parsedProdName = qtyMatch[2].trim();
+      }
+
+      const prod = await db.prepare(`SELECT id, cost_price FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1`).get(parsedProdName) as any;
+      const unitPrice = refund / parsedQty;
+      const costPrice = prod ? Number(prod.cost_price || 0) : unitPrice * 0.8;
+      const profitLoss = (unitPrice - costPrice) * parsedQty;
+
+      await db.prepare(`
+        INSERT INTO customer_returns (
+          id, customer_id, customer_name, product_id, product_name,
+          qty, price, cost_price, total_refund, profit_loss, action, description, actor, date
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `).run(
+        'hist_' + hRet.id,
+        hRet.customer_id,
+        hRet.customer_name || 'Client',
+        prod?.id || 'unknown',
+        parsedProdName,
+        parsedQty,
+        unitPrice,
+        costPrice,
+        refund,
+        profitLoss,
+        action,
+        hRet.description,
+        'System',
+        hRet.date
+      );
+    }
+  } catch (e) {
+    console.warn("Notice during standalone returns migration:", e);
+  }
+
   // Initialize settings
   const settingsData = await db.prepare('SELECT * FROM settings WHERE id = $1').get('main');
   if (!settingsData) {
