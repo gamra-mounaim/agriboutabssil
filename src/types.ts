@@ -162,8 +162,8 @@ export interface TransactionRecord {
 
 export interface ActivityLog {
   id: string;
-  type: 'SALE' | 'PAYMENT' | 'PRODUCT' | 'CUSTOMER' | 'STAFF' | 'STOCK' | 'CATEGORY';
-  action: 'create' | 'update' | 'delete' | 'login';
+  type: 'SALE' | 'PAYMENT' | 'PRODUCT' | 'CUSTOMER' | 'STAFF' | 'STOCK' | 'CATEGORY' | 'SUPPLIER' | 'SUPPLIER_PAYMENT' | 'RETURN' | 'SETTINGS' | 'SYSTEM' | (string & {});
+  action: 'create' | 'update' | 'delete' | 'login' | 'backup' | 'import' | (string & {});
   details: string;
   actorId: string;
   actorName: string;
