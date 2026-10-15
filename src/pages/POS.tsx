@@ -480,7 +480,7 @@ export default function POS() {
                  className="bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center cursor-pointer"
                  value={stockStatusFilter || ''} onChange={e => setStockStatusFilter(e.target.value as any)}
                >
-                 <option value="all">{language === 'ar' ? "الكل" : "All"}</option>
+                 <option value="all">{language === 'ar' ? "الكل" : language === 'fr' ? "Tous" : "All"}</option>
                  <option value="inStock">{t.inStock}</option>
                  <option value="lowStock">{t.lowStock}</option>
                  <option value="outOfStock">{t.outOfStock}</option>
@@ -492,7 +492,7 @@ export default function POS() {
                 className="ml-auto text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-widest transition-colors flex items-center gap-1.5"
              >
                 <X className="w-3 h-3" />
-                {language === 'ar' ? "إعادة" : "Reset"}
+                {language === 'ar' ? "إعادة" : language === 'fr' ? "Réinitialiser" : "Reset"}
              </button>
           </div>
         </div>
@@ -509,10 +509,11 @@ export default function POS() {
                 whileTap={{ scale: 0.97 }}
                 disabled={p.qty <= 0}
                 onClick={() => addToCart(p)}
+                title={p.name}
                 className={cn(
                   "group relative flex flex-col justify-between p-4 rounded-2xl border bg-card text-left transition-all hover:shadow-xl hover:-translate-y-1 hover:border-accent active:shadow-none",
                   p.qty <= 0 ? "bg-red-50/20 dark:bg-red-950/10 border-danger/30 opacity-75 cursor-not-allowed" : "border-border-subtle",
-                  p.qty <= (p.minStock ?? 5) && p.qty > 0 && "border-orange-200/50 bg-orange-50/5",
+                  p.qty <= (p.minStock ?? 5) && p.qty > 0 && "border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400/20",
                   language === 'ar' && "text-right"
                 )}
               >
@@ -522,7 +523,7 @@ export default function POS() {
                       <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] mb-1">
                         {categories.find(c => c.id === p.categoryId)?.name || t.noCategory}
                       </span>
-                      <h4 className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors line-clamp-2 leading-tight">
+                      <h4 className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors line-clamp-2 leading-tight" title={p.name}>
                         {p.name}
                       </h4>
                     </div>
@@ -531,7 +532,7 @@ export default function POS() {
                         {language === 'ar' ? 'نفذت الكمية' : 'RUPTURE'}
                       </span>
                     ) : p.qty <= (p.minStock ?? 5) && p.qty > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shrink-0">{language === 'ar' ? 'مخزون ضعيف' : language === 'fr' ? 'Stock faible' : 'Low stock'}</span>
                     )}
                   </div>
                 </div>
@@ -627,7 +628,7 @@ export default function POS() {
                 {/* Product Name & Unit Price */}
                 <div className={cn("flex-1 min-w-0 flex flex-col", language === 'ar' ? "text-right" : "text-left")}>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-[12px] text-text-main group-hover:text-accent transition-colors truncate leading-tight" title={item.name}>
+                    <span className="font-bold text-[12px] text-text-main group-hover:text-accent transition-colors break-words leading-tight" title={item.name}>
                       {item.name}
                     </span>
                     {(() => {

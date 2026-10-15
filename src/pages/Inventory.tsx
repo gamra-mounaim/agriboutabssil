@@ -130,6 +130,10 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const [adjSupplierId, setAdjSupplierId] = useState('');
   const [adjCostPrice, setAdjCostPrice] = useState('');
 
+  // --- Double-Submit Protections ---
+  const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+
   // --- Edit Modal State ---
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
@@ -259,7 +263,8 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
   const addProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !qty) return;
+    if (!name || !price || !qty || isAddingProduct) return;
+    setIsAddingProduct(true);
     try {
       await api.addProduct({
         name,
@@ -295,7 +300,8 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct) return;
+    if (!editingProduct || isUpdatingProduct) return;
+    setIsUpdatingProduct(true);
     try {
       await api.updateProduct(editingProduct.id, {
         ...editingProduct,
@@ -1031,8 +1037,8 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                     </select>
                   </div>
                 </div>
-                <button type="submit" className="w-full py-4 bg-accent text-white rounded-2xl font-black shadow-xl shadow-accent/20 hover:opacity-90 transition-opacity uppercase tracking-widest text-sm mt-4">
-                  {t.saveChanges}
+                <button type="submit" disabled={isUpdatingProduct} className="w-full py-4 bg-accent text-white rounded-2xl font-black shadow-xl shadow-accent/20 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-widest text-sm mt-4 flex items-center justify-center gap-2">
+                  {isUpdatingProduct ? (language === 'ar' ? "جاري الحفظ..." : language === 'fr' ? "Enregistrement..." : "Saving...") : t.saveChanges}
                 </button>
               </form>
             </motion.div>

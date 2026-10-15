@@ -814,7 +814,7 @@ async function startServer() {
         WHERE id = ?
       `).run(name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, id);
       
-      let details = `Modification / Update`;
+      let details = `Modification [${name || oldProduct?.name || 'Produit'}]`;
       if (oldProduct) {
         let changes = [];
         if (String(oldProduct.name) !== String(name)) changes.push(`Nom: ${oldProduct.name}->${name}`);
@@ -826,7 +826,7 @@ async function startServer() {
         if (String(oldProduct.category_id || '') !== String(categoryId || '')) changes.push(`Catégorie: Changée`);
         if (String(oldProduct.supplier || '') !== String(supplier || '')) changes.push(`Fournisseur: ${oldProduct.supplier || 'aucun'}->${supplier || 'aucun'}`);
         if (changes.length > 0) {
-            details += `: ${changes.join(', ')}`;
+            details += ` : ${changes.join(', ')}`;
         }
       }
       
@@ -2112,7 +2112,10 @@ async function startServer() {
 
     // Top Selling Products
     const topProductsList = await db.prepare(`
-      SELECT p.id, p.name, SUM(si.qty) as qty, MAX(p.price) as price
+      SELECT p.id, p.name, SUM(si.qty) as qty,
+             COALESCE(SUM(si.qty * si.price), 0) as total_revenue,
+             ROUND(CAST(COALESCE(SUM(si.qty * si.price), 0) / NULLIF(SUM(si.qty), 0) AS numeric), 2) as avg_price,
+             MAX(p.price) as price
       FROM sale_items si
       JOIN products p ON si.product_id = p.id
       GROUP BY p.id, p.name
@@ -2178,7 +2181,7 @@ async function startServer() {
       monthlyProfitBreakdown,
       yearlyProfitBreakdown,
       paymentMethodsBreakdown,
-      last7Days: last7Days.reverse(),
+      last7Days: last7Days,
       topProductsList,
       dormantStockList,
       prev7DaysTotal

@@ -414,7 +414,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       </div>
                       <div className="overflow-hidden flex-1 min-w-0">
                         <div className="text-xs font-bold text-text-main truncate" title={p.name} dir="auto">{p.name}</div>
-                        <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
+                        <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{categories.find(c => c.id === p.categoryId)?.name || p.barcode || (language === 'ar' ? 'عام' : 'Général')}</div>
                       </div>
                     </div>
                     <div className="text-right pl-2 shrink-0">
@@ -524,72 +524,85 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         </motion.div>
       )}
 
-            {/* Top Stats Grid */}
-      {visibleCardsCount > 0 && (
-        <div className={`grid ${gridColsClass} gap-6`}>
-          {permissions.supplierDebt && (
-              <StatCard 
-                title={t.totalSupplierDebt} 
-                value={formatNumber(totalSupplierDebt)} 
-                subtext={t.amountOwedToSuppliers}
-                color={totalSupplierDebt > 0 ? "text-danger" : "text-text-main"}
-                danger={totalSupplierDebt > 0}
-              />
-            )}
-            {permissions.financialsDebts && (
-            <>
-              <StatCard 
-                title={t.pendingDebts} 
-                value={formatNumber(totalCustomerDebt)} 
-                subtext={t.debtWallet}
-              />
-              <StatCard 
-                title={t.debtorCustomers} 
-                value={formatNumber(customers.filter(c => c.debt > 0).length)} 
-                subtext={t.customersWithBalance}
-                color="text-text-main"
-                showCurrency={false}
-              />
-            </>
+            {/* Top Stats Grids: Row 1 (Core Financials) & Row 2 (Operations) */}
+      <div className="space-y-6">
+        {/* Row 1: High Level Revenue, Profit, Stock & Debts (Balanced 4 columns) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {permissions.financialsSales && (
+            /* Black Card - AGRI BOUTABSSIL Ventes Totales */
+            <div className="bg-slate-950 dark:bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10 border border-slate-800">
+              <div className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
+              <div className="flex flex-col items-center">
+                <Logo className="w-12 h-12 mb-2 p-1" />
+                <div className="text-3xl font-black text-white font-mono">{formatNumber(totalRevenue)}</div>
+                <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
+              </div>
+              <div className="text-xs text-white/60 font-medium mt-4">{t.totalSales}</div>
+            </div>
           )}
+
           {permissions.financialsProfits && (
             <StatCard 
               title={t.expectedProfit} 
               value={formatNumber(netProfit)} 
               subtext={t.expectedProfit}
+              color="text-emerald-600 dark:text-emerald-400"
             />
           )}
+
           {permissions.financialsInventory && (
-            <>
-              <StatCard 
-                title={t.inventoryValue} 
-                value={formatNumber(inventoryAssetValue)} 
-                subtext={t.totalInventoryValue}
-              />
-              <StatCard 
-                title={t.damages} 
-                value={formatNumber(totalDamagesLoss)} 
-                subtext={language === 'ar' ? 'انقر لتصدير PDF' : language === 'fr' ? 'Cliquez pour exporter le PDF' : 'Click to export PDF'} 
-                color={totalDamagesLoss > 0 ? "text-red-500" : "text-text-main"}
-                onClick={handleExportDamages}
-                danger={totalDamagesLoss > 0}
-              />
-            </>
+            <StatCard 
+              title={t.inventoryValue} 
+              value={formatNumber(inventoryAssetValue)} 
+              subtext={t.totalInventoryValue}
+              color="text-blue-600 dark:text-blue-400"
+            />
           )}
-                    {permissions.financialsSales && (
-            /* Black Card */
-            <div className="bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10">
-              <div className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
-              <div className="flex flex-col items-center">
-                 <Logo className="w-12 h-12 mb-2 p-1" />
-                                <div className="text-3xl font-black text-white">{formatNumber(totalRevenue)}</div>
-                <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
-              </div>
-              <div className="text-xs text-white/50 font-medium mt-4">{t.totalSales}</div>
-            </div>
+
+          {permissions.financialsDebts && (
+            <StatCard 
+              title={t.pendingDebts} 
+              value={formatNumber(totalCustomerDebt)} 
+              subtext={t.debtWallet}
+              color={totalCustomerDebt > 0 ? "text-amber-600 dark:text-amber-400" : "text-text-main"}
+            />
           )}
         </div>
-      )}
+
+        {/* Row 2: Secondary Indicators (Supplier Debt, Debtor Count, Damages Loss) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {permissions.supplierDebt && (
+            <StatCard 
+              title={t.totalSupplierDebt} 
+              value={formatNumber(totalSupplierDebt)} 
+              subtext={t.amountOwedToSuppliers}
+              color={totalSupplierDebt > 0 ? "text-danger" : "text-text-main"}
+              danger={totalSupplierDebt > 0}
+            />
+          )}
+
+          {permissions.financialsDebts && (
+            <StatCard 
+              title={t.debtorCustomers} 
+              value={formatNumber(customers.filter(c => c.debt > 0).length, 0)} 
+              subtext={t.customersWithBalance}
+              color="text-text-main"
+              showCurrency={false}
+            />
+          )}
+
+          {permissions.financialsInventory && (
+            <StatCard 
+              title={t.damages} 
+              value={formatNumber(totalDamagesLoss)} 
+              subtext={language === 'ar' ? 'انقر لتصدير PDF' : language === 'fr' ? 'Cliquez pour exporter le PDF' : 'Click to export PDF'} 
+              color={totalDamagesLoss > 0 ? "text-red-500" : "text-text-main"}
+              onClick={handleExportDamages}
+              danger={totalDamagesLoss > 0}
+            />
+          )}
+        </div>
+      </div>
 
       {permissions.financialsProfits && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -820,7 +833,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                               </div>
                               <div className="overflow-hidden flex-1 min-w-0">
                                 <div className="text-xs font-bold text-text-main truncate" title={p.name} dir="auto">{p.name}</div>
-                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{p.categoryId}</div>
+                                <div className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">{categories.find(c => c.id === p.categoryId)?.name || p.barcode || (language === 'ar' ? 'عام' : 'Général')}</div>
                               </div>
                             </div>
                             <div className="text-right pl-2 shrink-0">
@@ -861,11 +874,11 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                               #{idx + 1}
                             </div>
                             <div>
-                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{tp.name}</div><div className="text-xs text-text-secondary font-medium tracking-tight uppercase truncate">{tp.qty} {(t as any).unitLabel}</div></div>
+                              <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{tp.name}</div><div className="text-xs text-text-secondary font-medium tracking-tight uppercase truncate">{formatNumber(tp.qty, 0)} {(t as any).unitLabel || (language === 'ar' ? 'وحدة' : 'unités')} • {formatNumber(tp.avg_price || tp.price)} {t.currency}/u</div></div>
                             </div>
                           </div>
                           <div className="text-right shrink-0 whitespace-nowrap ml-2">
-                             <div className="text-lg font-black text-emerald-600">{formatNumber(tp.price * tp.qty)}</div>
+                             <div className="text-lg font-black text-emerald-600 font-mono">{formatNumber(tp.total_revenue || tp.price * tp.qty)}</div>
                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
                           </div>
                         </div>
