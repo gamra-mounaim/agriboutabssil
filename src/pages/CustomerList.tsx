@@ -490,7 +490,7 @@ export default function CustomerList() {
                    <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl -translate-y-8 translate-x-8", c.debt > 0 ? "bg-danger/10" : "bg-success/10")} />
                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1 opacity-60">{t.debt}</p>
                    <div className="flex items-baseline gap-1 relative z-10">
-                      <span className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
+                      <span dir="ltr" className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
                       <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                    </div>
                    {c.debt > 0 && (c.dueDate || c.due_date) && (
@@ -522,16 +522,16 @@ export default function CustomerList() {
                       </span>
                     </div>
 
-                    <div className={cn("flex items-baseline justify-between pt-2 border-t border-emerald-200/50 relative z-10", language === 'ar' && "flex-row-reverse")}>
+                    <div className="flex items-baseline justify-between pt-2 border-t border-emerald-200/50 relative z-10">
                       <div className="flex items-baseline gap-1">
-                        <span className={cn("text-2xl font-black tracking-tight font-mono", (c.totalProfit || 0) >= 0 ? "text-emerald-600" : "text-amber-600")}>
+                        <span dir="ltr" className={cn("text-2xl font-black tracking-tight font-mono", (c.totalProfit || 0) >= 0 ? "text-emerald-600" : "text-amber-600")}>
                           {(c.totalProfit || 0) > 0 ? `+${formatNumber(c.totalProfit)}` : formatNumber(c.totalProfit || 0)}
                         </span>
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">{t.currency}</span>
                       </div>
                       {(c.totalSpent || 0) > 0 && (
                         <span className="text-[10px] font-bold text-text-secondary/70">
-                          {t.sales}: <span className="font-mono text-text-main font-black">{formatNumber(c.totalSpent)}</span> {t.currency}
+                          {t.sales}: <span dir="ltr" className="font-mono text-text-main font-black">{formatNumber(c.totalSpent)}</span> {t.currency}
                         </span>
                       )}
                     </div>
@@ -743,7 +743,7 @@ export default function CustomerList() {
                           </div>
                           <div>
                             <div className="text-xl sm:text-2xl font-black text-text-main tabular-nums tracking-tight">
-                              {formatNumber(totalAccruedAmount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
+                              <span dir="ltr">{formatNumber(totalAccruedAmount)}</span> <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
                             </div>
                             <div className="text-[10px] font-semibold text-text-secondary/70 mt-1">
                               {language === 'ar' ? 'إجمالي المشتريات' : 'Total des achats'}
@@ -761,7 +761,7 @@ export default function CustomerList() {
                           </div>
                           <div>
                             <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
-                              {formatNumber(totalPaidAmount)} <span className="text-xs font-bold text-emerald-600/70">{t.currency}</span>
+                              <span dir="ltr">{formatNumber(totalPaidAmount)}</span> <span className="text-xs font-bold text-emerald-600/70">{t.currency}</span>
                             </div>
                             <div className="text-[10px] font-semibold text-emerald-700/70 mt-1">
                               {language === 'ar' ? 'المبلغ المؤدى' : 'Encaissé avec succès'}
@@ -790,7 +790,7 @@ export default function CustomerList() {
                           </div>
                           <div>
                             <div className={cn("text-xl sm:text-2xl font-black tabular-nums tracking-tight", currentDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
-                              {formatNumber(currentDebt)} <span className="text-xs font-bold opacity-80">{t.currency}</span>
+                              <span dir="ltr">{formatNumber(currentDebt)}</span> <span className="text-xs font-bold opacity-80">{t.currency}</span>
                             </div>
                             <div className={cn("text-[10px] font-semibold mt-1", currentDebt > 0 ? "text-rose-700/70" : "text-emerald-700/70")}>
                               {currentDebt > 0 ? (language === 'ar' ? 'مبلغ الدين المتبقي' : 'Reste à recouvrer') : (language === 'ar' ? 'لا يوجد أي دين' : 'Aucun impayé')}
@@ -809,12 +809,12 @@ export default function CustomerList() {
                             </div>
                             <div>
                               <div className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-400 tabular-nums tracking-tight">
-                                {currentProfit > 0 ? `+${formatNumber(currentProfit)}` : formatNumber(currentProfit)} <span className="text-xs font-bold text-teal-700/70">{t.currency}</span>
+                                <span dir="ltr">{currentProfit > 0 ? `+${formatNumber(currentProfit)}` : formatNumber(currentProfit)}</span> <span className="text-xs font-bold text-teal-700/70">{t.currency}</span>
                               </div>
                               <div className="flex items-center justify-between text-[9px] font-semibold text-teal-700/80 mt-1 gap-1 flex-wrap">
                                 <span>{t.profitFromFirstTx}</span>
                                 {totalDiscountsGiven > 0 && (
-                                  <span className="text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/40 px-1 rounded">
+                                  <span dir="ltr" className="text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/40 px-1 rounded">
                                     -{formatNumber(totalDiscountsGiven)} {t.currency}
                                   </span>
                                 )}
@@ -1045,11 +1045,11 @@ export default function CustomerList() {
                                          ? "text-emerald-600 dark:text-emerald-400" 
                                          : (String(item.type).toUpperCase() === 'SALE' && !['DEBT', 'CREDIT'].includes(String(item.paymentMethod || item.payment_method).toUpperCase()) ? "text-blue-600 dark:text-blue-400" : "text-rose-600 dark:text-rose-400")
                                      )}>
-                                       {item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
+                                       <span dir="ltr">{item.type === 'PAYMENT' ? '+' : '-'}{formatNumber(item.amount)}</span> <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
                                      </div>
                                      {Number(item.discount || 0) > 0 && (
                                        <div className="text-[10px] font-semibold text-text-secondary line-through opacity-70">
-                                         {formatNumber(Number(item.amount) + Number(item.discount))} {t.currency}
+                                         <span dir="ltr">{formatNumber(Number(item.amount) + Number(item.discount))}</span> {t.currency}
                                        </div>
                                      )}
                                    </div>

@@ -110,7 +110,7 @@ export const formatNumber = (val: any) => {
   if (isNaN(num)) return '0';
   const rounded = Math.round(num * 100) / 100;
   const parts = rounded.toString().split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "\u00A0");
   return parts.join('.');
 };
 

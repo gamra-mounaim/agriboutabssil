@@ -141,3 +141,12 @@ button:active {
   }
 }
 
+/* Ensure numbers, tabular data, and mono fonts are always rendered LTR with proper bidi isolation */
+.font-mono,
+.tabular-nums,
+[dir="ltr"] {
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+}
+
+

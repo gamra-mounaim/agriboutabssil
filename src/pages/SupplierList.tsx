@@ -4,8 +4,18 @@ import {
   Search, Store, Plus, Edit2, Trash2, Printer, X, Hash,
   CreditCard, ChevronDown, ChevronUp, AlertTriangle,
   Phone, Mail, MapPin, Calendar, TrendingDown, TrendingUp,
-  ArrowUpDown, CheckCircle2
+  ArrowUpDown, CheckCircle2, Copy, Check, Package, Receipt,
+  Wallet, CalendarClock, ArrowRightLeft, ShieldCheck, FileText
 } from 'lucide-react';
+
+function getSupplierInitials(name?: string) {
+  if (!name) return 'FR';
+  const clean = name.trim().replace(/[^a-zA-Z0-9\s\u0600-\u06FF]/g, '');
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'FR';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 import { formatNumber, cn } from '../utils';
 import { Supplier, TransactionRecord, moroccanBanks } from '../types';
 import { translations } from '../translations';
@@ -57,6 +67,9 @@ export default function SupplierList({ permissions }: { permissions: any }) {
   const [loadingHistory, setLoadingHistory]       = useState(false);
   const [isEditingProfile, setIsEditingProfile]   = useState(false);
   const [editForm, setEditForm]                   = useState({ name: '', email: '', phone: '', address: '', due_date: '' });
+  const [historySearch, setHistorySearch]         = useState('');
+  const [historyFilter, setHistoryFilter]         = useState<'all' | 'payment' | 'debt' | 'check'>('all');
+  const [copiedPhone, setCopiedPhone]             = useState(false);
 
   // ── Delete confirm ──
   const [deleteConfirm, setDeleteConfirm] = useState<Supplier | null>(null);
@@ -113,6 +126,47 @@ export default function SupplierList({ permissions }: { permissions: any }) {
     }).reverse(); // show newest first
   }, [supplierHistory]);
 
+  const supplierStats = useMemo(() => {
+    if (!supplierHistory.length) return { totalDebts: 0, totalPayments: 0, count: 0 };
+    let totalDebts = 0;
+    let totalPayments = 0;
+    supplierHistory.forEach(h => {
+      if (h.type === 'DEBT')    totalDebts += (h.amount || 0);
+      if (h.type === 'PAYMENT') totalPayments += (h.amount || 0);
+    });
+    return { totalDebts, totalPayments, count: supplierHistory.length };
+  }, [supplierHistory]);
+
+  const historyCounts = useMemo(() => {
+    let payment = 0;
+    let debt = 0;
+    let check = 0;
+    historyWithBalance.forEach(h => {
+      if (h.type === 'PAYMENT') payment++;
+      if (h.type === 'DEBT')    debt++;
+      if (h.payment_method === 'CHECK' || h.description?.toLowerCase().includes('chèque') || h.description?.toLowerCase().includes('check')) check++;
+    });
+    return { all: historyWithBalance.length, payment, debt, check };
+  }, [historyWithBalance]);
+
+  const filteredSupplierHistory = useMemo(() => {
+    if (!historyWithBalance.length) return [];
+    const q = historySearch.trim().toLowerCase();
+    return historyWithBalance.filter(h => {
+      if (historyFilter === 'payment' && h.type !== 'PAYMENT') return false;
+      if (historyFilter === 'debt' && h.type !== 'DEBT') return false;
+      if (historyFilter === 'check' && h.payment_method !== 'CHECK' && !h.description?.toLowerCase().includes('chèque') && !h.description?.toLowerCase().includes('check')) return false;
+
+      if (q) {
+        const matchDesc = h.description && h.description.toLowerCase().includes(q);
+        const matchCheck = h.check_number && h.check_number.toLowerCase().includes(q);
+        const matchAmount = h.amount && h.amount.toString().includes(q);
+        if (!matchDesc && !matchCheck && !matchAmount) return false;
+      }
+      return true;
+    });
+  }, [historyWithBalance, historySearch, historyFilter]);
+
   // ── Handlers ──
   const addSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +183,8 @@ export default function SupplierList({ permissions }: { permissions: any }) {
     setSelectedSupplier(s);
     setEditForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', due_date: s.dueDate || s.due_date || '' });
     setIsEditingProfile(false);
+    setHistorySearch('');
+    setHistoryFilter('all');
     setLoadingHistory(true);
     try { setSupplierHistory(await api.getSupplierHistory(s.id)); } catch { /* silent */ }
     setLoadingHistory(false);
@@ -518,108 +574,485 @@ export default function SupplierList({ permissions }: { permissions: any }) {
 
         {/* ── SUPPLIER DETAIL ── */}
         {selectedSupplier && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/20 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-border-subtle flex flex-col max-h-[85vh]"
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white dark:bg-card w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80 dark:border-border-subtle flex flex-col max-h-[90vh]"
             >
               {/* Header */}
-              <div className="p-6 border-b border-border-subtle flex justify-between items-start">
-                <div>
-                  <div className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">{t.supplierDetails}</div>
-                  {isEditingProfile ? (
-                    <input className="text-2xl font-black bg-bg-base border border-border-subtle rounded-lg px-3 py-1 outline-none focus:border-accent w-full" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-                  ) : (
-                    <h3 className="text-2xl font-black tracking-tight">{selectedSupplier.name}</h3>
-                  )}
+              <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 dark:border-border-subtle bg-slate-50/50 dark:bg-slate-800/20 flex justify-between items-start gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-emerald-600/20 shrink-0 ring-4 ring-emerald-50 dark:ring-emerald-950/40">
+                    {getSupplierInitials(selectedSupplier.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-[10px] font-black tracking-widest uppercase text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                        {t.supplierDetails}
+                      </span>
+                      {canViewDebtAmount && (
+                        selectedSupplier.debt > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            {language === 'ar' ? 'الرصيد المستحق' : language === 'fr' ? 'Montant Dû' : 'Amount Due'}: <span dir="ltr" className="font-mono font-black">{formatNumber(selectedSupplier.debt)}</span> {t.currency}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-900/50">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            {language === 'ar' ? 'الحساب مسوّى' : language === 'fr' ? 'Compte soldé' : 'Account Settled'}
+                          </span>
+                        )
+                      )}
+                    </div>
+                    {isEditingProfile ? (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-text-secondary uppercase">{t.supplierName}</label>
+                        <input
+                          className="text-xl font-black bg-bg-base border border-border-subtle rounded-xl px-3 py-1.5 w-full outline-none focus:ring-2 focus:ring-emerald-500"
+                          value={editForm.name}
+                          onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                        />
+                      </div>
+                    ) : (
+                      <h3 className="text-2xl sm:text-3xl font-black text-text-main tracking-tight truncate">
+                        {selectedSupplier.name}
+                      </h3>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIsEditingProfile(v => !v)} className={cn('p-2 rounded-xl transition-colors', isEditingProfile ? 'bg-accent/10 text-accent' : 'hover:bg-bg-base text-text-secondary')}>
-                    <Edit2 className="w-4 h-4" />
-                  </button>
+
+                <div className="flex items-center gap-2 shrink-0">
                   {canViewDebtAmount && !isEditingProfile && (
-                    <button onClick={() => generateStatementPDF({ entityName: selectedSupplier.name, remainingDebt: selectedSupplier.debt, transactions: supplierHistory, type: 'supplier' }, language, settings)}
-                      className="flex items-center gap-2 text-xs font-bold text-accent hover:bg-accent/5 px-3 py-2 rounded-xl transition-all">
-                      <Printer className="w-4 h-4" />{t.generateStatement}
+                    <button
+                      onClick={() => generateStatementPDF({ entityName: selectedSupplier.name, remainingDebt: selectedSupplier.debt, transactions: supplierHistory, type: 'supplier' }, language, settings)}
+                      className="p-2.5 rounded-xl border border-border-subtle hover:bg-slate-100 dark:hover:bg-slate-800 text-accent font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                      title={t.generateStatement}
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span className="hidden sm:inline">{t.generateStatement}</span>
                     </button>
                   )}
-                  <button onClick={() => setSelectedSupplier(null)} className="p-2 hover:bg-bg-base rounded-xl transition-colors">
-                    <X className="w-5 h-5 text-text-secondary" />
+                  <button
+                    onClick={() => setIsEditingProfile(v => !v)}
+                    className={cn(
+                      'p-2.5 rounded-xl border border-border-subtle transition-all flex items-center gap-1.5 text-xs font-bold',
+                      isEditingProfile ? 'bg-accent/15 text-accent ring-2 ring-accent/30' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-text-secondary hover:text-text-main'
+                    )}
+                    title={isEditingProfile ? t.cancel : (language === 'ar' ? 'تعديل' : 'Modifier')}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">{isEditingProfile ? t.cancel : (language === 'ar' ? 'تعديل' : 'Modifier')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setSelectedSupplier(null); setHistorySearch(''); setHistoryFilter('all'); }}
+                    className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-text-secondary hover:text-text-main transition-colors border border-transparent hover:border-border-subtle"
+                  >
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              <div className="p-6 flex-1 overflow-auto space-y-6">
+              {/* Modal Body */}
+              <div className="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
                 {isEditingProfile ? (
-                  <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <form onSubmit={handleUpdateProfile} className="space-y-5 bg-slate-50/70 dark:bg-slate-800/30 p-6 rounded-2xl border border-border-subtle">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {[
-                        { label: t.phone,   field: 'phone'   as const, type: 'text'  },
-                        { label: t.email,   field: 'email'   as const, type: 'email' },
-                        { label: t.address, field: 'address' as const, type: 'text'  },
-                        { label: t.dueDate, field: 'due_date'as const, type: 'date'  },
-                      ].map(({ label, field, type }) => (
-                        <div key={field} className="space-y-1">
-                          <label className="text-[10px] font-bold text-text-secondary uppercase">{label}</label>
-                          <input type={type} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-2 text-sm outline-none focus:border-accent" value={editForm[field] || ''} onChange={e => setEditForm({ ...editForm, [field]: e.target.value })} />
+                        { label: t.phone,   field: 'phone'   as const, type: 'text',  icon: Phone },
+                        { label: t.email,   field: 'email'   as const, type: 'email', icon: Mail },
+                        { label: t.address, field: 'address' as const, type: 'text',  icon: MapPin },
+                        { label: t.dueDate, field: 'due_date'as const, type: 'date',  icon: CalendarClock },
+                      ].map(({ label, field, type, icon: Icon }) => (
+                        <div key={field} className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                            <Icon className="w-3.5 h-3.5 text-accent" />
+                            {label}
+                          </label>
+                          <input
+                            type={type}
+                            className="w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-accent"
+                            value={editForm[field] || ''}
+                            onChange={e => setEditForm({ ...editForm, [field]: e.target.value })}
+                          />
                         </div>
                       ))}
                     </div>
-                    <div className="flex gap-3 pt-2 border-t border-border-subtle">
-                      <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 py-3 bg-bg-base text-text-secondary font-bold rounded-xl text-xs uppercase tracking-widest border border-border-subtle hover:border-text-secondary/30 transition-all">{t.cancel}</button>
-                      <button type="submit" className="flex-1 py-3 bg-accent text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all">{t.saveChanges}</button>
+                    <div className="flex gap-3 pt-3 border-t border-border-subtle">
+                      <button type="button" onClick={() => setIsEditingProfile(false)} className="flex-1 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-text-secondary font-bold rounded-xl transition-all uppercase text-xs tracking-wider">{t.cancel}</button>
+                      <button type="submit" className="flex-1 px-5 py-2.5 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all uppercase text-xs tracking-wider shadow-md shadow-accent/20 flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        {t.saveChanges}
+                      </button>
                     </div>
                   </form>
                 ) : (
                   <>
-                    {/* ── RUNNING BALANCE HISTORY ── */}
-                    <div>
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-4 flex items-center justify-between">
-                        <span>{t.paymentHistory}</span>
-                        {canViewDebtAmount && (
-                          <span className={cn('text-xs font-black px-3 py-1 rounded-full', selectedSupplier.debt > 0 ? 'bg-danger/10 text-danger' : 'bg-emerald-100 text-emerald-600')}>
-                            {t.youOweSupplier}: {formatNumber(selectedSupplier.debt)} {t.currency}
-                          </span>
-                        )}
-                      </h4>
-
-                      {loadingHistory ? (
-                        <div className="flex items-center justify-center py-10 opacity-40">
-                          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                    {/* Contact & Info Strip */}
+                    <div className="bg-slate-50/70 dark:bg-slate-800/40 border border-border-subtle rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Phone */}
+                      <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                        <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                          <Phone className="w-4 h-4" />
                         </div>
-                      ) : historyWithBalance.length === 0 ? (
-                        <p className="text-center text-text-secondary text-xs py-8 opacity-40 uppercase tracking-widest">{t.historyEmpty}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {/* Table header */}
-                          <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 pb-1 border-b border-border-subtle/60">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary">{t.details}</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary text-right">{t.amount}</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary text-right min-w-[80px]">
-                              {language === 'ar' ? 'الرصيد' : language === 'fr' ? 'Solde' : 'Balance'}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.phone}</div>
+                          {selectedSupplier.phone ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <a href={`tel:${selectedSupplier.phone}`} className="text-sm font-black text-text-main hover:text-accent transition-colors font-mono tracking-tight">
+                                {selectedSupplier.phone}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (selectedSupplier.phone) {
+                                    navigator.clipboard.writeText(selectedSupplier.phone);
+                                    setCopiedPhone(true);
+                                    setTimeout(() => setCopiedPhone(false), 1800);
+                                  }
+                                }}
+                                className="p-1 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 rounded-md text-text-secondary hover:text-text-main transition-colors"
+                                title="Copier"
+                              >
+                                {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-text-secondary italic">---</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Address */}
+                      <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                        <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.address}</div>
+                          <span className="text-xs font-bold text-text-main line-clamp-1" title={selectedSupplier.address || ''}>
+                            {selectedSupplier.address || '---'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Email */}
+                      <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                        <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.email}</div>
+                          {selectedSupplier.email ? (
+                            <a href={`mailto:${selectedSupplier.email}`} className="text-xs font-bold text-text-main hover:text-accent transition-colors truncate block">
+                              {selectedSupplier.email}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-text-secondary italic">---</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Due Date */}
+                      <div className={cn("flex items-start gap-3", language === 'ar' && "text-right")}>
+                        <div className="w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 mt-0.5">
+                          <CalendarClock className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] text-text-secondary font-black uppercase tracking-wider mb-0.5">{t.dueDate}</div>
+                          {selectedSupplier.dueDate || selectedSupplier.due_date ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-black text-text-main font-mono">
+                                {new Date(selectedSupplier.dueDate || selectedSupplier.due_date).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR')}
+                              </span>
+                              {(() => {
+                                const st = getDueDateStatus(selectedSupplier.dueDate || selectedSupplier.due_date);
+                                if (st === 'overdue') return <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 animate-pulse">{language === 'ar' ? 'متأخر' : 'En retard'}</span>;
+                                if (st === 'soon') return <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{language === 'ar' ? 'قريب' : 'Bientôt'}</span>;
+                                return null;
+                              })()}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-text-secondary italic">---</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial KPI Cards */}
+                    {canViewDebtAmount && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                        {/* Card 1: Total Achats */}
+                        <div className={cn("p-4.5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/40 flex flex-col justify-between hover:border-blue-300 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                              {language === 'ar' ? 'إجمالي السلع' : language === 'fr' ? 'Total Achats' : 'Total Purchases'}
                             </span>
+                            <div className="w-7 h-7 rounded-lg bg-blue-100/70 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                              <Package className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 tabular-nums tracking-tight">
+                              <span dir="ltr">{formatNumber(supplierStats.totalDebts)}</span> <span className="text-xs font-bold opacity-80">{t.currency}</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-blue-700/70 mt-1">
+                              {language === 'ar' ? 'سلع ومشتريات بالكريدي' : 'Marchandises reçues'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card 2: Total Règlements */}
+                        <div className={cn("p-4.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/40 flex flex-col justify-between hover:border-emerald-300 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                              {language === 'ar' ? 'إجمالي الدفعات' : language === 'fr' ? 'Total Règlements' : 'Total Payments'}
+                            </span>
+                            <div className="w-7 h-7 rounded-lg bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
+                              <span dir="ltr">{formatNumber(supplierStats.totalPayments)}</span> <span className="text-xs font-bold opacity-80">{t.currency}</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-emerald-700/70 mt-1">
+                              {language === 'ar' ? 'مجموع ما تم أداؤه' : 'Total payé au fournisseur'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card 3: Solde Restant Dû */}
+                        <div className={cn(
+                          "p-4.5 rounded-2xl border flex flex-col justify-between transition-all shadow-xs",
+                          selectedSupplier.debt > 0 
+                            ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/40 hover:border-rose-300" 
+                            : "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/40",
+                          language === 'ar' && "text-right"
+                        )}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={cn("text-[10px] font-black uppercase tracking-wider", selectedSupplier.debt > 0 ? "text-rose-800 dark:text-rose-300" : "text-emerald-800 dark:text-emerald-300")}>
+                              {language === 'ar' ? 'الرصيد المستحق' : language === 'fr' ? 'Solde Restant Dû' : 'Balance Due'}
+                            </span>
+                            <div className={cn(
+                              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                              selectedSupplier.debt > 0 ? "bg-rose-100/70 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400" : "bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400"
+                            )}>
+                              {selectedSupplier.debt > 0 ? <AlertTriangle className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                            </div>
+                          </div>
+                          <div>
+                            <div className={cn("text-xl sm:text-2xl font-black tabular-nums tracking-tight", selectedSupplier.debt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>
+                              <span dir="ltr">{formatNumber(selectedSupplier.debt)}</span> <span className="text-xs font-bold opacity-80">{t.currency}</span>
+                            </div>
+                            <div className={cn("text-[10px] font-semibold mt-1", selectedSupplier.debt > 0 ? "text-rose-700/70" : "text-emerald-700/70")}>
+                              {selectedSupplier.debt > 0 ? (language === 'ar' ? 'واجب الأداء للمورد' : 'Reste à régler') : (language === 'ar' ? 'لا يوجد أي دين' : 'Aucun impayé')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card 4: Nombre d'Opérations */}
+                        <div className={cn("p-4.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-border-subtle flex flex-col justify-between hover:border-slate-300 transition-all shadow-xs", language === 'ar' && "text-right")}>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary">
+                              {language === 'ar' ? 'عدد العمليات' : language === 'fr' ? 'Opérations' : 'Transactions'}
+                            </span>
+                            <div className="w-7 h-7 rounded-lg bg-slate-200/70 dark:bg-slate-700/60 text-text-secondary flex items-center justify-center shrink-0">
+                              <FileText className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xl sm:text-2xl font-black text-text-main tabular-nums tracking-tight">
+                              <span dir="ltr">{supplierStats.count}</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-text-secondary/70 mt-1">
+                              {language === 'ar' ? 'معاملة مسجلة' : 'Lignes d\'historique'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Action Buttons */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <button
+                        onClick={() => {
+                          setAdjustModal({ type: 'pay', supplier: selectedSupplier });
+                          setAdjustAmount('');
+                        }}
+                        className="bg-accent text-white py-3.5 px-6 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-accent/20 hover:bg-accent/90 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Wallet className="w-4 h-4" />
+                        <span>{language === 'ar' ? 'تسجيل أداء للمورد' : t.paySupplier}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAdjustModal({ type: 'charge', supplier: selectedSupplier });
+                          setAdjustAmount('');
+                        }}
+                        className="bg-white dark:bg-card border-2 border-border-subtle hover:border-accent text-text-main hover:text-accent py-3.5 px-6 rounded-2xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xs"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{language === 'ar' ? 'إضافة دين / سلعة جديدة' : t.newSupplierCharge}</span>
+                      </button>
+                    </div>
+
+                    {/* History Section */}
+                    <div className="space-y-4 pt-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        {/* Filter Tabs */}
+                        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl overflow-x-auto">
+                          {[
+                            { key: 'all' as const, label: language === 'ar' ? 'الكل' : 'Tous', count: historyCounts.all },
+                            { key: 'payment' as const, label: language === 'ar' ? 'الدفعات' : 'Paiements', count: historyCounts.payment },
+                            { key: 'debt' as const, label: language === 'ar' ? 'السلع' : 'Approvisionnements', count: historyCounts.debt },
+                            { key: 'check' as const, label: language === 'ar' ? 'الشيكات' : 'Chèques', count: historyCounts.check },
+                          ].map(tab => (
+                            <button
+                              key={tab.key}
+                              type="button"
+                              onClick={() => setHistoryFilter(tab.key)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap",
+                                historyFilter === tab.key 
+                                  ? "bg-white dark:bg-card text-text-main shadow-xs" 
+                                  : "text-text-secondary hover:text-text-main"
+                              )}
+                            >
+                              <span>{tab.label}</span>
+                              <span className={cn(
+                                "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                                historyFilter === tab.key 
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" 
+                                  : "bg-slate-200/70 dark:bg-slate-700 text-text-secondary"
+                              )}>
+                                {tab.count}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Search Input */}
+                        <div className="relative min-w-[200px]">
+                          <Search className={cn("w-4 h-4 text-text-secondary absolute top-1/2 -translate-y-1/2", language === 'ar' ? 'right-3' : 'left-3')} />
+                          <input
+                            type="text"
+                            placeholder={language === 'ar' ? 'بحث في العمليات...' : 'Rechercher opération...'}
+                            value={historySearch}
+                            onChange={e => setHistorySearch(e.target.value)}
+                            className={cn(
+                              "w-full bg-slate-50 dark:bg-slate-800/50 border border-border-subtle rounded-xl py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-accent transition-all",
+                              language === 'ar' ? 'pr-9 pl-3 text-right' : 'pl-9 pr-3'
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      {/* History Content */}
+                      {loadingHistory ? (
+                        <div className="flex items-center justify-center py-16 opacity-40">
+                          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : filteredSupplierHistory.length === 0 ? (
+                        <div className="text-center py-14 space-y-2 border-2 border-dashed border-border-subtle rounded-2xl bg-slate-50/50 dark:bg-slate-800/20">
+                          <p className="text-text-secondary text-xs font-black uppercase tracking-wider">{t.historyEmpty}</p>
+                          {historySearch && <p className="text-[11px] text-text-secondary/70">Aucun résultat pour "{historySearch}"</p>}
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {/* Table Header */}
+                          <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 pb-1 text-[10px] font-black uppercase tracking-wider text-text-secondary/70 border-b border-border-subtle/50">
+                            <span>{t.details}</span>
+                            <span className="text-right min-w-[110px]">{t.amount}</span>
+                            <span className="text-right min-w-[110px]">{language === 'ar' ? 'الرصيد' : 'Solde'}</span>
                           </div>
 
-                          {historyWithBalance.map(h => (
-                            <div key={h.id} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center p-3 bg-bg-base/40 rounded-xl border border-border-subtle/40 hover:border-border-subtle transition-colors">
-                              <div>
-                                <p className="text-[11px] font-bold text-text-main leading-tight">
-                                  {h.description}
-                                  {h.payment_method === 'CHECK' && (
-                                    <span className="ml-2 inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/20 text-amber-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">
-                                      <CreditCard className="w-2.5 h-2.5" />#{h.check_number}
-                                    </span>
-                                  )}
-                                </p>
-                                <p className="text-[9px] text-text-secondary mt-0.5">{new Date(h.date).toLocaleString(language === 'ar' ? 'ar-MA' : language === 'fr' ? 'fr-FR' : 'en-US')}</p>
+                          {/* Rows */}
+                          {filteredSupplierHistory.map(h => {
+                            const isPayment = h.type === 'PAYMENT';
+                            const isCheck = h.payment_method === 'CHECK' || h.description?.toLowerCase().includes('chèque') || h.description?.toLowerCase().includes('check');
+                            const isReturn = (h.description || '').toLowerCase().includes('return') || (h.description || '').toLowerCase().includes('retour') || (h.description || '').toLowerCase().includes('إرجاع');
+
+                            return (
+                              <div
+                                key={h.id}
+                                className="group bg-slate-50/60 dark:bg-slate-800/30 p-3.5 sm:p-4 rounded-2xl grid grid-cols-[1fr_auto_auto] gap-4 items-center border border-border-subtle/60 hover:bg-white dark:hover:bg-slate-800 hover:border-accent/30 transition-all shadow-xs"
+                              >
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                                    isReturn
+                                      ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 border-amber-200 dark:border-amber-900/40"
+                                      : isPayment
+                                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border-emerald-200 dark:border-emerald-900/40"
+                                      : "bg-blue-50 dark:bg-blue-950/40 text-blue-600 border-blue-200 dark:border-blue-900/40"
+                                  )}>
+                                    {isReturn ? (
+                                      <ArrowRightLeft className="w-4 h-4" />
+                                    ) : isPayment ? (
+                                      isCheck ? <CreditCard className="w-4 h-4 text-amber-600" /> : <Wallet className="w-4 h-4" />
+                                    ) : (
+                                      <Package className="w-4 h-4" />
+                                    )}
+                                  </div>
+
+                                  <div className={cn("min-w-0 flex flex-col gap-0.5", language === 'ar' && "text-right")}>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-black text-text-main text-sm truncate">
+                                        {h.description}
+                                      </span>
+                                      {isCheck && h.check_number && (
+                                        <span className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                                          <CreditCard className="w-3 h-3" /> #{h.check_number}
+                                        </span>
+                                      )}
+                                      {isReturn && (
+                                        <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+                                          {language === 'ar' ? 'مرتجع' : 'Retour'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] font-semibold text-text-secondary/70 flex items-center gap-1.5">
+                                      <CalendarClock className="w-3 h-3 text-text-secondary/50" />
+                                      <span>
+                                        {new Date(h.date).toLocaleDateString(language === 'ar' ? 'ar-MA' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        {' · '}
+                                        {new Date(h.date).toLocaleTimeString(language === 'ar' ? 'ar-MA' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="text-right min-w-[110px]">
+                                  <span
+                                    dir="ltr"
+                                    className={cn(
+                                      "font-mono font-black text-sm sm:text-base tabular-nums",
+                                      isPayment ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                    )}
+                                  >
+                                    {isPayment ? '−' : '+'}{canViewDebtAmount ? formatNumber(h.amount) : '***'}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-text-secondary ml-1 uppercase">{t.currency}</span>
+                                </div>
+
+                                <div className="text-right min-w-[110px]">
+                                  <span
+                                    dir="ltr"
+                                    className={cn(
+                                      "font-mono font-black text-sm sm:text-base tabular-nums",
+                                      h.runningBalance > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                                    )}
+                                  >
+                                    {canViewDebtAmount ? formatNumber(Math.abs(h.runningBalance)) : '***'}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-text-secondary ml-1 uppercase">{t.currency}</span>
+                                </div>
                               </div>
-                              <p className={cn('text-sm font-black text-right', h.type === 'PAYMENT' ? 'text-emerald-500' : 'text-danger')}>
-                                {h.type === 'PAYMENT' ? '−' : '+'}{canViewDebtAmount ? formatNumber(h.amount) : '***'}
-                              </p>
-                              <p className={cn('text-sm font-black text-right min-w-[80px]', h.runningBalance > 0 ? 'text-danger' : 'text-emerald-500')}>
-                                {canViewDebtAmount ? formatNumber(Math.abs(h.runningBalance)) : '***'}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
