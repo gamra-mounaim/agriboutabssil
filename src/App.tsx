@@ -877,7 +877,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto px-12 py-4">
+        <div className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-5">
           <GlobalAlerts />
           <AnimatePresence mode="wait">
             <motion.div
