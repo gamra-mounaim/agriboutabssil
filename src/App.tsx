@@ -122,7 +122,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [profileReady, setProfileReady] = useState(false);
   const [view, setView] = useState<View>('pos');
-  const { products, categories, customers, suppliers, sales, checks, payments, activities, notifications, appUsers, settings, message, stats, latestBackup, setMessage, fetchData: refreshData, markNotificationRead: markAsRead } = useStore();
+  const { products, categories, customers, suppliers, sales, checks, payments, activities, notifications, appUsers, settings, message, stats, latestBackup, setMessage, fetchData: refreshData, markNotificationRead: markAsRead, markAllNotificationsRead: markAllAsRead } = useStore();
   const { language, setLanguage: setAuthLanguage, setAuth, logout: authLogout } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const [isDriveConnected, setIsDriveConnected] = useState(false);
@@ -764,9 +764,23 @@ export default function App() {
                   >
                     <div className="p-4 border-b border-border-subtle flex items-center justify-between">
                       <span className="text-xs font-black uppercase tracking-widest">{t.notifications}</span>
-                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                        {notifications.filter(n => !n.isRead || n.isRead === 0).length} {(t as any).unread || (language === 'ar' ? 'غير مقروءة' : 'Unread')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                          {notifications.filter(n => !n.isRead || n.isRead === 0).length} {(t as any).unread || (language === 'ar' ? 'غير مقروءة' : 'Unread')}
+                        </span>
+                        {notifications.some(n => !n.isRead || n.isRead === 0) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markAllAsRead();
+                            }}
+                            className="text-[10px] font-bold text-accent hover:text-accent/80 transition-colors underline cursor-pointer"
+                          >
+                            {language === 'ar' ? 'مسح الكل' : language === 'fr' ? 'Tout effacer' : 'Clear all'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
@@ -814,14 +828,16 @@ export default function App() {
                                   </span>
                                   {(!note.isRead || note.isRead === 0) && (
                                     <button 
+                                      type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         markAsRead(note.id);
                                       }}
-                                      className="text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 px-2 py-1 rounded-md hover:bg-accent hover:text-white"
+                                      className="text-[10px] font-bold text-accent hover:text-white bg-accent/10 hover:bg-accent px-2 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                                      title={t.markAsRead}
                                     >
                                       <CheckCircle className="w-3.5 h-3.5" />
-                                      {t.markAsRead}
+                                      <span>{language === 'ar' ? 'تمت المعالجة' : language === 'fr' ? 'Traité' : 'Done'}</span>
                                     </button>
                                   )}
                                 </div>

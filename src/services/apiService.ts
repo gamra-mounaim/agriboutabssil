@@ -192,6 +192,7 @@ export const api = {
   // Notifications
   getNotifications: async () => get(`${API_URL}/notifications`),
   markNotificationRead: async (id) => post(`${API_URL}/notifications/${id}/read`, {}),
+  markAllNotificationsRead: async () => post(`${API_URL}/notifications/read-all`, {}),
   
   // Settings
   getSettings: async () => get(`${API_URL}/settings`),

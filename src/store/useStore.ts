@@ -57,6 +57,7 @@ interface AppState {
 
   fetchData: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 
   salesTotal: number;
   salesPage: number;
@@ -93,11 +94,26 @@ export const useStore = create<AppState>((set, get) => ({
   markNotificationRead: async (id: string) => {
     try {
       await api.markNotificationRead(id);
+      const targetNote = get().notifications.find(n => n.id === id);
+      const prodName = targetNote?.message?.split(':')[0]?.trim();
       set((state) => ({
-        notifications: state.notifications.filter(n => n.id !== id)
+        notifications: state.notifications.filter(n => {
+          if (n.id === id) return false;
+          if (prodName && n.type === 'STOCK' && n.message?.includes(prodName)) return false;
+          return true;
+        })
       }));
     } catch (err) {
       console.error("Failed to mark as read", err);
+    }
+  },
+
+  markAllNotificationsRead: async () => {
+    try {
+      await api.markAllNotificationsRead();
+      set({ notifications: [] });
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
     }
   },
 

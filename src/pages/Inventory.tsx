@@ -317,6 +317,11 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         actor: user?.username || 'system'
       });
       setEditingProduct(null);
+      if (editForm?.name) {
+        useStore.setState(state => ({
+          notifications: state.notifications.filter(n => !n.message?.includes(editForm.name))
+        }));
+      }
       setMessage({ text: language === 'ar' ? "تم تحديث المنتج." : language === 'fr' ? "Produit mis à jour." : "Product updated.", type: 'success' });
       onRefresh();
     } catch (err: any) {
@@ -361,6 +366,11 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         costPrice: adjCostPrice ? parseFloat(adjCostPrice) : undefined
       });
       setShowAdjModal(false);
+      if (adjProduct?.name) {
+        useStore.setState(state => ({
+          notifications: state.notifications.filter(n => !n.message?.includes(adjProduct.name))
+        }));
+      }
       setAdjQty(''); setAdjReason(''); setAdjSupplierId('');
       setMessage({ text: language === 'ar' ? "تم تعديل المخزون." : language === 'fr' ? "Stock ajusté avec succès." : "Stock adjusted successfully.", type: 'success' });
       onRefresh();

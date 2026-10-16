@@ -190,12 +190,38 @@ async function startServer() {
 
   const createNotification = async (type: string, title: string, message: string) => {
     try {
+      if (type === 'STOCK') {
+        const prodName = message.split(':')[0].trim();
+        const existing = await db.prepare(
+          "SELECT id FROM notifications WHERE type = 'STOCK' AND is_read = 0 AND (message LIKE ? OR message LIKE ?) LIMIT 1"
+        ).get(`${prodName}:%`, `%${prodName}%`) as any;
+
+        if (existing) {
+          await db.prepare(
+            "UPDATE notifications SET message = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?"
+          ).run(message, existing.id);
+          return;
+        }
+      }
+
       await db.prepare(`
         INSERT INTO notifications (id, type, title, message)
         VALUES (?, ?, ?, ?)
       `).run(uuidv4(), type, title, message);
     } catch (e) {
       console.error("Notification failed:", e);
+    }
+  };
+
+  const resolveStockNotification = async (productName?: string) => {
+    if (!productName) return;
+    try {
+      const cleanName = productName.trim();
+      await db.prepare(
+        "UPDATE notifications SET is_read = 1 WHERE type = 'STOCK' AND is_read = 0 AND (message LIKE ? OR message LIKE ?)"
+      ).run(`${cleanName}:%`, `%${cleanName}%`);
+    } catch (e) {
+      console.error("Failed to resolve stock notification:", e);
     }
   };
 
@@ -518,6 +544,23 @@ async function startServer() {
 
   app.get("/api/notifications", async (req, res) => {
     try {
+      // Auto-resolve any notifications for products whose stock is currently healthy (qty > min_stock)
+      try {
+        await db.prepare(`
+          UPDATE notifications 
+          SET is_read = 1 
+          WHERE type = 'STOCK' 
+            AND is_read = 0 
+            AND EXISTS (
+              SELECT 1 FROM products p 
+              WHERE (notifications.message LIKE p.name || ':%' OR notifications.message LIKE '%' || p.name || '%')
+                AND p.qty > p.min_stock
+            )
+        `).run();
+      } catch (autoErr) {
+        console.warn("Auto-resolve stock notifications warning:", autoErr);
+      }
+
       const notes = await db.prepare('SELECT * FROM notifications WHERE is_read = 0 ORDER BY created_at DESC LIMIT 50').all();
       res.json(toCamel(notes));
     } catch (err) {
@@ -528,10 +571,27 @@ async function startServer() {
   app.post("/api/notifications/:id/read", async (req, res) => {
     const { id } = req.params;
     try {
-      await db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(id);
+      const note = await db.prepare('SELECT * FROM notifications WHERE id = ?').get(id) as any;
+      if (note && note.type === 'STOCK') {
+        const prodName = note.message.split(':')[0].trim();
+        await db.prepare(
+          "UPDATE notifications SET is_read = 1 WHERE type = 'STOCK' AND (id = ? OR message LIKE ? OR message LIKE ?)"
+        ).run(id, `${prodName}:%`, `%${prodName}%`);
+      } else {
+        await db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(id);
+      }
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: "Failed to update notification" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", async (req, res) => {
+    try {
+      await db.prepare('UPDATE notifications SET is_read = 1 WHERE is_read = 0').run();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
     }
   });
 
@@ -837,6 +897,14 @@ async function startServer() {
       `).run(uuidv4(), id, name, qtyDiff, details, actor || 'System', costPrice || 0);
       
       logActivity(req, 'PRODUCT', 'update', details, 'system', 'System');
+
+      if (qty > (minStock || 5)) {
+        await resolveStockNotification(name || oldProduct?.name);
+      } else {
+        await createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
+          `${name}: Current quantity is ${qty}`);
+      }
+
       res.json({ status: "success" });
     } catch (error) {
       res.status(500).json({ status: "error", message: error.message });
@@ -853,6 +921,10 @@ async function startServer() {
           INSERT INTO supplier_history (id, supplier_id, type, amount, description)
           VALUES (?, ?, 'PAYMENT', ?, ?)
         `).run(uuidv4(), oldProduct.supplier_id, costAmount, `Product deleted, stock debt removed: ${oldProduct.name}`);
+      }
+
+      if (oldProduct?.name) {
+        await resolveStockNotification(oldProduct.name);
       }
 
       await db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
@@ -1023,10 +1095,12 @@ async function startServer() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(movementId, id, product.name, type, quantity, reason, actor, unitCost);
 
-      // Check for low stock alert
+      // Check for low stock alert or resolution
       if (newQty <= (product.min_stock || 5)) {
-        createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
+        await createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
           `${product.name}: Current quantity is ${newQty}`);
+      } else {
+        await resolveStockNotification(product.name);
       }
 
       // If stock in and supplier provided, update supplier debt
