@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Archive, ArrowRightLeft, FolderOpen, Plus, Edit2, Trash2, 
   AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown,
-  History
+  History,
+  Lock
 } from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Supplier } from '../types';
@@ -94,8 +95,10 @@ interface InventoryProps {
 }
 
 export default function Inventory({ permissions, initialTarget, onClearTarget }: InventoryProps) {
-  const { products, categories, suppliers, fetchData: onRefresh, setMessage } = useStore();
+  const { products, categories, suppliers, appUsers, fetchData: onRefresh, setMessage } = useStore();
   const { language, user } = useAuthStore();
+  const profile = appUsers?.find((u: any) => u.id === (user?.id || (user as any)?.uid));
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'manager';
   const t = translations[language];
 
   // --- Add/Edit Product State ---
@@ -308,7 +311,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         name: editForm.name,
         price: parseFloat(editForm.price),
         costPrice: parseFloat(editForm.costPrice) || 0,
-        qty: parseFloat(editForm.qty),
+        qty: isAdmin ? (parseFloat(editForm.qty) || 0) : (editingProduct.qty || 0),
         minStock: parseFloat(editForm.minStock) || 0,
         barcode: editForm.barcode || null,
         categoryId: editForm.categoryId || null,
@@ -1021,8 +1024,33 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.qty}</label>
-                    <input required type="number" disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent disabled:opacity-50" value={editForm.qty || ''} onChange={e => setEditForm({...editForm, qty: e.target.value})} />
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{t.qty}</label>
+                      {!isAdmin && (
+                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          {language === 'ar' ? 'خاص بالمسؤول' : language === 'fr' ? 'Admin uniquement' : 'Admin only'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input 
+                        required 
+                        type="number" 
+                        disabled={!isAdmin} 
+                        className={cn(
+                          "w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent disabled:cursor-not-allowed",
+                          !isAdmin && "opacity-60 bg-slate-100/70 dark:bg-slate-900/50 pr-9"
+                        )} 
+                        value={editForm.qty || ''} 
+                        onChange={e => setEditForm({...editForm, qty: e.target.value})} 
+                      />
+                      {!isAdmin && (
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-text-secondary/50">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.minStock}</label>

@@ -913,11 +913,20 @@ async function startServer() {
     try {
       const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
       
+      let finalQty = qty;
+      const reqActorId = (req.headers['x-actor-id'] as string) || '';
+      if (reqActorId && reqActorId !== 'admin') {
+        const u = await db.prepare('SELECT role FROM users WHERE id = ?').get(reqActorId) as any;
+        if (u && u.role !== 'admin' && u.role !== 'manager' && oldProduct && Number(qty) !== Number(oldProduct.qty)) {
+          finalQty = oldProduct.qty;
+        }
+      }
+
       await db.prepare(`
         UPDATE products 
         SET name = ?, price = ?, cost_price = ?, qty = ?, min_stock = ?, barcode = ?, category_id = ?, supplier = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, id);
+      `).run(name, price, costPrice, finalQty, minStock, barcode, categoryId, supplier, supplierId, id);
       
       let details = `Modification [${name || oldProduct?.name || 'Produit'}]`;
       if (oldProduct) {
@@ -935,7 +944,7 @@ async function startServer() {
         }
       }
       
-      const qtyDiff = qty - (oldProduct?.qty || 0);
+      const qtyDiff = finalQty - (oldProduct?.qty || 0);
       await db.prepare(`
         INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
         VALUES (?, ?, ?, 'update', ?, ?, ?, ?)
@@ -943,11 +952,11 @@ async function startServer() {
       
       logActivity(req, 'PRODUCT', 'update', details, 'system', 'System');
 
-      if (qty > (minStock || 5)) {
+      if (finalQty > (minStock || 5)) {
         await resolveStockNotification(name || oldProduct?.name);
       } else {
         await createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
-          `${name}: Current quantity is ${qty}`);
+          `${name}: Current quantity is ${finalQty}`);
       }
 
       res.json({ status: "success" });
