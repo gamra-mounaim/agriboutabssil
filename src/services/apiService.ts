@@ -37,6 +37,13 @@ const getAuthHeaders = () => {
       } else if (u.id) {
         headers['Authorization'] = `Bearer ${u.id}:${u.sessionVersion || u.session_version}`;
       }
+      const actorName = u.username || u.displayName || u.name;
+      if (actorName) {
+        headers['X-Actor-Name'] = encodeURIComponent(actorName);
+      }
+      if (u.id) {
+        headers['X-Actor-Id'] = u.id;
+      }
     }
   } catch (e) {
     console.warn("Failed to get auth headers", e);

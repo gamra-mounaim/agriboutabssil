@@ -156,27 +156,72 @@ async function startServer() {
       let actorId = fallbackActorId;
       let actorName = fallbackActorName;
 
-      if (req && req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        try {
-          const token = req.headers.authorization.split(' ')[1];
-          if (!token.includes(':')) {
-            const decoded = jwt.verify(token, JWT_SECRET) as any;
-            if (decoded && decoded.userId) {
-              actorId = decoded.userId;
-            }
+      // 1. Try to read from explicit request headers
+      if (req && req.headers) {
+        if (req.headers['x-actor-name']) {
+          try {
+            actorName = decodeURIComponent(req.headers['x-actor-name']);
+          } catch {
+            actorName = req.headers['x-actor-name'];
           }
-        } catch (e) {}
+        }
+        if (req.headers['x-actor-id']) {
+          actorId = req.headers['x-actor-id'];
+        }
+
+        // 2. Try to parse Authorization header
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+          try {
+            const token = req.headers.authorization.split(' ')[1];
+            if (token) {
+              if (token.includes(':')) {
+                const parts = token.split(':');
+                if (parts[0] && (!actorId || actorId === 'system')) {
+                  actorId = parts[0];
+                }
+              } else {
+                const decoded = jwt.verify(token, JWT_SECRET) as any;
+                if (decoded && decoded.userId && (!actorId || actorId === 'system')) {
+                  actorId = decoded.userId;
+                }
+              }
+            }
+          } catch (e) {}
+        }
       }
 
-      if (actorId && actorId !== 'system' && actorId !== 'admin') {
+      // 3. Try to read from request body
+      if (req && req.body) {
+        const bodyActor = req.body.actor || req.body.actorName || req.body.employee_name || req.body.staffId;
+        if (bodyActor && typeof bodyActor === 'string' && bodyActor.trim() && bodyActor.toLowerCase() !== 'system') {
+          if (!actorId || actorId === 'system') actorId = bodyActor.trim();
+          if (!actorName || actorName === 'System' || actorName === 'Staff') actorName = bodyActor.trim();
+        }
+      }
+
+      // 4. Resolve username from database
+      if (actorId && actorId !== 'system') {
         try {
-          const user = await db.prepare('SELECT name, username FROM users WHERE id = ?').get(actorId) as any;
+          const user = await db.prepare('SELECT id, username FROM users WHERE id = ? OR username = ?').get(actorId, actorId) as any;
+          if (user && user.username) {
+            actorName = user.username;
+            actorId = user.id || actorId;
+          } else if (!actorName || actorName === 'System' || actorName === 'Staff') {
+            actorName = actorId;
+          }
+        } catch (e) {
+          if (!actorName || actorName === 'System' || actorName === 'Staff') {
+            actorName = actorId;
+          }
+        }
+      } else if (actorName && actorName !== 'System' && actorName !== 'Staff') {
+        try {
+          const user = await db.prepare('SELECT id, username FROM users WHERE username = ? OR id = ?').get(actorName, actorName) as any;
           if (user) {
-             actorName = user.name || user.username || fallbackActorName;
+            actorId = user.id;
+            actorName = user.username;
           }
         } catch (e) {}
-      } else if (actorId === 'admin') {
-        actorName = 'Admin';
       }
 
       await db.prepare(`

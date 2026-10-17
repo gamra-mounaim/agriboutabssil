@@ -558,6 +558,25 @@ export default function HistoryView({
     };
   };
 
+  // Helper to resolve actor display name
+  const getActorDisplayName = (a?: { actorName?: string; actorId?: string } | null) => {
+    if (!a) return language === 'ar' ? 'النظام' : language === 'fr' ? 'Système' : 'System';
+    if (a.actorId && a.actorId !== 'system') {
+      const u = (appUsers || []).find(user => user.id === a.actorId || (user as any).username === a.actorId);
+      if (u) {
+        return (u as any).displayName || (u as any).username || (u as any).name || a.actorName || a.actorId;
+      }
+      if (a.actorName && a.actorName !== 'System' && a.actorName !== 'Staff') {
+        return a.actorName;
+      }
+      return a.actorId;
+    }
+    if (a.actorName && a.actorName !== 'System' && a.actorName !== 'Staff') {
+      return a.actorName;
+    }
+    return language === 'ar' ? 'النظام' : language === 'fr' ? 'Système' : 'System';
+  };
+
   // Distinct actors for staff filter
   const distinctActors = useMemo(() => {
     const map = new Map<string, string>();
@@ -566,8 +585,9 @@ export default function HistoryView({
       if (name) map.set(u.id, name);
     });
     (activities || []).forEach(a => {
-      if (a.actorId && a.actorName && !map.has(a.actorId)) {
-        map.set(a.actorId, a.actorName);
+      const name = getActorDisplayName(a);
+      if (a.actorId && name && !map.has(a.actorId)) {
+        map.set(a.actorId, name);
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
@@ -597,7 +617,7 @@ export default function HistoryView({
       }
 
       // Actor Filter
-      if (selectedActor !== 'all' && a.actorId !== selectedActor && a.actorName !== selectedActor) {
+      if (selectedActor !== 'all' && a.actorId !== selectedActor && a.actorName !== selectedActor && getActorDisplayName(a) !== selectedActor) {
         return false;
       }
 
@@ -619,7 +639,7 @@ export default function HistoryView({
         const q = searchHistory.toLowerCase();
         const det = (a.details || '').toLowerCase();
         const transDet = translateActivityDetails(a.details || '').toLowerCase();
-        const actor = (a.actorName || '').toLowerCase();
+        const actor = (getActorDisplayName(a) || '').toLowerCase();
         if (!det.includes(q) && !transDet.includes(q) && !actor.includes(q)) {
           return false;
         }
@@ -905,7 +925,7 @@ export default function HistoryView({
                 items: currentList.map(item => {
                   if (subView === 'activity') {
                     const a = item as ActivityLog;
-                    return { date: a.timestamp, amount: 0, description: `[${a.type}] ${translateActivityDetails(a.details)} (${a.actorName || 'System'})` };
+                    return { date: a.timestamp, amount: 0, description: `[${a.type}] ${translateActivityDetails(a.details)} (${getActorDisplayName(a)})` };
                   }
                   const customerMatch = customers.find(c => c.id === (item as Sale).customerId);
                   return {
@@ -1311,7 +1331,7 @@ export default function HistoryView({
                       <div className="flex items-center gap-2 text-[11px] font-bold text-text-secondary">
                         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/60 px-2 py-0.5 rounded-md border border-border-subtle">
                           <UserCog className="w-3 h-3 text-text-secondary" />
-                          <span>{activity.actorName || 'System'}</span>
+                          <span>{getActorDisplayName(activity)}</span>
                         </div>
                         <span>•</span>
                         <span className="font-mono text-[10px] text-text-secondary">
@@ -1625,7 +1645,7 @@ export default function HistoryView({
                     <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary mb-1">{l.actor}</div>
                     <div className="font-bold text-text-main flex items-center gap-1.5">
                       <UserCog className="w-3.5 h-3.5 text-accent" />
-                      <span>{selectedActivity.actorName || 'System'}</span>
+                      <span>{getActorDisplayName(selectedActivity)}</span>
                     </div>
                   </div>
 
@@ -1706,7 +1726,7 @@ export default function HistoryView({
               <div className="p-4 border-t border-border-subtle bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between gap-3">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`[${selectedActivity.type}] ${selectedActivity.details} (${selectedActivity.actorName} - ${selectedActivity.timestamp})`);
+                    navigator.clipboard.writeText(`[${selectedActivity.type}] ${selectedActivity.details} (${getActorDisplayName(selectedActivity)} - ${selectedActivity.timestamp})`);
                     setIsCopied(true);
                     setTimeout(() => setIsCopied(false), 2000);
                   }}
