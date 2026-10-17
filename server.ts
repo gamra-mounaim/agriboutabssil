@@ -1693,15 +1693,15 @@ async function startServer() {
     const limit = parseInt(req.query.limit as string) || 50;
     const search = req.query.search ? `%${req.query.search}%` : null;
     
-    let query = 'SELECT s.* FROM sales s LEFT JOIN customers c ON s.customer_id = c.id';
-    let countQuery = 'SELECT COUNT(*) as count FROM sales s LEFT JOIN customers c ON s.customer_id = c.id';
+    let query = 'SELECT s.*, COALESCE(u.username, u.email, s.staff_id) as staff_name FROM sales s LEFT JOIN customers c ON s.customer_id = c.id LEFT JOIN users u ON (s.staff_id = u.id OR s.staff_id = u.username)';
+    let countQuery = 'SELECT COUNT(*) as count FROM sales s LEFT JOIN customers c ON s.customer_id = c.id LEFT JOIN users u ON (s.staff_id = u.id OR s.staff_id = u.username)';
     let params: any[] = [];
     
     if (search) {
-      const searchWhere = ' WHERE CAST(s.invoice_number AS TEXT) LIKE ? OR s.customer_name LIKE ? OR c.name LIKE ? OR s.check_number LIKE ? OR s.check_owner LIKE ? OR s.id LIKE ?';
+      const searchWhere = ' WHERE CAST(s.invoice_number AS TEXT) LIKE ? OR s.customer_name LIKE ? OR c.name LIKE ? OR s.check_number LIKE ? OR s.check_owner LIKE ? OR s.id LIKE ? OR u.username LIKE ?';
       query += searchWhere;
       countQuery += searchWhere;
-      params = [search, search, search, search, search, search];
+      params = [search, search, search, search, search, search, search];
     }
     
     query += ' ORDER BY s.date DESC LIMIT ? OFFSET ?';
