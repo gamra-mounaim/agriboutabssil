@@ -59,9 +59,17 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     return () => { isMounted = false; };
   }, []);
 
-  const totalDamagesLoss = damagesData ? damagesData.totalLoss : (stats?.totalDamagesLoss || 0);
-  const damagesCount = damagesData ? damagesData.count : (stats?.damagesCount || 0);
-  const damagesTotalQty = damagesData ? damagesData.totalQty : (stats?.damagesTotalQty || 0);
+  const totalDamagesLoss = (damagesData?.totalLoss !== undefined && damagesData?.totalLoss > 0)
+    ? damagesData.totalLoss 
+    : (Number(stats?.totalDamagesLoss) || 0);
+
+  const damagesCount = (damagesData?.count !== undefined && damagesData?.count > 0)
+    ? damagesData.count 
+    : (Number(stats?.damagesCount) || 0);
+
+  const damagesTotalQty = (damagesData?.totalQty !== undefined && damagesData?.totalQty > 0)
+    ? damagesData.totalQty 
+    : (Number(stats?.damagesTotalQty) || 0);
 
   // Pending Checks Calculation
   const customerChecks = useMemo(() => {
