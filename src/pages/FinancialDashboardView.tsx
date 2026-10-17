@@ -37,7 +37,31 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const yearlyProfit = stats?.yearlyProfit || 0;
   const totalSupplierDebt = stats?.supplierDebt || 0;
   const inventoryAssetValue = stats?.inventoryValue || 0;
-  const totalDamagesLoss = stats?.totalDamagesLoss || 0;
+
+  const [damagesData, setDamagesData] = useState<{ totalLoss: number, count: number, totalQty: number } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getDamagesReport().then((data: any) => {
+      if (!isMounted) return;
+      const records = Array.isArray(data) ? data : (data?.damages || data?.data || []);
+      const count = records.length;
+      let totalQty = 0;
+      let totalLoss = 0;
+      records.forEach((r: any) => {
+        const q = Number(r.quantity ?? r.qty) || 0;
+        const c = Number(r.costPrice ?? r.cost_price) || 0;
+        totalQty += q;
+        totalLoss += q * c;
+      });
+      setDamagesData({ totalLoss, count, totalQty });
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const totalDamagesLoss = damagesData ? damagesData.totalLoss : (stats?.totalDamagesLoss || 0);
+  const damagesCount = damagesData ? damagesData.count : (stats?.damagesCount || 0);
+  const damagesTotalQty = damagesData ? damagesData.totalQty : (stats?.damagesTotalQty || 0);
 
   // Pending Checks Calculation
   const customerChecks = useMemo(() => {
@@ -60,7 +84,22 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await onRefresh();
+      await Promise.all([
+        onRefresh(),
+        api.getDamagesReport().then((data: any) => {
+          const records = Array.isArray(data) ? data : (data?.damages || data?.data || []);
+          const count = records.length;
+          let totalQty = 0;
+          let totalLoss = 0;
+          records.forEach((r: any) => {
+            const q = Number(r.quantity ?? r.qty) || 0;
+            const c = Number(r.costPrice ?? r.cost_price) || 0;
+            totalQty += q;
+            totalLoss += q * c;
+          });
+          setDamagesData({ totalLoss, count, totalQty });
+        }).catch(console.error)
+      ]);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
@@ -788,13 +827,21 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <StatCard 
               title={t.damages} 
               value={formatNumber(totalDamagesLoss)} 
-              subtext={language === 'ar' ? 'انقر لتصدير PDF' : 'Cliquez pour exporter le PDF'} 
+              subtext={
+                damagesTotalQty > 0 
+                  ? `${damagesTotalQty} ${language === 'ar' ? 'قطع تالفة • تصدير PDF' : 'articles perdus • Export PDF'}` 
+                  : (language === 'ar' ? 'انقر لتصدير PDF' : 'Cliquez pour exporter le PDF')
+              } 
               color={totalDamagesLoss > 0 ? "text-rose-600 dark:text-rose-400" : "text-text-main"}
               icon={AlertTriangle}
               onClick={handleExportDamages}
               danger={totalDamagesLoss > 0}
-              badgeText={language === 'ar' ? 'PDF' : 'Rapport'}
-              badgeColor="bg-slate-500/10 text-slate-600 border border-slate-500/20"
+              badgeText={
+                damagesCount > 0 
+                  ? `${damagesCount} ${language === 'ar' ? (damagesCount === 1 ? 'حالة' : 'حالات') : (damagesCount === 1 ? 'enregistrement' : 'enregistrements')}` 
+                  : (language === 'ar' ? 'PDF' : 'Rapport')
+              }
+              badgeColor={totalDamagesLoss > 0 ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" : "bg-slate-500/10 text-slate-600 border border-slate-500/20"}
             />
           )}
 

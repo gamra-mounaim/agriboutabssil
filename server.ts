@@ -2104,6 +2104,11 @@ async function startServer() {
     const outstandingDebt = ((await db.prepare('SELECT SUM(debt) as total FROM customers').get()) as any).total || 0;
     const supplierDebt = ((await db.prepare('SELECT SUM(debt) as total FROM suppliers').get()) as any).total || 0;
 
+    const damagesRow = await db.prepare("SELECT COALESCE(SUM(quantity * cost_price), 0) as total_loss, COUNT(*) as count, COALESCE(SUM(quantity), 0) as total_qty FROM stock_movements WHERE type = 'out' AND reason LIKE '[DAMAGE]%'").get() as any;
+    const totalDamagesLoss = Number(damagesRow?.total_loss) || 0;
+    const damagesCount = Number(damagesRow?.count) || 0;
+    const damagesTotalQty = Number(damagesRow?.total_qty) || 0;
+
     const getBreakdown = async (dateConditionItem: string, dateConditionSale: string) => {
       const profitByMethod = await db.prepare(`
         SELECT 
@@ -2303,7 +2308,10 @@ async function startServer() {
       last7Days: last7Days,
       topProductsList,
       dormantStockList,
-      prev7DaysTotal
+      prev7DaysTotal,
+      totalDamagesLoss,
+      damagesCount,
+      damagesTotalQty
     }));
     } catch (err: any) {
       console.error("Stats API error:", err);
