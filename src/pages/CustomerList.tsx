@@ -17,7 +17,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Destructure common icons to avoid TS errors
-const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe, Receipt, Copy, Check, MessageSquare, ArrowRight, ArrowDownLeft, Tag } = LucideIcons;
+const { Search, Zap, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe, Receipt, Copy, Check, MessageSquare, ArrowRight, ArrowDownLeft, Tag, Building2, TrendingDown, ArrowUpDown, Table } = LucideIcons;
 
 export default function CustomerList() {
   const { products, customers, sales, payments, checks, settings, appUsers, fetchData: onRefresh, setMessage } = useStore();
@@ -38,6 +38,11 @@ export default function CustomerList() {
   const [address, setAddress] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [searchCustomer, setSearchCustomer] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'debt' | 'settled' | 'overdue'>('all');
+  const [sortKey, setSortKey] = useState<'debt_desc' | 'debt_asc' | 'name_asc' | 'profit_desc' | 'recent'>('debt_desc');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const currentSelectedCustomer = customers.find(c => c.id === selectedCustomer?.id) || selectedCustomer;
   const [customerHistory, setCustomerHistory] = useState<TransactionRecord[]>([]);
@@ -304,10 +309,121 @@ export default function CustomerList() {
     }
   }, [returnModal]);
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchCustomer.toLowerCase()) || 
-    (c.phone && c.phone.includes(searchCustomer))
-  ).sort((a, b) => b.debt - a.debt);
+  // ── Executive KPI Calculations ──
+  const customersWithDebt = useMemo(() => customers.filter(c => (Number(c.debt) || 0) > 0), [customers]);
+  const totalDebt = useMemo(() => customers.reduce((sum, c) => sum + (Number(c.debt) || 0), 0), [customers]);
+  const totalProfits = useMemo(() => customers.reduce((sum, c) => sum + (Number(c.totalProfit) || 0), 0), [customers]);
+  const totalSales = useMemo(() => customers.reduce((sum, c) => sum + (Number(c.totalSpent) || 0), 0), [customers]);
+
+  const overdueCustomers = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return customers.filter(c => {
+      if (!c.debt || Number(c.debt) <= 0) return false;
+      const raw = c.dueDate || c.due_date;
+      if (!raw) return false;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return false;
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
+  }, [customers]);
+
+  const soonCustomers = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return customers.filter(c => {
+      if (!c.debt || Number(c.debt) <= 0) return false;
+      const raw = c.dueDate || c.due_date;
+      if (!raw) return false;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return false;
+      d.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 7;
+    });
+  }, [customers]);
+
+  const customerChecks = useMemo(() => {
+    return (checks || []).filter((c: any) => c.partyRole === 'customer');
+  }, [checks]);
+
+  const pendingChecks = useMemo(() => {
+    return customerChecks.filter((c: any) => c.checkStatus === 'PENDING' || c.status === 'PENDING');
+  }, [customerChecks]);
+
+  const pendingChecksTotal = useMemo(() => {
+    return pendingChecks.reduce((sum: number, c: any) => sum + (Number(c.total || c.amount) || 0), 0);
+  }, [pendingChecks]);
+
+  const getCustomerCardDueDate = (c: Customer) => {
+    const raw = c.dueDate || c.due_date;
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      formatted: d.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }),
+      isOverdue: diffDays < 0,
+      isToday: diffDays === 0,
+      isNear: diffDays > 0 && diffDays <= 7,
+      diffDays
+    };
+  };
+
+  const sortLabels: Record<string, string> = {
+    debt_desc: language === 'ar' ? 'الديون: من الأعلى للأدنى' : 'Dettes décroissantes',
+    debt_asc: language === 'ar' ? 'الديون: من الأدنى للأعلى' : 'Dettes croissantes',
+    name_asc: language === 'ar' ? 'الاسم: أ - ي' : 'Nom (A-Z)',
+    profit_desc: language === 'ar' ? 'الأرباح: الأكثر ربحاً' : 'Bénéfices décroissants',
+    recent: language === 'ar' ? 'الأحدث نشاطاً' : 'Plus récents',
+  };
+
+  // ── Advanced Filter & Sort ──
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(c => {
+      if (searchCustomer.trim()) {
+        const q = searchCustomer.toLowerCase();
+        const matchesName = (c.name || '').toLowerCase().includes(q);
+        const matchesPhone = (c.phone || '').includes(q);
+        const matchesAddress = (c.address || '').toLowerCase().includes(q);
+        const matchesId = (c.id || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesPhone && !matchesAddress && !matchesId) return false;
+      }
+
+      const debt = Number(c.debt) || 0;
+      if (statusFilter === 'debt' && debt <= 0) return false;
+      if (statusFilter === 'settled' && debt > 0) return false;
+      if (statusFilter === 'overdue') {
+        if (debt <= 0) return false;
+        const raw = c.dueDate || c.due_date;
+        if (!raw) return false;
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        d.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays > 7) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortKey === 'debt_desc') return (Number(b.debt) || 0) - (Number(a.debt) || 0);
+      if (sortKey === 'debt_asc') return (Number(a.debt) || 0) - (Number(b.debt) || 0);
+      if (sortKey === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortKey === 'profit_desc') return (Number(b.totalProfit) || 0) - (Number(a.totalProfit) || 0);
+      if (sortKey === 'recent') {
+        const da = new Date((a as any).updatedAt || (a as any).created_at || 0).getTime();
+        const db = new Date((b as any).updatedAt || (b as any).created_at || 0).getTime();
+        return db - da;
+      }
+      return 0;
+    });
+  }, [customers, searchCustomer, statusFilter, sortKey]);
 
   const displayHistory = useMemo(() => {
     if (!customerHistory) return [];
@@ -385,193 +501,812 @@ export default function CustomerList() {
   }, [selectedCustomer, language]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-20">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-black text-text-main tracking-tight flex items-center gap-3">
-            <div className="p-2 bg-accent/10 rounded-xl">
-              <Users className="w-6 h-6 text-accent" />
-            </div>
-            {t.customers}
-          </h2>
-          <p className="text-xs font-bold text-text-secondary uppercase tracking-[0.2em] opacity-60 ml-12">MANAGE_YOUR_ACCOUNTS</p>
-        </div>
+    <div className="w-full max-w-[1720px] mx-auto space-y-6 pb-24 px-1 sm:px-2 md:px-4">
+
+      {/* ── TOP HEADER & TABS BAR ── */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-card/60 border border-border-subtle/80 backdrop-blur-md p-4 sm:p-5 rounded-3xl shadow-sm">
         
-        <div className="flex bg-bg-base p-1 rounded-2xl border border-border-subtle shadow-sm">
-          <button 
-            onClick={() => setActiveTab('list')}
-            className={cn("px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeTab === 'list' ? "bg-white text-accent shadow-md shadow-accent/5 ring-1 ring-accent/10" : "text-text-secondary hover:text-text-main")}
-          >
-            {t.customers}
-          </button>
-          <button 
-            onClick={() => setActiveTab('checks')}
-            className={cn("px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeTab === 'checks' ? "bg-white text-accent shadow-md shadow-accent/5 ring-1 ring-accent/10" : "text-text-secondary hover:text-text-main")}
-          >
-            {t.checks}
-          </button>
+        {/* Title & Subtitle */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-accent/20 via-accent/10 to-transparent flex items-center justify-center text-accent border border-accent/20 shadow-xs">
+            <Users className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black text-text-main tracking-tight">
+                {t.customers}
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-accent/10 text-accent border border-accent/20 font-mono">
+                {customers.length}
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-text-secondary mt-0.5">
+              {language === 'ar' 
+                ? 'إدارة حسابات الزبائن، متابعة الديون، الأرباح، وشيكات الدفع'
+                : 'Gestion des comptes clients, suivi des créances, bénéfices et règlements'}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls & Tab Switcher */}
+        <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+          
+          {/* Tabs */}
+          <div className="flex p-1 bg-bg-base/80 dark:bg-slate-900/80 border border-border-subtle rounded-2xl shadow-inner">
+            <button
+              onClick={() => setActiveTab('list')}
+              className={cn(
+                'px-4 sm:px-5 py-2 rounded-xl font-black text-xs tracking-wider transition-all duration-200 uppercase flex items-center gap-2',
+                activeTab === 'list'
+                  ? 'bg-card text-accent shadow-sm border border-border-subtle/60'
+                  : 'text-text-secondary hover:text-text-main'
+              )}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>{t.customers}</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono",
+                activeTab === 'list' ? "bg-accent/15 text-accent" : "bg-border-subtle/40 text-text-secondary"
+              )}>
+                {customers.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('checks')}
+              className={cn(
+                'px-4 sm:px-5 py-2 rounded-xl font-black text-xs tracking-wider transition-all duration-200 uppercase flex items-center gap-2',
+                activeTab === 'checks'
+                  ? 'bg-card text-accent shadow-sm border border-border-subtle/60'
+                  : 'text-text-secondary hover:text-text-main'
+              )}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>{t.checks}</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono",
+                activeTab === 'checks' ? "bg-accent/15 text-accent" : "bg-border-subtle/40 text-text-secondary"
+              )}>
+                {customerChecks.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Quick Add Customer Toggle Button */}
+          {activeTab === 'list' && (
+            <button
+              onClick={() => setShowAddForm(v => !v)}
+              className={cn(
+                "px-4 sm:px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-md active:scale-95",
+                showAddForm
+                  ? "bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 hover:opacity-90"
+                  : "bg-accent text-white shadow-accent/20 hover:bg-accent/90"
+              )}
+            >
+              {showAddForm ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  <span>{language === 'ar' ? 'إخفاء الاستمارة' : 'Masquer'}</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>{t.addCustomer}</span>
+                </>
+              )}
+            </button>
+          )}
+
         </div>
       </div>
 
       {activeTab === 'list' ? (
         <>
-          <section className="bg-card border border-border-subtle p-8 rounded-[2rem] shadow-xl shadow-accent/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -translate-y-16 translate-x-16 blur-3xl group-hover:bg-accent/10 transition-colors" />
-            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary mb-8 flex items-center gap-3">
-              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-              {t.addCustomer}
-            </h3>
-            <form onSubmit={addCustomer} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.customerName}</label>
-                <input value={name || ''} onChange={e => setName(e.target.value)} placeholder={t.customerName} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.phone}</label>
-                <input value={phone || ''} onChange={e => setPhone(e.target.value)} placeholder="06XXXXXXXX" className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.address}</label>
-                <input value={address || ''} onChange={e => setAddress(e.target.value)} placeholder={t.address} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.dueDate || (language === 'ar' ? 'تاريخ الاستحقاق' : 'Date d\'échéance')}</label>
-                <input type="date" value={dueDate || ''} onChange={e => setDueDate(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-sm transition-all" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest ml-1">{t.initialDebt}</label>
-                <div className="relative">
-                  <input type="number" value={initialDebt || ''} onChange={e => setInitialDebt(e.target.value)} className="w-full bg-bg-base border border-border-subtle rounded-2xl py-3 px-4 text-sm font-black text-danger focus:border-accent outline-none shadow-sm transition-all" />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-text-secondary/50">{t.currency}</div>
+          {/* ── 4-METRIC EXECUTIVE KPI GRID (FULL-WIDTH) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            
+            {/* KPI 1: Total Clients */}
+            <div className="bg-card border border-border-subtle rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden group hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
+                  {t.customers}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/50 dark:border-emerald-900/40 shadow-xs">
+                  <Users className="w-5 h-5 stroke-[2.2]" />
                 </div>
               </div>
-              <button className="h-fit self-end bg-accent text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-lg shadow-accent/20 hover:shadow-accent/30 active:scale-95 transition-all">
-                <Plus className="w-4 h-4" />
-                {t.confirm}
-              </button>
-            </form>
-          </section>
-
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1 group">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 text-text-secondary w-5 h-5 group-focus-within:text-accent transition-colors", language === 'ar' ? "right-6" : "left-6")} />
-              <input 
-                placeholder={t.customers} 
-                className={cn("w-full bg-white border border-border-subtle rounded-[2rem] py-5 shadow-sm text-sm font-bold focus:border-accent outline-none transition-all", language === 'ar' ? "pr-16 pl-6 text-right" : "pl-16 pr-6")}
-                value={searchCustomer || ''} onChange={e => setSearchCustomer(e.target.value)}
-              />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-text-main font-mono tracking-tight">
+                  {customers.length}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[11px] font-bold text-text-secondary flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                    <span className="text-text-main font-black">{customersWithDebt.length}</span> {language === 'ar' ? 'عليهم دين مفتوح' : 'avec solde débiteur'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <button 
-              onClick={() => openReturnModal({ id: 'walking', name: t.walkingCustomer || 'Client de passage', debt: 0, email: '', phone: '', address: '' })} 
-              className="h-full bg-accent text-white py-5 px-8 rounded-[2rem] text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent/20 hover:opacity-90 transition-all shrink-0 active:scale-95"
-            >
-              <ArrowRightLeft className="w-4 h-4" />
-              {t.walkingCustomerReturn}
-            </button>
+
+            {/* KPI 2: Dette Totale Clients */}
+            <div className="bg-card border border-border-subtle rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden group hover:border-rose-500/40 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">
+                  {(t as any).totalCustomerDebt || (language === 'ar' ? 'إجمالي ديون الزبائن' : 'Total Dettes Clients')}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-200/50 dark:border-rose-900/40 shadow-xs">
+                  <TrendingDown className="w-5 h-5 stroke-[2.2]" />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                  <span>{formatNumber(totalDebt)}</span>
+                  <span className="text-sm font-black text-text-secondary ml-1.5">{t.currency}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  {overdueCustomers.length > 0 ? (
+                    <span className="text-[10px] font-black text-rose-700 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/70 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-rose-200 dark:border-rose-900/50">
+                      <AlertTriangle className="w-3 h-3 animate-pulse" />
+                      {overdueCustomers.length} {language === 'ar' ? 'متأخر في الأداء' : 'en retard d\'échéance'}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-text-secondary flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      {language === 'ar' ? 'الوضعية جيدة ومضبوطة' : 'Aucun retard critique'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* KPI 3: Bénéfice Cumulé */}
+            <div className="bg-card border border-border-subtle rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden group hover:border-teal-500/40 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">
+                  {language === 'ar' ? 'إجمالي الأرباح' : 'Bénéfice Cumulé'}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-200/50 dark:border-teal-900/40 shadow-xs">
+                  <TrendingUp className="w-5 h-5 stroke-[2.2]" />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 font-mono tracking-tight">
+                  <span>{totalProfits > 0 ? `+${formatNumber(totalProfits)}` : formatNumber(totalProfits)}</span>
+                  <span className="text-sm font-black text-text-secondary ml-1.5">{t.currency}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    {language === 'ar' ? 'حجم المبيعات' : 'Ventes'}: <span className="font-bold text-text-main font-mono">{formatNumber(totalSales)}</span> {t.currency}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI 4: Chèques Clients */}
+            <div className="bg-card border border-border-subtle rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden group hover:border-indigo-500/40 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
+                  {language === 'ar' ? 'شيكات في الانتظار' : 'Chèques en portefeuille'}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200/50 dark:border-indigo-900/40 shadow-xs">
+                  <CreditCard className="w-5 h-5 stroke-[2.2]" />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono tracking-tight">
+                  <span>{formatNumber(pendingChecksTotal)}</span>
+                  <span className="text-sm font-black text-text-secondary ml-1.5">{t.currency}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[11px] font-bold text-text-secondary flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+                    <span className="text-text-main font-black">{pendingChecks.length}</span> {language === 'ar' ? 'شيك قيد التحصيل' : 'chèques en attente'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCustomers.map(c => (
-              <div key={c.id} className="bg-card border border-border-subtle p-8 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative border-b-4 border-b-border-subtle/20 hover:border-b-accent/40">
-                <div className="flex justify-between items-start mb-6">
-                   <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
-                      <h4 className="font-black text-lg text-text-main group-hover:text-accent transition-colors tracking-tight">{c.name}</h4>
-                      <p className="text-[10px] text-text-secondary font-black uppercase tracking-[0.2em] flex items-center gap-2 mt-1 opacity-60">
-                        <Hash className="w-3 h-3" />
-                        {c.id.slice(0, 8)}
-                      </p>
-                   </div>
-                   <div className="bg-bg-base w-12 h-12 rounded-2xl flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all duration-500 shadow-inner border border-border-subtle/50">
-                      <User className="w-6 h-6" />
-                   </div>
-                </div>
-                
-                <div className={cn("p-6 rounded-[1.5rem] mb-4 relative overflow-hidden", c.debt > 0 ? "bg-red-50" : "bg-emerald-50")}>
-                   <div className={cn("absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl -translate-y-8 translate-x-8", c.debt > 0 ? "bg-danger/10" : "bg-success/10")} />
-                   <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1 opacity-60">{t.debt}</p>
-                   <div className="flex items-baseline gap-1 relative z-10">
-                      <span dir="ltr" className={cn("text-3xl font-black tracking-tighter font-mono", c.debt > 0 ? "text-danger" : "text-emerald-600")}>{formatNumber(c.debt)}</span>
-                      <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
-                   </div>
-                   {c.debt > 0 && (c.dueDate || c.due_date) && (
-                     <div className="mt-3 pt-3 border-t border-red-200/50 flex items-center gap-1.5 relative z-10">
-                       <CalendarClock className={cn("w-3.5 h-3.5", new Date((c.dueDate || c.due_date)) < new Date() ? "text-danger animate-pulse" : "text-amber-600")} />
-                       <span className={cn("text-[10px] font-black uppercase tracking-wider", new Date((c.dueDate || c.due_date)) < new Date() ? "text-danger animate-bounce" : "text-amber-700")}>
-                         {language === 'ar' ? 'تاريخ الاستحقاق' : 'ECHEANCE'}: {new Date(c.dueDate || c.due_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'fr-FR')}
-                       </span>
-                     </div>
-                   )}
-                </div>
-
-                {/* Cumulative Profit Badge */}
-                {canViewProfits && (
-                  <div className="p-4 rounded-[1.25rem] mb-5 bg-gradient-to-br from-emerald-50/90 via-emerald-50/50 to-teal-50/40 border border-emerald-200/70 relative overflow-hidden transition-all group-hover:border-emerald-300/90 group-hover:shadow-sm">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl -translate-y-8 translate-x-8 pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 shrink-0 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-600">
-                          <TrendingUp className="w-3.5 h-3.5 stroke-[2.5]" />
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-900/80 truncate">
-                          {t.totalCustomerProfit}
-                        </span>
+          {/* ── ADD CUSTOMER FORM (COLLAPSIBLE / EXPANDABLE) ── */}
+          <AnimatePresence>
+            {showAddForm && (
+              <motion.section
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="bg-card border-2 border-accent/20 p-6 sm:p-7 rounded-3xl shadow-lg relative">
+                  <div className="flex items-center justify-between mb-6 pb-3 border-b border-border-subtle/80">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-accent/10 rounded-xl text-accent">
+                        <Plus className="w-4 h-4 stroke-[3]" />
                       </div>
-                      <span className="text-[8px] font-black uppercase tracking-wider text-emerald-700/70 bg-emerald-100/70 px-2 py-0.5 rounded-full shrink-0">
-                        {t.profitFromFirstTx}
-                      </span>
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-text-main">
+                          {t.addCustomer}
+                        </h3>
+                        <p className="text-[11px] font-bold text-text-secondary">
+                          {language === 'ar' ? 'سجل بيانات الزبون ورصيد الدين الأولي وتاريخ الاستحقاق' : 'Remplissez les informations pour ajouter un nouveau client'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddForm(false)}
+                      className="p-2 rounded-xl text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors"
+                      title={t.cancel}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={addCustomer} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                    {/* Nom */}
+                    <div className="lg:col-span-2 space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-accent" />
+                        <span>{t.customerName}</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder={t.customerName}
+                        className="w-full bg-bg-base/70 border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-2xs transition-all"
+                      />
                     </div>
 
-                    <div className="flex items-baseline justify-between pt-2 border-t border-emerald-200/50 relative z-10">
-                      <div className="flex items-baseline gap-1">
-                        <span dir="ltr" className={cn("text-2xl font-black tracking-tight font-mono", (c.totalProfit || 0) >= 0 ? "text-emerald-600" : "text-amber-600")}>
-                          {(c.totalProfit || 0) > 0 ? `+${formatNumber(c.totalProfit)}` : formatNumber(c.totalProfit || 0)}
+                    {/* Phone */}
+                    <div className="lg:col-span-1 space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-accent" />
+                        <span>{t.phone}</span>
+                      </label>
+                      <input
+                        type="tel"
+                        dir="ltr"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="06XXXXXXXX"
+                        className="w-full bg-bg-base/70 border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-2xs transition-all"
+                      />
+                    </div>
+
+                    {/* Address */}
+                    <div className="lg:col-span-1 space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-accent" />
+                        <span>{t.address}</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={e => setAddress(e.target.value)}
+                        placeholder={t.address}
+                        className="w-full bg-bg-base/70 border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-2xs transition-all"
+                      />
+                    </div>
+
+                    {/* Due Date */}
+                    <div className="lg:col-span-1 space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-accent" />
+                        <span>{t.dueDate || (language === 'ar' ? 'تاريخ الاستحقاق' : 'Échéance')}</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={e => setDueDate(e.target.value)}
+                        className="w-full bg-bg-base/70 border border-border-subtle rounded-2xl py-3 px-4 text-sm font-bold focus:border-accent outline-none shadow-2xs transition-all"
+                      />
+                    </div>
+
+                    {/* Initial Debt */}
+                    <div className="lg:col-span-1 space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
+                        <DollarSign className="w-3.5 h-3.5 text-accent" />
+                        <span>{t.initialDebt}</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={initialDebt}
+                          onChange={e => setInitialDebt(e.target.value)}
+                          className="w-full bg-bg-base/70 border border-border-subtle rounded-2xl py-3 px-4 text-sm font-black text-rose-600 focus:border-accent outline-none shadow-2xs transition-all"
+                        />
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-text-secondary/50">
+                          {t.currency}
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-700 uppercase">{t.currency}</span>
                       </div>
-                      {(c.totalSpent || 0) > 0 && (
-                        <span className="text-[10px] font-bold text-text-secondary/70">
-                          {t.sales}: <span dir="ltr" className="font-mono text-text-main font-black">{formatNumber(c.totalSpent)}</span> {t.currency}
-                        </span>
+                    </div>
+
+                    <div className="lg:col-span-6 flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        className="bg-accent text-white py-3 px-8 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-accent/20 hover:bg-accent/90 active:scale-98 transition-all"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                        <span>{t.confirm}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+
+          {/* ── SEARCH, FILTER PILLS & VIEW CONTROLS (FULL-WIDTH) ── */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-card/60 border border-border-subtle p-3 sm:p-4 rounded-3xl shadow-xs">
+            
+            {/* Search Input with Clear Button */}
+            <div className="relative flex-1 group">
+              <Search className={cn(
+                'absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary group-focus-within:text-accent transition-colors',
+                language === 'ar' ? 'right-4' : 'left-4'
+              )} />
+              <input
+                value={searchCustomer}
+                onChange={e => setSearchCustomer(e.target.value)}
+                placeholder={language === 'ar' ? 'بحث باسم الزبون، رقم الهاتف، العنوان...' : 'Rechercher par nom, téléphone, adresse...'}
+                className={cn(
+                  'w-full bg-bg-base/80 border border-border-subtle rounded-2xl py-2.5 text-sm font-bold focus:border-accent outline-none transition-all',
+                  language === 'ar' ? 'pr-11 pl-10 text-right' : 'pl-11 pr-10'
+                )}
+                dir={language === 'ar' ? 'rtl' : 'ltr'}
+              />
+              {searchCustomer && (
+                <button
+                  type="button"
+                  onClick={() => setSearchCustomer('')}
+                  className={cn(
+                    "absolute top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-main rounded-full",
+                    language === 'ar' ? 'left-3' : 'right-3'
+                  )}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              {[
+                { key: 'all' as const, label: language === 'ar' ? 'الكل' : 'Tous', count: customers.length },
+                { key: 'debt' as const, label: language === 'ar' ? 'عليهم دين' : 'En Dette', count: customersWithDebt.length },
+                { key: 'settled' as const, label: language === 'ar' ? 'مسوّى' : 'Soldés', count: customers.length - customersWithDebt.length },
+                { key: 'overdue' as const, label: language === 'ar' ? 'متأخر/قريب' : 'Échéance', count: overdueCustomers.length + soonCustomers.length },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setStatusFilter(f.key)}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap",
+                    statusFilter === f.key
+                      ? "bg-accent text-white shadow-xs"
+                      : "bg-bg-base text-text-secondary hover:text-text-main hover:bg-border-subtle/30"
+                  )}
+                >
+                  <span>{f.label}</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold",
+                    statusFilter === f.key ? "bg-white/20 text-white" : "bg-card text-text-secondary"
+                  )}>
+                    {f.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Dropdown & View Mode & Return Walking Client */}
+            <div className="flex items-center gap-2 flex-wrap">
+              
+              {/* Sort Menu */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSortMenu(v => !v)}
+                  className="px-3.5 py-2 rounded-xl bg-bg-base border border-border-subtle text-xs font-black text-text-main hover:border-accent transition-colors flex items-center gap-1.5"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5 text-accent" />
+                  <span className="hidden sm:inline">{sortLabels[sortKey]}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-text-secondary" />
+                </button>
+
+                <AnimatePresence>
+                  {showSortMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      className="absolute top-full mt-2 right-0 z-30 bg-card border border-border-subtle rounded-2xl shadow-xl overflow-hidden min-w-[210px]"
+                    >
+                      {Object.keys(sortLabels).map(k => (
+                        <button
+                          key={k}
+                          onClick={() => { setSortKey(k as any); setShowSortMenu(false); }}
+                          className={cn(
+                            'w-full text-left px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-between',
+                            sortKey === k ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-base hover:text-text-main'
+                          )}
+                        >
+                          <span>{sortLabels[k]}</span>
+                          {sortKey === k && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* View Mode Toggle: Grid vs Table */}
+              <div className="flex bg-bg-base p-1 rounded-2xl border border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={cn(
+                    "p-2 rounded-xl transition-all",
+                    viewMode === 'grid' ? "bg-card text-accent shadow-xs" : "text-text-secondary hover:text-text-main"
+                  )}
+                  title="Grille"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={cn(
+                    "p-2 rounded-xl transition-all",
+                    viewMode === 'table' ? "bg-card text-accent shadow-xs" : "text-text-secondary hover:text-text-main"
+                  )}
+                  title="Tableau"
+                >
+                  <Table className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Walking Customer Return Button */}
+              <button 
+                onClick={() => openReturnModal({ id: 'walking', name: t.walkingCustomer || 'Client de passage', debt: 0, email: '', phone: '', address: '' })} 
+                className="bg-accent text-white py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-accent/20 hover:opacity-95 transition-all shrink-0 active:scale-95"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t.walkingCustomerReturn}</span>
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* ── CLIENTS RESULTS CONTAINER (GRID OR TABLE) ── */}
+          {filteredCustomers.length === 0 ? (
+            <div className="bg-card border border-border-subtle rounded-3xl p-12 text-center space-y-4">
+              <div className="w-16 h-16 rounded-3xl bg-bg-base mx-auto flex items-center justify-center text-text-secondary/50">
+                <Users className="w-8 h-8" />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-text-main">
+                  {language === 'ar' ? 'لا توجد نتائج مطابقة' : 'Aucun client trouvé'}
+                </h4>
+                <p className="text-xs text-text-secondary font-medium mt-1">
+                  {language === 'ar' ? 'جرّب البحث بكلمات أخرى أو أزل الفلاتر المحددة' : 'Essayez d\'autres termes de recherche ou réinitialisez les filtres.'}
+                </p>
+              </div>
+            </div>
+          ) : viewMode === 'grid' ? (
+            /* ── MULTI-COLUMN RESPONSIVE CARDS GRID ── */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-5">
+              {filteredCustomers.map(c => {
+                const dueInfo = getCustomerCardDueDate(c);
+                const hasDebt = (Number(c.debt) || 0) > 0;
+
+                return (
+                  <div
+                    key={c.id}
+                    className="bg-card border border-border-subtle p-5 sm:p-6 rounded-3xl shadow-xs hover:shadow-xl transition-all group overflow-hidden relative border-b-4 border-b-border-subtle/40 hover:border-b-accent flex flex-col justify-between"
+                  >
+                    {/* Top Row: Client Info & Avatar */}
+                    <div>
+                      <div className="flex justify-between items-start gap-3 mb-4">
+                        <div className="min-w-0 flex-1">
+                          <h4 
+                            onClick={() => setSelectedCustomer(c)}
+                            className="font-black text-base text-text-main group-hover:text-accent transition-colors tracking-tight truncate cursor-pointer"
+                            title={c.name}
+                          >
+                            {c.name}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-text-secondary font-mono font-bold flex items-center gap-1 opacity-70">
+                              <Hash className="w-3 h-3" />
+                              {c.id.slice(0, 8)}
+                            </span>
+                            {c.phone && (
+                              <span className="text-[10px] text-text-secondary font-mono font-bold flex items-center gap-1 bg-bg-base px-2 py-0.5 rounded-lg border border-border-subtle/50">
+                                <Phone className="w-2.5 h-2.5 text-accent" />
+                                {c.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Avatar */}
+                        <div 
+                          onClick={() => setSelectedCustomer(c)}
+                          className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-accent/20 via-accent/10 to-transparent flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all duration-300 border border-accent/20 shadow-xs font-black text-sm cursor-pointer"
+                        >
+                          {getCustomerInitials(c.name)}
+                        </div>
+                      </div>
+
+                      {/* Current Debt Box */}
+                      <div className={cn(
+                        "p-4 rounded-2xl mb-3 relative overflow-hidden border transition-all",
+                        hasDebt 
+                          ? "bg-rose-50/70 dark:bg-rose-950/20 border-rose-200/60 dark:border-rose-900/40" 
+                          : "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/40"
+                      )}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-wider",
+                            hasDebt ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"
+                          )}>
+                            {t.debt}
+                          </span>
+                          {!hasDebt && (
+                            <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300">
+                              {language === 'ar' ? 'حساب مسوّى' : 'Soldé'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-baseline gap-1">
+                          <span dir="ltr" className={cn(
+                            "text-2xl font-black tracking-tight font-mono",
+                            hasDebt ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                          )}>
+                            {formatNumber(c.debt)}
+                          </span>
+                          <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
+                        </div>
+
+                        {/* Due Date Indicator */}
+                        {hasDebt && dueInfo && (
+                          <div className={cn(
+                            "mt-2.5 pt-2 border-t flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider",
+                            hasDebt ? "border-rose-200/50 dark:border-rose-900/40" : "border-emerald-200/50",
+                            dueInfo.isOverdue ? "text-rose-600 dark:text-rose-400" : "text-amber-700 dark:text-amber-400"
+                          )}>
+                            <CalendarClock className={cn("w-3 h-3 shrink-0", dueInfo.isOverdue && "animate-pulse")} />
+                            <span>
+                              {dueInfo.isOverdue 
+                                ? `${language === 'ar' ? 'متأخر' : 'Retard'}: ${dueInfo.formatted}`
+                                : `${language === 'ar' ? 'استحقاق' : 'Échéance'}: ${dueInfo.formatted}`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cumulative Profit Badge */}
+                      {canViewProfits && (
+                        <div className="p-3.5 rounded-2xl mb-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 relative overflow-hidden">
+                          <div className="flex items-center justify-between text-[10px] font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1">
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3 text-emerald-600 stroke-[2.5]" />
+                              {t.totalCustomerProfit}
+                            </span>
+                            <span className="text-[9px] font-bold text-text-secondary/80 lowercase">
+                              {language === 'ar' ? 'من أول معاملة' : 'depuis 1ère tx'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-baseline justify-between pt-1 border-t border-emerald-200/40 dark:border-emerald-900/40">
+                            <div className="flex items-baseline gap-1">
+                              <span dir="ltr" className={cn(
+                                "text-lg font-black font-mono tracking-tight",
+                                (c.totalProfit || 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"
+                              )}>
+                                {(c.totalProfit || 0) > 0 ? `+${formatNumber(c.totalProfit)}` : formatNumber(c.totalProfit || 0)}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-700 uppercase">{t.currency}</span>
+                            </div>
+
+                            {(c.totalSpent || 0) > 0 && (
+                              <span className="text-[10px] font-semibold text-text-secondary">
+                                {t.sales}: <span dir="ltr" className="font-mono text-text-main font-bold">{formatNumber(c.totalSpent)}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <button onClick={() => { setAdjustModal({ type: 'pay', customer: c }); setAdjustAmount(''); }} className="bg-accent text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10 active:scale-95 transition-all hover:bg-accent/90">
-                    {t.payDebt}
-                  </button>
-                  <button onClick={() => setAdjustModal({ type: 'charge', customer: c })} className="bg-white border-2 border-border-subtle text-text-main py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-accent hover:text-accent transition-all">
-                    {t.newCharge}
-                  </button>
-                </div>
-                {c.debt > 0 && (
-                  <button 
-                    onClick={() => {
-                      setAdjustModal({ type: 'pay', customer: c });
-                      setAdjustAmount(c.debt.toString());
-                    }} 
-                    className="w-full bg-success text-white py-3.5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-lg shadow-success/20 active:scale-95 transition-all hover:bg-success/90 flex items-center justify-center gap-2"
-                  >
-                    <span>{t.clearFullDebt}</span>
-                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                    <CheckCircle className="w-4 h-4" />
-                  </button>
-                )}
-                <button onClick={() => setSelectedCustomer(c)} className="w-full mt-4 py-2 text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-[0.3em] transition-colors border-t border-border-subtle/40 pt-4">{t.view} {t.customerDetails}</button>
+                    {/* Bottom Action Buttons */}
+                    <div className="space-y-2 pt-2 border-t border-border-subtle/50">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => { setAdjustModal({ type: 'pay', customer: c }); setAdjustAmount(''); }}
+                          className="bg-accent text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-accent/90 active:scale-95 transition-all text-center"
+                        >
+                          {t.payDebt}
+                        </button>
+                        <button
+                          onClick={() => setAdjustModal({ type: 'charge', customer: c })}
+                          className="bg-bg-base border border-border-subtle text-text-main hover:border-accent hover:text-accent py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all text-center"
+                        >
+                          {t.newCharge}
+                        </button>
+                      </div>
+
+                      {hasDebt && (
+                        <button
+                          onClick={() => {
+                            setAdjustModal({ type: 'pay', customer: c });
+                            setAdjustAmount(c.debt.toString());
+                          }}
+                          className="w-full bg-emerald-600 text-white py-2 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-sm hover:bg-emerald-700 active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <span>{t.clearFullDebt}</span>
+                          <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setSelectedCustomer(c)}
+                        className="w-full pt-1.5 pb-0.5 text-[10px] font-black text-text-secondary hover:text-accent uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                      >
+                        <span>{t.view} {t.customerDetails}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* ── DENSE FULL-WIDTH TABLE VIEW ── */
+            <div className="bg-card border border-border-subtle rounded-3xl overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-subtle bg-bg-base/60 text-[10px] font-black uppercase tracking-wider text-text-secondary">
+                      <th className="p-4">{t.customerName}</th>
+                      <th className="p-4">{t.phone}</th>
+                      <th className="p-4">{t.address}</th>
+                      <th className="p-4">{t.dueDate || 'Échéance'}</th>
+                      <th className="p-4">{t.debt}</th>
+                      {canViewProfits && <th className="p-4">{t.totalCustomerProfit}</th>}
+                      <th className="p-4 text-center">{t.actions || 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle/60">
+                    {filteredCustomers.map(c => {
+                      const dueInfo = getCustomerCardDueDate(c);
+                      const hasDebt = (Number(c.debt) || 0) > 0;
+
+                      return (
+                        <tr key={c.id} className="hover:bg-bg-base/40 transition-colors group">
+                          {/* Name + Initials */}
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-accent/10 text-accent font-black text-xs flex items-center justify-center shrink-0 border border-accent/20">
+                                {getCustomerInitials(c.name)}
+                              </div>
+                              <div>
+                                <button
+                                  onClick={() => setSelectedCustomer(c)}
+                                  className="font-black text-text-main group-hover:text-accent transition-colors text-left"
+                                >
+                                  {c.name}
+                                </button>
+                                <div className="text-[10px] font-mono text-text-secondary opacity-70">
+                                  #{c.id.slice(0, 8)}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Phone */}
+                          <td className="p-4 font-mono font-bold text-text-secondary">
+                            {c.phone ? (
+                              <span className="flex items-center gap-1.5">
+                                <Phone className="w-3 h-3 text-accent" />
+                                {c.phone}
+                              </span>
+                            ) : '—'}
+                          </td>
+
+                          {/* Address */}
+                          <td className="p-4 text-text-secondary truncate max-w-[150px]">
+                            {c.address || '—'}
+                          </td>
+
+                          {/* Due Date */}
+                          <td className="p-4">
+                            {dueInfo ? (
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1",
+                                dueInfo.isOverdue 
+                                  ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400"
+                              )}>
+                                <CalendarClock className="w-3 h-3" />
+                                {dueInfo.formatted}
+                              </span>
+                            ) : (
+                              <span className="text-text-secondary opacity-40">—</span>
+                            )}
+                          </td>
+
+                          {/* Debt */}
+                          <td className="p-4">
+                            <span dir="ltr" className={cn(
+                              "font-mono font-black text-sm",
+                              hasDebt ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                            )}>
+                              {formatNumber(c.debt)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
+                            </span>
+                          </td>
+
+                          {/* Cumulative Profit */}
+                          {canViewProfits && (
+                            <td className="p-4">
+                              <span dir="ltr" className={cn(
+                                "font-mono font-black text-sm",
+                                (c.totalProfit || 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"
+                              )}>
+                                {(c.totalProfit || 0) > 0 ? `+${formatNumber(c.totalProfit)}` : formatNumber(c.totalProfit || 0)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
+                              </span>
+                            </td>
+                          )}
+
+                          {/* Quick Actions */}
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => { setAdjustModal({ type: 'pay', customer: c }); setAdjustAmount(''); }}
+                                className="px-3 py-1.5 rounded-xl bg-accent text-white font-black text-[10px] uppercase tracking-wider shadow-xs hover:bg-accent/90"
+                              >
+                                {t.payDebt}
+                              </button>
+                              <button
+                                onClick={() => setAdjustModal({ type: 'charge', customer: c })}
+                                className="px-3 py-1.5 rounded-xl bg-bg-base border border-border-subtle font-black text-[10px] uppercase tracking-wider text-text-main hover:border-accent"
+                              >
+                                {t.newCharge}
+                              </button>
+                              <button
+                                onClick={() => setSelectedCustomer(c)}
+                                className="p-1.5 rounded-xl text-text-secondary hover:text-accent hover:bg-bg-base"
+                                title={t.view}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
             {checks && checks.filter(c => c.partyRole === 'customer').length > 0 ? (
               checks.filter(c => c.partyRole === 'customer').slice(0, 50).map((p: any) => (
-                <div key={p.id} className="bg-white border-2 border-border-subtle rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-accent/40 transition-all shadow-sm group">
+                <div key={p.id} className="bg-card border border-border-subtle rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-accent/40 transition-all shadow-xs group">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 bg-amber-100 dark:bg-amber-950/40 rounded-2xl flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform border border-amber-200/50">
                       <CreditCard className="w-6 h-6" />
                     </div>
                     <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
@@ -586,7 +1321,7 @@ export default function CustomerList() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <div className="text-xl font-black text-text-main tracking-tighter">
+                    <div className="text-xl font-black text-text-main font-mono tracking-tight">
                       {formatNumber(p.total)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
                     </div>
                     <div className="text-[10px] font-bold text-text-secondary opacity-60">
@@ -596,7 +1331,7 @@ export default function CustomerList() {
                 </div>
               ))
             ) : (
-              <div className="py-20 text-center space-y-4 opacity-50">
+              <div className="py-20 text-center space-y-4 opacity-50 bg-card border border-border-subtle rounded-3xl">
                 <div className="w-16 h-16 border-4 border-dashed border-border-subtle rounded-3xl mx-auto flex items-center justify-center rotate-12">
                    <FolderOpen className="w-8 h-8 -rotate-12" />
                 </div>
