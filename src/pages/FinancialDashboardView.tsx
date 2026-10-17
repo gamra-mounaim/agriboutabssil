@@ -19,10 +19,10 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine } from 'recharts';
 
 // Destructure common icons to avoid TS errors
-const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
+const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe, TrendingDown, UserCheck, Tag, BarChart3 } = LucideIcons;
 
 export default function FinancialDashboardView({ permissions, currency }: { permissions: any, currency?: string }) {
-  const { products, categories, customers, suppliers, sales, payments, stats, settings, setMessage } = useStore();
+  const { products, categories, customers, suppliers, sales, payments, checks, stats, settings, setMessage, fetchData: onRefresh } = useStore();
   const { language, user } = useAuthStore();
 
   const t = translations[language];
@@ -38,6 +38,33 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const totalSupplierDebt = stats?.supplierDebt || 0;
   const inventoryAssetValue = stats?.inventoryValue || 0;
   const totalDamagesLoss = stats?.totalDamagesLoss || 0;
+
+  // Pending Checks Calculation
+  const customerChecks = useMemo(() => {
+    return (checks || []).filter((c: any) => c.partyRole === 'customer');
+  }, [checks]);
+
+  const pendingChecks = useMemo(() => {
+    return customerChecks.filter((c: any) => c.checkStatus === 'PENDING' || c.status === 'PENDING');
+  }, [customerChecks]);
+
+  const pendingChecksTotal = useMemo(() => {
+    return pendingChecks.reduce((sum: number, c: any) => sum + (Number(c.total || c.amount) || 0), 0);
+  }, [pendingChecks]);
+
+  const debtorCustomersCount = useMemo(() => {
+    return (customers || []).filter(c => Number(c.debt) > 0).length;
+  }, [customers]);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   const handleExportDamages = async () => {
     try {
@@ -203,27 +230,65 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     );
   };
 
-  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", showCurrency = true, onClick, danger }: any) => {
-    // Dynamically adjust text size based on value length to prevent overflow
+  const StatCard = ({ title, value, subtext, color = "text-text-main", bg = "bg-card", icon: Icon, showCurrency = true, onClick, danger, badgeText, badgeColor }: any) => {
     const valueStr = String(value);
-    const valueSize = valueStr.length > 10 ? 'text-2xl' : valueStr.length > 7 ? 'text-3xl' : 'text-4xl';
+    const valueSize = valueStr.length > 12 ? 'text-xl xl:text-2xl' : valueStr.length > 8 ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl';
     
     return (
       <div 
         onClick={onClick}
         className={cn(
           bg, 
-          "p-6 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center justify-between min-h-[180px] transition-all",
-          onClick ? "cursor-pointer hover:-translate-y-1 hover:shadow-md hover:border-accent/30" : "",
-          danger ? "border-red-500/30 bg-red-500/5" : "border-border-subtle"
+          "p-5 sm:p-6 rounded-3xl border shadow-xs flex flex-col justify-between min-h-[175px] transition-all relative overflow-hidden group",
+          onClick ? "cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:border-accent/40 active:scale-98" : "hover:border-border-subtle/80",
+          danger ? "border-rose-200/80 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20" : "border-border-subtle"
         )}
       >
-        <div className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">{title}</div>
-        <div className="flex flex-col items-center max-w-full">
-          <div className={`${valueSize} font-black ${color} whitespace-nowrap tracking-tighter`}>{value}</div>
-          {showCurrency && <div className={`text-sm font-bold mt-1 ${color}`}>{t.currency}</div>}
+        {/* Top Row: Title + Icon */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary truncate">
+            {title}
+          </span>
+          {Icon && (
+            <div className={cn(
+              "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-xs border transition-transform group-hover:scale-105",
+              danger 
+                ? "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50" 
+                : "bg-bg-base text-accent border-border-subtle/60"
+            )}>
+              <Icon className="w-5 h-5 stroke-[2.2]" />
+            </div>
+          )}
         </div>
-        <div className="text-xs text-text-secondary/60 font-medium mt-4">{subtext}</div>
+
+        {/* Middle Value */}
+        <div className="my-auto py-1">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span dir="ltr" className={`${valueSize} font-black ${color} font-mono tracking-tight`}>
+              {value}
+            </span>
+            {showCurrency && (
+              <span className="text-xs font-black text-text-secondary/70 uppercase font-mono">
+                {t.currency}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Subtext / Badge */}
+        <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-border-subtle/50 text-[11px]">
+          <span className="text-text-secondary font-medium truncate">
+            {subtext}
+          </span>
+          {badgeText && (
+            <span className={cn(
+              "text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 font-mono uppercase tracking-wider",
+              badgeColor || "bg-accent/10 text-accent border border-accent/20"
+            )}>
+              {badgeText}
+            </span>
+          )}
+        </div>
       </div>
     );
   };
@@ -231,27 +296,34 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
   const ProfitBreakdown = ({ breakdown }: { breakdown: any }) => {
     if (!breakdown) return null;
     return (
-      <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 gap-2 text-xs font-bold">
-        <div className="flex items-center justify-between text-emerald-600">
-          <span>{t.cash}</span>
-          <span>{formatNumber(breakdown.cash)}</span>
+      <div className="mt-3 pt-3 border-t border-border-subtle/60 space-y-2">
+        <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
+          <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+            <span className="opacity-80 text-[10px]">{t.cash}</span>
+            <span dir="ltr" className="font-mono font-black">{formatNumber(breakdown.cash)}</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded-lg bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+            <span className="opacity-80 text-[10px]">{t.card}</span>
+            <span dir="ltr" className="font-mono font-black">{formatNumber(breakdown.card)}</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded-lg bg-amber-50/60 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+            <span className="opacity-80 text-[10px]">{t.check}</span>
+            <span dir="ltr" className="font-mono font-black">{formatNumber(breakdown.check)}</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded-lg bg-rose-50/60 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+            <span className="opacity-80 text-[10px]">{t.debt}</span>
+            <span dir="ltr" className="font-mono font-black">{formatNumber(breakdown.debt)}</span>
+          </div>
         </div>
-        <div className="flex items-center justify-between text-blue-600">
-          <span>{t.card}</span>
-          <span>{formatNumber(breakdown.card)}</span>
-        </div>
-        <div className="flex items-center justify-between text-amber-600">
-          <span>{t.check}</span>
-          <span>{formatNumber(breakdown.check)}</span>
-        </div>
-        <div className="flex items-center justify-between text-red-600">
-          <span>{t.debt}</span>
-          <span>{formatNumber(breakdown.debt)}</span>
-        </div>
-        <div className="flex items-center justify-between text-indigo-600 col-span-2 pt-2 border-t border-border-subtle mt-1">
-          <span>{(t as any).remiseTotal || t.discount}</span>
-          <span>{formatNumber(breakdown.remise)}</span>
-        </div>
+        {Number(breakdown.remise) > 0 && (
+          <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold border border-indigo-100/60 dark:border-indigo-900/30">
+            <span className="flex items-center gap-1">
+              <Tag className="w-3 h-3 text-indigo-500" />
+              <span>{(t as any).remiseTotal || t.discount}</span>
+            </span>
+            <span dir="ltr" className="font-mono font-black">{formatNumber(breakdown.remise)} {t.currency}</span>
+          </div>
+        )}
       </div>
     );
   };
@@ -459,7 +531,69 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     visibleCardsCount === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1";
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full max-w-[1720px] mx-auto space-y-7 pb-24 px-1 sm:px-2 md:px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* ── EXECUTIVE FINANCIAL DASHBOARD HEADER ── */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-card/60 border border-border-subtle/80 backdrop-blur-md p-4 sm:p-5 rounded-3xl shadow-sm">
+        
+        {/* Title & Subtitle */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-600/20">
+            <BarChart3 className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black text-text-main tracking-tight">
+                {t.financialDashboard}
+              </h1>
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                {language === 'ar' ? 'مباشر' : 'Temps Réel'}
+              </span>
+            </div>
+            <p className="text-xs font-semibold text-text-secondary mt-0.5">
+              {isAr 
+                ? 'نظرة شاملة ومفصلة على المداخيل، الأرباح، السيولة، والديون'
+                : 'Vue d\'ensemble de la rentabilité, trésorerie, valorisation des stocks et créances'}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+          
+          {/* Quick Refresh */}
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2.5 rounded-2xl bg-bg-base border border-border-subtle text-text-secondary hover:text-text-main hover:border-accent transition-all shadow-xs active:scale-95"
+            title={language === 'ar' ? 'تحديث البيانات' : 'Actualiser'}
+          >
+            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-accent")} />
+          </button>
+
+          {/* Damages Report Quick PDF */}
+          {permissions.financialsInventory && (
+            <button
+              onClick={handleExportDamages}
+              className="px-4 py-2.5 rounded-2xl bg-bg-base border border-border-subtle text-text-secondary hover:text-text-main hover:border-accent transition-all text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xs active:scale-95"
+            >
+              <FileText className="w-4 h-4 text-rose-500" />
+              <span>{language === 'ar' ? 'تقرير التلف' : 'Rapport Avaries'}</span>
+            </button>
+          )}
+
+          {/* Global Statement / Financial Print */}
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2.5 rounded-2xl bg-accent text-white hover:bg-accent/90 transition-all text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md shadow-accent/20 active:scale-95"
+          >
+            <Printer className="w-4 h-4 stroke-[2.5]" />
+            <span>{language === 'ar' ? 'طباعة التقرير' : 'Imprimer Synthèse'}</span>
+          </button>
+
+        </div>
+      </div>
             {permissions.financialsDebts && upcomingDebts.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -524,84 +658,148 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         </motion.div>
       )}
 
-            {/* Top Stats Grids: Row 1 (Core Financials) & Row 2 (Operations) */}
-      <div className="space-y-6">
-        {/* Row 1: High Level Revenue, Profit, Stock & Debts (Balanced 4 columns) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* ── TOP STATS: ROW 1 (STRATEGIC PILLARS) & ROW 2 (OPERATIONS & LIQUIDITY) ── */}
+      <div className="space-y-5">
+        
+        {/* Row 1: High Level Revenue, Profit, Stock & Customer Debts (4 columns) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          
+          {/* Card 1: Chiffre d'Affaires Global (Ventes Totales) */}
           {permissions.financialsSales && (
-            /* Black Card - AGRI BOUTABSSIL Ventes Totales */
-            <div className="bg-slate-950 dark:bg-black p-6 rounded-[2.5rem] flex flex-col items-center text-center justify-between min-h-[180px] shadow-xl shadow-black/10 border border-slate-800">
-              <div className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">AGRI BOUTABSSIL</div>
-              <div className="flex flex-col items-center">
-                <Logo className="w-12 h-12 mb-2 p-1" />
-                <div className="text-3xl font-black text-white font-mono">{formatNumber(totalRevenue)}</div>
-                <div className="text-sm font-bold mt-1 text-white">{t.currency}</div>
+            <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white p-5 sm:p-6 rounded-3xl border border-emerald-500/20 shadow-xl shadow-emerald-950/20 flex flex-col justify-between min-h-[175px] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -translate-y-12 translate-x-12 pointer-events-none" />
+              
+              <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                  {t.totalSales}
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xs">
+                  <DollarSign className="w-5 h-5 stroke-[2.5]" />
+                </div>
               </div>
-              <div className="text-xs text-white/60 font-medium mt-4">{t.totalSales}</div>
+
+              <div className="my-auto py-1 relative z-10">
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span dir="ltr" className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                    {formatNumber(totalRevenue)}
+                  </span>
+                  <span className="text-xs font-black uppercase text-emerald-400 font-mono">
+                    {t.currency}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-white/10 text-[11px] relative z-10">
+                <span className="text-white/60 font-medium">
+                  {settings?.shop_name || 'AGRI BOUTABSSIL'}
+                </span>
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                  {sales.length} {language === 'ar' ? 'فاتورة' : 'ventes'}
+                </span>
+              </div>
             </div>
           )}
 
+          {/* Card 2: Bénéfice Prévisionnel */}
           {permissions.financialsProfits && (
             <StatCard 
               title={t.expectedProfit} 
               value={formatNumber(netProfit)} 
-              subtext={t.expectedProfit}
+              subtext={language === 'ar' ? 'هامش الربح المتوقع' : 'Marge nette prévisionnelle'}
               color="text-emerald-600 dark:text-emerald-400"
+              icon={TrendingUp}
+              badgeText={totalRevenue > 0 ? `${((netProfit / totalRevenue) * 100).toFixed(1)}%` : undefined}
+              badgeColor="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
             />
           )}
 
+          {/* Card 3: Valeur du Stock Réel */}
           {permissions.financialsInventory && (
             <StatCard 
               title={t.inventoryValue} 
               value={formatNumber(inventoryAssetValue)} 
-              subtext={t.totalInventoryValue}
+              subtext={language === 'ar' ? 'سعر التكلفة الإجمالي' : 'Valorisation au coût d\'achat'}
               color="text-blue-600 dark:text-blue-400"
+              icon={Package}
+              badgeText={`${products.length} ${language === 'ar' ? 'مادة' : 'articles'}`}
+              badgeColor="bg-blue-500/10 text-blue-600 border border-blue-500/20"
             />
           )}
 
+          {/* Card 4: Créances Clients (Dettes en attente) */}
           {permissions.financialsDebts && (
             <StatCard 
               title={t.pendingDebts} 
               value={formatNumber(totalCustomerDebt)} 
-              subtext={t.debtWallet}
-              color={totalCustomerDebt > 0 ? "text-amber-600 dark:text-amber-400" : "text-text-main"}
+              subtext={language === 'ar' ? 'مجموع ديون الزبائن' : 'Encours global des clients'}
+              color={totalCustomerDebt > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600"}
+              icon={Users}
+              badgeText={`${debtorCustomersCount} ${language === 'ar' ? 'مدين' : 'débiteurs'}`}
+              badgeColor="bg-amber-500/10 text-amber-600 border border-amber-500/20"
             />
           )}
+
         </div>
 
-        {/* Row 2: Secondary Indicators (Supplier Debt, Debtor Count, Damages Loss) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {/* Row 2: Secondary Operational Indicators (Balanced 4 columns) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          
+          {/* Card 5: Dette Totale Fournisseurs */}
           {permissions.supplierDebt && (
             <StatCard 
               title={t.totalSupplierDebt} 
               value={formatNumber(totalSupplierDebt)} 
               subtext={t.amountOwedToSuppliers}
-              color={totalSupplierDebt > 0 ? "text-danger" : "text-text-main"}
+              color={totalSupplierDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}
+              icon={Store}
               danger={totalSupplierDebt > 0}
+              badgeText={`${suppliers.filter(s => s.debt > 0).length} ${language === 'ar' ? 'مورد' : 'fournisseurs'}`}
+              badgeColor="bg-rose-500/10 text-rose-600 border border-rose-500/20"
             />
           )}
 
+          {/* Card 6: Chèques Clients en Portefeuille */}
+          <StatCard 
+            title={language === 'ar' ? 'شيكات في الانتظار' : 'Chèques en Portefeuille'} 
+            value={formatNumber(pendingChecksTotal)} 
+            subtext={language === 'ar' ? 'شيكات زبائن قيد التحصيل' : 'Règlements chèques à encaisser'}
+            color="text-indigo-600 dark:text-indigo-400"
+            icon={CreditCard}
+            badgeText={`${pendingChecks.length} ${language === 'ar' ? 'شيك' : 'chèques'}`}
+            badgeColor="bg-indigo-500/10 text-indigo-600 border border-indigo-500/20"
+          />
+
+          {/* Card 7: Clients Endettés */}
           {permissions.financialsDebts && (
             <StatCard 
               title={t.debtorCustomers} 
-              value={formatNumber(customers.filter(c => c.debt > 0).length, 0)} 
+              value={formatNumber(debtorCustomersCount, 0)} 
               subtext={t.customersWithBalance}
               color="text-text-main"
+              icon={UserCheck}
               showCurrency={false}
+              badgeText={upcomingDebts.length > 0 ? `${upcomingDebts.length} ${language === 'ar' ? 'متأخر' : 'retard'}` : undefined}
+              badgeColor={upcomingDebts.length > 0 ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" : undefined}
             />
           )}
 
+          {/* Card 8: Pertes & Marchandises Endommagées */}
           {permissions.financialsInventory && (
             <StatCard 
               title={t.damages} 
               value={formatNumber(totalDamagesLoss)} 
-              subtext={language === 'ar' ? 'انقر لتصدير PDF' : language === 'fr' ? 'Cliquez pour exporter le PDF' : 'Click to export PDF'} 
-              color={totalDamagesLoss > 0 ? "text-red-500" : "text-text-main"}
+              subtext={language === 'ar' ? 'انقر لتصدير PDF' : 'Cliquez pour exporter le PDF'} 
+              color={totalDamagesLoss > 0 ? "text-rose-600 dark:text-rose-400" : "text-text-main"}
+              icon={AlertTriangle}
               onClick={handleExportDamages}
               danger={totalDamagesLoss > 0}
+              badgeText={language === 'ar' ? 'PDF' : 'Rapport'}
+              badgeColor="bg-slate-500/10 text-slate-600 border border-slate-500/20"
             />
           )}
+
         </div>
+
       </div>
 
       {permissions.financialsProfits && (
@@ -609,51 +807,87 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           <h3 className={cn("text-xs font-black uppercase tracking-widest text-text-secondary border-b border-border-subtle pb-2", isAr && "text-right")}>
             {t.realizedSalesProfits}
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.todayProfit}</span>
-                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><CalendarClock className="w-4 h-4" /></span>
-              </div>
-              <div className={cn(isAr && "text-right")}>
-                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(dailyProfit)}</span>
-                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {/* Aujourd'hui */}
+            <div className="bg-card p-5 sm:p-6 rounded-3xl border border-border-subtle shadow-xs flex flex-col justify-between min-h-[160px] relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider">{t.todayProfit}</span>
+                  <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                    <CalendarClock className="w-4 h-4 stroke-[2.2]" />
+                  </span>
+                </div>
+                <div className={cn("my-1", isAr && "text-right")}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span dir="ltr" className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      {formatNumber(dailyProfit)}
+                    </span>
+                    <span className="text-xs font-black text-text-secondary uppercase font-mono">{t.currency}</span>
+                  </div>
+                </div>
               </div>
               <ProfitBreakdown breakdown={stats?.dailyProfitBreakdown} />
             </div>
 
-            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.weeklyProfit}</span>
-                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
-              </div>
-              <div className={cn(isAr && "text-right")}>
-                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(weeklyProfit)}</span>
-                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
+            {/* Cette Semaine */}
+            <div className="bg-card p-5 sm:p-6 rounded-3xl border border-border-subtle shadow-xs flex flex-col justify-between min-h-[160px] relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider">{t.weeklyProfit}</span>
+                  <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                    <TrendingUp className="w-4 h-4 stroke-[2.2]" />
+                  </span>
+                </div>
+                <div className={cn("my-1", isAr && "text-right")}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span dir="ltr" className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      {formatNumber(weeklyProfit)}
+                    </span>
+                    <span className="text-xs font-black text-text-secondary uppercase font-mono">{t.currency}</span>
+                  </div>
+                </div>
               </div>
               <ProfitBreakdown breakdown={stats?.weeklyProfitBreakdown} />
             </div>
 
-            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.monthlyProfit}</span>
-                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><TrendingUp className="w-4 h-4" /></span>
-              </div>
-              <div className={cn(isAr && "text-right")}>
-                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(monthlyProfit)}</span>
-                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
+            {/* Ce Mois */}
+            <div className="bg-card p-5 sm:p-6 rounded-3xl border border-border-subtle shadow-xs flex flex-col justify-between min-h-[160px] relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider">{t.monthlyProfit}</span>
+                  <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                    <Activity className="w-4 h-4 stroke-[2.2]" />
+                  </span>
+                </div>
+                <div className={cn("my-1", isAr && "text-right")}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span dir="ltr" className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      {formatNumber(monthlyProfit)}
+                    </span>
+                    <span className="text-xs font-black text-text-secondary uppercase font-mono">{t.currency}</span>
+                  </div>
+                </div>
               </div>
               <ProfitBreakdown breakdown={stats?.monthlyProfitBreakdown} />
             </div>
 
-            <div className="bg-card p-6 rounded-[2.5rem] border border-border-subtle shadow-sm flex flex-col justify-between min-h-[150px] relative overflow-hidden group hover:border-emerald-500/20 transition-all duration-300">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.yearlyProfit}</span>
-                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><Sparkles className="w-4 h-4" /></span>
-              </div>
-              <div className={cn(isAr && "text-right")}>
-                <span className="text-2xl xl:text-3xl font-black text-emerald-600 whitespace-nowrap tracking-tighter">{formatNumber(yearlyProfit)}</span>
-                <span className="text-xs font-bold text-text-secondary ml-1">{t.currency}</span>
+            {/* Cette Année */}
+            <div className="bg-card p-5 sm:p-6 rounded-3xl border border-border-subtle shadow-xs flex flex-col justify-between min-h-[160px] relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider">{t.yearlyProfit}</span>
+                  <span className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                    <Sparkles className="w-4 h-4 stroke-[2.2]" />
+                  </span>
+                </div>
+                <div className={cn("my-1", isAr && "text-right")}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span dir="ltr" className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                      {formatNumber(yearlyProfit)}
+                    </span>
+                    <span className="text-xs font-black text-text-secondary uppercase font-mono">{t.currency}</span>
+                  </div>
+                </div>
               </div>
               <ProfitBreakdown breakdown={stats?.yearlyProfitBreakdown} />
             </div>
