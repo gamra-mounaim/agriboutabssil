@@ -22,6 +22,23 @@ const hashPassword = (password: string) => {
   return crypto.createHash('sha256').update(password).digest('hex');
 };
 
+const recentTransactionRequests = new Map<string, number>();
+
+function isDuplicateTransactionRequest(key: string, cooldownMs = 5000): boolean {
+  const now = Date.now();
+  const lastTime = recentTransactionRequests.get(key);
+  if (lastTime && (now - lastTime) < cooldownMs) {
+    return true;
+  }
+  recentTransactionRequests.set(key, now);
+  if (recentTransactionRequests.size > 500) {
+    for (const [k, time] of recentTransactionRequests.entries()) {
+      if (now - time > 30000) recentTransactionRequests.delete(k);
+    }
+  }
+  return false;
+}
+
 // Initialize SQLite database
 // initDb is now called inside startServer for better error handling
 
@@ -1258,6 +1275,31 @@ async function startServer() {
   app.post("/api/customers/:id/payment", async (req, res) => {
     const { id } = req.params;
     const { amount, payment_method, check_number, check_due_date, check_owner } = req.body;
+    
+    // In-memory debounce check (5 seconds)
+    const reqKey = `cust_pay_${id}_${amount}_${payment_method || 'CASH'}_${check_number || ''}`;
+    if (isDuplicateTransactionRequest(reqKey, 5000)) {
+      console.warn(`[Anti-Duplicate] Duplicate customer payment blocked in-memory: customer ${id}, amount ${amount}`);
+      return res.json({ status: "success", duplicateIgnored: true });
+    }
+
+    // Database duplicate check (within last 5 seconds)
+    try {
+      const recentDuplicate = await db.prepare(`
+        SELECT id FROM payments 
+        WHERE customer_id = ? 
+          AND ABS(amount - ?) < 0.001 
+          AND date >= NOW() - INTERVAL '5 seconds'
+      `).get(id, amount);
+
+      if (recentDuplicate) {
+        console.warn(`[Anti-Duplicate] Duplicate customer payment blocked via DB check: customer ${id}, amount ${amount}`);
+        return res.json({ status: "success", duplicateIgnored: true });
+      }
+    } catch (checkErr) {
+      console.error("[Anti-Duplicate] Error checking duplicate payment:", checkErr);
+    }
+
     const paymentId = uuidv4();
     
     const transaction = async () => {
@@ -1289,6 +1331,14 @@ async function startServer() {
   app.post("/api/customers/:id/charge", async (req, res) => {
     const { id } = req.params;
     const { amount, description } = req.body;
+    
+    // In-memory debounce check (5 seconds)
+    const reqKey = `cust_charge_${id}_${amount}_${description || ''}`;
+    if (isDuplicateTransactionRequest(reqKey, 5000)) {
+      console.warn(`[Anti-Duplicate] Duplicate customer charge blocked in-memory: customer ${id}, amount ${amount}`);
+      return res.json({ status: "success", duplicateIgnored: true });
+    }
+
     const chargeId = uuidv4();
     
     const transaction = async () => {
@@ -1651,6 +1701,14 @@ async function startServer() {
   app.post("/api/suppliers/:id/payment", async (req, res) => {
     const { id } = req.params;
     const { amount, payment_method, check_number, check_due_date, check_owner } = req.body;
+    
+    // In-memory debounce check (5 seconds)
+    const reqKey = `supp_pay_${id}_${amount}_${payment_method || 'CASH'}_${check_number || ''}`;
+    if (isDuplicateTransactionRequest(reqKey, 5000)) {
+      console.warn(`[Anti-Duplicate] Duplicate supplier payment blocked in-memory: supplier ${id}, amount ${amount}`);
+      return res.json({ status: "success", duplicateIgnored: true });
+    }
+
     const historyId = uuidv4();
     
     const transaction = async () => {
@@ -1675,6 +1733,14 @@ async function startServer() {
   app.post("/api/suppliers/:id/charge", async (req, res) => {
     const { id } = req.params;
     const { amount, description } = req.body;
+    
+    // In-memory debounce check (5 seconds)
+    const reqKey = `supp_charge_${id}_${amount}_${description || ''}`;
+    if (isDuplicateTransactionRequest(reqKey, 5000)) {
+      console.warn(`[Anti-Duplicate] Duplicate supplier charge blocked in-memory: supplier ${id}, amount ${amount}`);
+      return res.json({ status: "success", duplicateIgnored: true });
+    }
+
     const historyId = uuidv4();
     
     const transaction = async () => {

@@ -7,7 +7,7 @@ import {
   ArrowUpDown, CheckCircle2, Copy, Check, Package, Receipt,
   Wallet, CalendarClock, ArrowRightLeft, ShieldCheck, FileText,
   Filter, LayoutGrid, Table, ArrowRight, User, Sparkles, Building2,
-  Clock, AlertCircle
+  Clock, AlertCircle, RefreshCw
 } from 'lucide-react';
 
 function getSupplierInitials(name?: string) {
@@ -97,6 +97,7 @@ export default function SupplierList({ permissions }: { permissions: any }) {
   const [checkBankSupplier, setCheckBankSupplier] = useState('');
   const [dueDate, setDueDate]                   = useState('');
   const [adjustNote, setAdjustNote]             = useState('');
+  const [submittingAdjust, setSubmittingAdjust] = useState(false);
 
   // ── Derived totals ──
   const totalDebt = useMemo(() => suppliers.reduce((s, x) => s + (x.debt || 0), 0), [suppliers]);
@@ -281,9 +282,10 @@ export default function SupplierList({ permissions }: { permissions: any }) {
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adjustModal || !adjustAmount) return;
+    if (!adjustModal || !adjustAmount || submittingAdjust) return;
     const amt = parseFloat(adjustAmount);
     if (isNaN(amt) || amt <= 0) return;
+    setSubmittingAdjust(true);
     try {
       if (adjustModal.type === 'pay') {
         await api.addSupplierPayment(adjustModal.supplier.id, {
@@ -302,6 +304,7 @@ export default function SupplierList({ permissions }: { permissions: any }) {
       setCheckOwner(''); setCheckBankSupplier(''); setDueDate(''); setAdjustNote('');
       onRefresh();
     } catch { setMessage({ text: language === 'ar' ? 'فشلت العملية.' : language === 'fr' ? 'Opération échouée.' : 'Operation failed.', type: 'error' }); }
+    finally { setSubmittingAdjust(false); }
   };
 
   // ── Due Badge ──
@@ -1921,9 +1924,20 @@ export default function SupplierList({ permissions }: { permissions: any }) {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-accent text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg shadow-accent/20 active:scale-95 transition-all hover:bg-accent/90"
+                    disabled={submittingAdjust}
+                    className={cn(
+                      "flex-1 bg-accent text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg shadow-accent/20 active:scale-95 transition-all hover:bg-accent/90 flex items-center justify-center gap-2",
+                      submittingAdjust && "opacity-60 cursor-not-allowed"
+                    )}
                   >
-                    {t.confirm}
+                    {submittingAdjust ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>{language === 'ar' ? 'جاري التسجيل...' : 'Enregistrement...'}</span>
+                      </>
+                    ) : (
+                      t.confirm
+                    )}
                   </button>
                 </div>
               </form>

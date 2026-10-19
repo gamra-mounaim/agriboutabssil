@@ -56,6 +56,8 @@ export default function CustomerList() {
   const [check_ownerModal, setcheck_ownerModal] = useState('');
   const [checkBankModal, setCheckBankModal] = useState('');
   const [dueDateModal, setDueDateModal] = useState('');
+  const [isSubmittingAdjust, setIsSubmittingAdjust] = useState(false);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   
   // Product Return States
   const [returnModal, setReturnModal] = useState<{ customer: Customer } | null>(null);
@@ -173,10 +175,11 @@ export default function CustomerList() {
 
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adjustModal || !adjustAmount) return;
+    if (!adjustModal || !adjustAmount || isSubmittingAdjust) return;
     const amt = parseFloat(adjustAmount);
     if (isNaN(amt) || amt <= 0) return;
 
+    setIsSubmittingAdjust(true);
     try {
       if (adjustModal.type === 'pay') {
         const paymentData = {
@@ -205,16 +208,19 @@ export default function CustomerList() {
       }
     } catch (err) {
       setMessage({ text: t.operationFailed, type: 'error' });
+    } finally {
+      setIsSubmittingAdjust(false);
     }
   };
 
   const handleReturnSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!returnModal || !returnProductId || !returnQty || !returnPrice) return;
+    if (!returnModal || !returnProductId || !returnQty || !returnPrice || isSubmittingReturn) return;
     const qtyVal = parseInt(returnQty);
     const priceVal = parseFloat(returnPrice);
     if (isNaN(qtyVal) || qtyVal <= 0 || isNaN(priceVal) || priceVal < 0) return;
 
+    setIsSubmittingReturn(true);
     try {
       await api.returnProduct(returnModal.customer.id, {
         productId: returnProductId,
@@ -251,6 +257,8 @@ export default function CustomerList() {
     } catch (err) {
       console.error(err);
       setMessage({ text: t.returnFailed, type: 'error' });
+    } finally {
+      setIsSubmittingReturn(false);
     }
   };
 
@@ -2188,7 +2196,23 @@ export default function CustomerList() {
                 )}
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={() => setAdjustModal(null)} className="flex-1 py-4 bg-bg-base text-text-secondary font-black rounded-2xl hover:bg-border-subtle transition-all text-[10px] uppercase tracking-widest">{t.cancel || 'Cancel'}</button>
-                  <button type="submit" className="flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest">{t.confirm}</button>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmittingAdjust}
+                    className={cn(
+                      "flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2",
+                      isSubmittingAdjust && "opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    {isSubmittingAdjust ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>{language === 'ar' ? 'جاري التسجيل...' : 'Enregistrement...'}</span>
+                      </>
+                    ) : (
+                      t.confirm
+                    )}
+                  </button>
                 </div>
               </form>
             </motion.div>
@@ -2418,7 +2442,23 @@ export default function CustomerList() {
                     setReturnAction('debt');
                     setReturnDescription('');
                   }} className="flex-1 py-4 bg-bg-base text-text-secondary font-black rounded-2xl hover:bg-border-subtle transition-all text-[10px] uppercase tracking-widest">{t.cancel}</button>
-                  <button type="submit" className="flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest">{t.confirm}</button>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmittingReturn}
+                    className={cn(
+                      "flex-[2] py-4 bg-accent text-white font-black rounded-2xl hover:shadow-lg transition-all text-[10px] uppercase tracking-widest flex items-center justify-center gap-2",
+                      isSubmittingReturn && "opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    {isSubmittingReturn ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>{language === 'ar' ? 'جاري التسجيل...' : 'Enregistrement...'}</span>
+                      </>
+                    ) : (
+                      t.confirm
+                    )}
+                  </button>
                 </div>
               </form>
             </motion.div>
