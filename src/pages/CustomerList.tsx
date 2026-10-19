@@ -479,6 +479,25 @@ export default function CustomerList() {
     return customerHistory.filter(h => h.type === 'SALE').reduce((sum, h) => sum + (Number(h.discount) || 0), 0);
   }, [customerHistory]);
 
+  const getHistoryItemProfit = (item: any) => {
+    if (item.profit !== undefined && item.profit !== null && !isNaN(Number(item.profit))) {
+      return Number(item.profit);
+    }
+    const matched = sales.find((s: any) => s.id === item.id || (s.invoiceNumber && item.invoice_number && s.invoiceNumber === item.invoice_number));
+    if (matched?.profit !== undefined && matched?.profit !== null && !isNaN(Number(matched.profit))) {
+      return Number(matched.profit);
+    }
+    if (matched?.items && matched.items.length > 0) {
+      const cost = matched.items.reduce((acc: number, it: any) => {
+        const p = products.find(prod => prod.id === it.productId);
+        const cp = it.costPrice !== undefined ? Number(it.costPrice) : Number(p?.costPrice || 0);
+        return acc + (cp * (Number(it.qty) || 1));
+      }, 0);
+      return Number(matched.total || 0) - cost;
+    }
+    return 0;
+  };
+
   const customerDueDateInfo = useMemo(() => {
     if (!selectedCustomer) return null;
     const rawDate = selectedCustomer.dueDate || selectedCustomer.due_date;
@@ -1744,6 +1763,20 @@ export default function CustomerList() {
                                            {t.invoice}
                                          </span>
                                        )}
+                                       {item.type === 'SALE' && canViewProfits && (() => {
+                                         const profitVal = getHistoryItemProfit(item);
+                                         return (
+                                           <span className={cn(
+                                             "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md",
+                                             profitVal >= 0 
+                                               ? "bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40"
+                                               : "bg-rose-100/80 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/50 dark:border-rose-800/40"
+                                           )}>
+                                             <TrendingUp className="w-3 h-3" />
+                                             <span>{language === 'ar' ? 'الربح' : 'Bénéfice'}: {profitVal >= 0 ? '+' : ''}{formatNumber(profitVal)} {t.currency}</span>
+                                           </span>
+                                         );
+                                       })()}
                                        {item.payment_method === 'CHECK' && (
                                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-md text-[10px] font-bold">
                                            <CreditCard className="w-3 h-3" /> {t.check} #{item.check_number || '---'}
@@ -1787,6 +1820,19 @@ export default function CustomerList() {
                                          <span dir="ltr">{formatNumber(Number(item.amount) + Number(item.discount))}</span> {t.currency}
                                        </div>
                                      )}
+                                     {item.type === 'SALE' && canViewProfits && (() => {
+                                       const profitVal = getHistoryItemProfit(item);
+                                       return (
+                                         <div className={cn(
+                                           "text-xs font-black tabular-nums flex items-center gap-1 mt-0.5",
+                                           profitVal >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                         )}>
+                                           <span className="text-[10px] font-semibold text-text-secondary">{language === 'ar' ? 'الربح:' : 'Bénéfice:'}</span>
+                                           <span dir="ltr">{profitVal >= 0 ? '+' : ''}{formatNumber(profitVal)}</span>
+                                           <span className="text-[10px] font-bold">{t.currency}</span>
+                                         </div>
+                                       );
+                                     })()}
                                    </div>
 
                                    <div className="flex items-center gap-1">
@@ -1983,6 +2029,23 @@ export default function CustomerList() {
                      <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{t.total}</span>
                      <span className="text-2xl font-black text-accent tracking-tighter">{formatNumber(selectedSaleToShow.total)} {t.currency}</span>
                   </div>
+                  {canViewProfits && (() => {
+                    const profitVal = getHistoryItemProfit(selectedSaleToShow);
+                    return (
+                      <div className="flex justify-between items-center px-2 pt-2 border-t border-border-subtle/40">
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          {language === 'ar' ? 'الربح المحقق في هذه الفاتورة' : 'Bénéfice réalisé'}
+                        </span>
+                        <span className={cn(
+                          "text-base font-black tracking-tight font-mono",
+                          profitVal >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        )}>
+                          <span dir="ltr">{profitVal >= 0 ? '+' : ''}{formatNumber(profitVal)}</span> {t.currency}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

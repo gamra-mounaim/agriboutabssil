@@ -1404,27 +1404,36 @@ async function startServer() {
           check_owner,
           NULL as invoice_number,
           0 as discount,
-          amount as subtotal
+          amount as subtotal,
+          0 as profit
         FROM customer_history 
         WHERE customer_id = ?
         
         UNION ALL
         
         SELECT 
-          id, 
+          s.id, 
           'SALE' as type, 
-          total as amount, 
-          'Sale #' || invoice_number as description, 
-          date,
-          payment_method,
-          check_number,
+          s.total as amount, 
+          'Sale #' || s.invoice_number as description, 
+          s.date,
+          s.payment_method,
+          s.check_number,
           NULL as check_due_date,
-          check_owner,
-          invoice_number,
-          COALESCE(discount, 0) as discount,
-          COALESCE(subtotal, total + COALESCE(discount, 0)) as subtotal
-        FROM sales 
-        WHERE customer_id = ?
+          s.check_owner,
+          s.invoice_number,
+          COALESCE(s.discount, 0) as discount,
+          COALESCE(s.subtotal, s.total + COALESCE(s.discount, 0)) as subtotal,
+          (
+            COALESCE((
+              SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+              FROM sale_items si
+              LEFT JOIN products p ON si.product_id = p.id
+              WHERE si.sale_id = s.id
+            ), 0) - COALESCE(s.discount, 0)
+          ) as profit
+        FROM sales s 
+        WHERE s.customer_id = ?
         
         ORDER BY date DESC
       `).all(id, id);
@@ -1675,8 +1684,25 @@ async function startServer() {
   // --- Sales API ---
   app.get("/api/sales", async (req, res) => {
     if (!req.query.page) {
-      const sales = await db.prepare('SELECT * FROM sales ORDER BY date DESC').all();
-      const saleItems = await db.prepare('SELECT * FROM sale_items').all();
+      const sales = await db.prepare(`
+        SELECT 
+          s.*,
+          COALESCE(
+            (
+              SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+              FROM sale_items si
+              LEFT JOIN products p ON si.product_id = p.id
+              WHERE si.sale_id = s.id
+            ), 0
+          ) - COALESCE(s.discount, 0) as profit
+        FROM sales s 
+        ORDER BY s.date DESC
+      `).all();
+      const saleItems = await db.prepare(`
+        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        FROM sale_items si 
+        LEFT JOIN products p ON si.product_id = p.id
+      `).all();
       const itemsBySale = saleItems.reduce((acc: any, item: any) => {
         if (!acc[item.sale_id]) acc[item.sale_id] = [];
         acc[item.sale_id].push(item);
@@ -1693,7 +1719,22 @@ async function startServer() {
     const limit = parseInt(req.query.limit as string) || 50;
     const search = req.query.search ? `%${req.query.search}%` : null;
     
-    let query = 'SELECT s.*, COALESCE(u.username, u.email, s.staff_id) as staff_name FROM sales s LEFT JOIN customers c ON s.customer_id = c.id LEFT JOIN users u ON (s.staff_id = u.id OR s.staff_id = u.username)';
+    let query = `
+      SELECT 
+        s.*, 
+        COALESCE(u.username, u.email, s.staff_id) as staff_name,
+        COALESCE(
+          (
+            SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+            FROM sale_items si
+            LEFT JOIN products p ON si.product_id = p.id
+            WHERE si.sale_id = s.id
+          ), 0
+        ) - COALESCE(s.discount, 0) as profit
+      FROM sales s 
+      LEFT JOIN customers c ON s.customer_id = c.id 
+      LEFT JOIN users u ON (s.staff_id = u.id OR s.staff_id = u.username)
+    `;
     let countQuery = 'SELECT COUNT(*) as count FROM sales s LEFT JOIN customers c ON s.customer_id = c.id LEFT JOIN users u ON (s.staff_id = u.id OR s.staff_id = u.username)';
     let params: any[] = [];
     
@@ -1713,7 +1754,12 @@ async function startServer() {
     let itemsBySale = {};
     if (saleIds.length > 0) {
       const placeholders = saleIds.map(() => '?').join(',');
-      const saleItems = await db.prepare(`SELECT * FROM sale_items WHERE sale_id IN (${placeholders})`).all(...saleIds);
+      const saleItems = await db.prepare(`
+        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        FROM sale_items si 
+        LEFT JOIN products p ON si.product_id = p.id 
+        WHERE si.sale_id IN (${placeholders})
+      `).all(...saleIds);
       itemsBySale = saleItems.reduce((acc: any, item: any) => {
         if (!acc[item.sale_id]) acc[item.sale_id] = [];
         acc[item.sale_id].push(item);
@@ -1732,7 +1778,12 @@ async function startServer() {
   app.get("/api/sales/:id/items", async (req, res) => {
     const { id } = req.params;
     try {
-      const items = await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id);
+      const items = await db.prepare(`
+        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        FROM sale_items si 
+        LEFT JOIN products p ON si.product_id = p.id 
+        WHERE si.sale_id = ?
+      `).all(id);
       res.json(toCamel(items));
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });

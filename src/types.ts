@@ -35,6 +35,7 @@ export interface SaleItem {
   name: string;
   price: number;
   qty: number;
+  costPrice?: number;
 }
 
 export interface DraftSale {
@@ -54,6 +55,7 @@ export interface Sale {
   total: number;
   subtotal?: number;
   discount?: number;
+  profit?: number;
   date: string;
   items: SaleItem[];
   createdAt: any;
@@ -99,6 +101,7 @@ export interface Supplier {
 export interface UserProfile {
   id: string;
   email: string;
+  username?: string;
   role: 'admin' | 'staff' | 'manager';
   permissions?: {
     stock?: boolean;
@@ -158,6 +161,13 @@ export interface TransactionRecord {
   description: string;
   discount?: number;
   subtotal?: number;
+  profit?: number;
+  invoice_number?: number;
+  invoiceNumber?: number;
+  payment_method?: string;
+  paymentMethod?: string;
+  check_number?: string;
+  checkNumber?: string;
 }
 
 export interface ActivityLog {

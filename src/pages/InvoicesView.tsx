@@ -18,7 +18,7 @@ type MethodFilter = 'all' | 'cash' | 'debt' | 'check' | 'card';
 type SortOption = 'date_desc' | 'date_asc' | 'total_desc' | 'total_asc';
 
 export default function InvoicesView({ permissions, currentUserRole }: { permissions: any, currentUserRole?: string }) {
-  const { sales, salesTotal, salesPage, fetchSalesPage, customers, appUsers, settings, fetchData } = useStore();
+  const { sales, salesTotal, salesPage, fetchSalesPage, customers, appUsers, settings, products, fetchData } = useStore();
   const { language, user: currentUser } = useAuthStore();
   const t = translations[language] as any;
   const isAr = language === 'ar';
@@ -34,6 +34,25 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [newDiscount, setNewDiscount] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper to compute / retrieve profit of an invoice
+  const getSaleProfit = (sale: Sale) => {
+    if (sale.profit !== undefined && sale.profit !== null && !isNaN(Number(sale.profit))) {
+      return Number(sale.profit);
+    }
+    if (sale.items && sale.items.length > 0) {
+      const cost = sale.items.reduce((sum, item) => {
+        const prod = products?.find(p => p.id === item.productId);
+        const cp = item.costPrice !== undefined ? Number(item.costPrice) : (prod?.costPrice !== undefined ? Number(prod.costPrice) : Number(item.price || 0));
+        return sum + (cp * (Number(item.qty) || 1));
+      }, 0);
+      const subtotal = Number(sale.subtotal || sale.total || 0);
+      const discount = Number(sale.discount || 0);
+      const netTotal = Number(sale.total ?? (subtotal - discount));
+      return netTotal - cost;
+    }
+    return 0;
+  };
 
   // Refresh handler
   const handleRefresh = async () => {
@@ -59,6 +78,7 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
   // Permissions
   const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
   const canEditDiscount = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices;
+  const canViewProfits = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.profits !== false;
 
   // Filtered and sorted sales
   const processedSales = useMemo(() => {
@@ -528,10 +548,20 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
             </span>
           </div>
 
-          <span className="text-xs text-text-secondary font-medium">
-            {isAr ? `إجمالي الصفحة: ` : `Total affiché: `}
-            <span className="font-mono font-black text-text-main">{formatNumber(kpis.totalInvoiced)} DH</span>
-          </span>
+          <div className="flex items-center gap-3">
+            {canViewProfits && (
+              <span className="text-xs text-text-secondary font-medium hidden sm:inline">
+                {isAr ? `إجمالي الأرباح: ` : `Bénéfice affiché: `}
+                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                  +{formatNumber(processedSales.reduce((acc, s) => acc + getSaleProfit(s), 0))} DH
+                </span>
+              </span>
+            )}
+            <span className="text-xs text-text-secondary font-medium">
+              {isAr ? `إجمالي الصفحة: ` : `Total affiché: `}
+              <span className="font-mono font-black text-text-main">{formatNumber(kpis.totalInvoiced)} DH</span>
+            </span>
+          </div>
         </div>
 
         {/* Table wrapper */}
@@ -547,6 +577,7 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                 <th className="py-4 px-4 text-right">{isAr ? 'المجموع الجزئي' : 'Sous-total'}</th>
                 <th className="py-4 px-4 text-right">{isAr ? 'التخفيض' : 'Remise'}</th>
                 <th className="py-4 px-4 text-right">{isAr ? 'المجموع النهائي' : 'Total Net'}</th>
+                {canViewProfits && <th className="py-4 px-4 text-right">{isAr ? 'الربح' : 'Bénéfice'}</th>}
                 <th className="py-4 px-4 sm:px-6 text-right print:hidden">{isAr ? 'إجراءات' : 'Actions'}</th>
               </tr>
             </thead>
@@ -640,6 +671,24 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                       </span>
                     </td>
 
+                    {/* Profit */}
+                    {canViewProfits && (() => {
+                      const profitVal = getSaleProfit(sale);
+                      return (
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <span className={cn(
+                            "font-mono text-xs sm:text-sm font-black px-2.5 py-1 rounded-xl inline-flex items-center gap-1",
+                            profitVal >= 0 
+                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20" 
+                              : "text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20"
+                          )}>
+                            <span dir="ltr">{profitVal >= 0 ? '+' : ''}{formatNumber(profitVal)}</span>
+                            <span className="text-[10px] font-bold">DH</span>
+                          </span>
+                        </td>
+                      );
+                    })()}
+
                     {/* Action buttons */}
                     <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap print:hidden" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
@@ -679,7 +728,7 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
 
               {processedSales.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-16 text-center text-text-secondary">
+                  <td colSpan={canViewProfits ? 10 : 9} className="py-16 text-center text-text-secondary">
                     <div className="max-w-xs mx-auto space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-bg-base border border-border-subtle mx-auto flex items-center justify-center text-text-secondary/50">
                         <FileText className="w-6 h-6" />
@@ -858,6 +907,23 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                   <span>{isAr ? 'المجموع الصافي (Total Net):' : 'Total Net à Payer:'}</span>
                   <span className="font-mono text-base text-accent">{formatNumber(viewingSale.total)} DH</span>
                 </div>
+                {canViewProfits && (() => {
+                  const viewingProfit = getSaleProfit(viewingSale);
+                  return (
+                    <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-border-subtle/50">
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        {isAr ? 'الربح المحقق في هذه الفاتورة:' : 'Bénéfice réalisé sur cette facture :'}
+                      </span>
+                      <span className={cn(
+                        "font-mono font-black text-sm",
+                        viewingProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                      )}>
+                        <span dir="ltr">{viewingProfit >= 0 ? '+' : ''}{formatNumber(viewingProfit)}</span> DH
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Actions Footer */}

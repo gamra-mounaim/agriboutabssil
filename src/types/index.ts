@@ -135,6 +135,9 @@ export interface TransactionRecord {
   amount: number;
   date: string;
   description: string;
+  profit?: number;
+  discount?: number;
+  subtotal?: number;
 }
 
 export interface ActivityLog {
