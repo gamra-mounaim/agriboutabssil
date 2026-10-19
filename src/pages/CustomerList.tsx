@@ -287,6 +287,53 @@ export default function CustomerList() {
     }
   };
 
+  const handleDeleteCustomer = async (c: Customer) => {
+    if (!c) return;
+
+    if (Math.abs(Number(c.debt || 0)) > 0.001) {
+      setMessage({
+        text: language === 'ar' 
+          ? `لا يمكن حذف هذا الزبون لأن بذمته رصيد أو دين مسجل (${formatNumber(c.debt)} ${t.currency}). يمكن فقط حذف الزبائن الذين ليس لديهم أي سجل نهائياً.` 
+          : `Impossible de supprimer ce client car il possède un solde/dette (${formatNumber(c.debt)} ${t.currency}). Seuls les clients sans aucun enregistrement peuvent être supprimés.`,
+        type: 'error'
+      });
+      return;
+    }
+
+    if (Number(c.totalSpent || 0) > 0) {
+      setMessage({
+        text: language === 'ar' 
+          ? `لا يمكن حذف هذا الزبون لأن لديه مبيعات مسجلة سابقاً. يمكن فقط حذف الزبائن الذين ليس لديهم أي معاملات.` 
+          : `Impossible de supprimer ce client car il possède des transactions/achats enregistrés.`,
+        type: 'error'
+      });
+      return;
+    }
+
+    const confirmMsg = language === 'ar'
+      ? `هل أنت متأكد من حذف الزبون "${c.name}" نهائياً؟\n(ملاحظة: شرط الحذف هو ألا يكون مسجلاً عليه أي سجل أو معاملة).`
+      : `Êtes-vous sûr de vouloir supprimer définitivement le client "${c.name}" ?\n(Condition : le client ne doit avoir aucun enregistrement ni transaction).`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await api.deleteCustomer(c.id);
+      setMessage({
+        text: language === 'ar' ? `تم حذف الزبون "${c.name}" بنجاح.` : `Client "${c.name}" supprimé avec succès.`,
+        type: 'success'
+      });
+      if (selectedCustomer?.id === c.id) {
+        setSelectedCustomer(null);
+      }
+      await onRefresh();
+    } catch (err: any) {
+      setMessage({
+        text: err.message || (language === 'ar' ? 'حدث خطأ أثناء محاولة الحذف' : 'Erreur lors de la suppression'),
+        type: 'error'
+      });
+    }
+  };
+
   useEffect(() => {
     if (selectedCustomer) {
       loadHistory(selectedCustomer.id);
@@ -1054,12 +1101,21 @@ export default function CustomerList() {
                           </div>
                         </div>
 
-                        {/* Avatar */}
-                        <div 
-                          onClick={() => setSelectedCustomer(c)}
-                          className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-accent/20 via-accent/10 to-transparent flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all duration-300 border border-accent/20 shadow-xs font-black text-sm cursor-pointer"
-                        >
-                          {getCustomerInitials(c.name)}
+                        {/* Avatar & Quick Delete */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteCustomer(c); }}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-text-secondary/40 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title={language === 'ar' ? 'حذف الزبون' : 'Supprimer le client'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <div 
+                            onClick={() => setSelectedCustomer(c)}
+                            className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-tr from-accent/20 via-accent/10 to-transparent flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all duration-300 border border-accent/20 shadow-xs font-black text-sm cursor-pointer"
+                          >
+                            {getCustomerInitials(c.name)}
+                          </div>
                         </div>
                       </div>
 
@@ -1302,10 +1358,17 @@ export default function CustomerList() {
                               </button>
                               <button
                                 onClick={() => setSelectedCustomer(c)}
-                                className="p-1.5 rounded-xl text-text-secondary hover:text-accent hover:bg-bg-base"
+                                className="p-1.5 rounded-xl text-text-secondary hover:text-accent hover:bg-bg-base cursor-pointer"
                                 title={t.view}
                               >
                                 <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCustomer(c)}
+                                className="p-1.5 rounded-xl text-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                title={language === 'ar' ? 'حذف الزبون' : 'Supprimer le client'}
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1423,6 +1486,14 @@ export default function CustomerList() {
                     >
                       <Edit2 className="w-4 h-4" />
                       <span className="hidden sm:inline">{isEditingProfile ? t.cancel : (language === 'ar' ? 'تعديل' : 'Modifier')}</span>
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteCustomer(selectedCustomer)} 
+                      className="p-2.5 rounded-xl transition-all duration-200 flex items-center gap-1.5 text-xs font-bold hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40 cursor-pointer"
+                      title={language === 'ar' ? 'حذف الزبون' : 'Supprimer le client'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">{language === 'ar' ? 'حذف' : 'Supprimer'}</span>
                     </button>
                     <button 
                       onClick={() => setSelectedCustomer(null)} 

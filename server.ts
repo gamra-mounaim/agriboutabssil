@@ -1510,6 +1510,71 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/customers/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+      const customer = await db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as any;
+      if (!customer) {
+        return res.status(404).json({ status: "error", message: "Client non trouvé" });
+      }
+
+      // 1. Check debt
+      if (customer.debt && Math.abs(Number(customer.debt)) > 0.001) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible de supprimer ce client car il possède un solde / dette enregistré(e)." 
+        });
+      }
+
+      // 2. Check sales
+      const salesCount = ((await db.prepare('SELECT COUNT(*) as count FROM sales WHERE customer_id = ?').get(id)) as any)?.count || 0;
+      if (Number(salesCount) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible de supprimer ce client car il possède des factures de vente enregistrées." 
+        });
+      }
+
+      // 3. Check payments
+      const paymentsCount = ((await db.prepare('SELECT COUNT(*) as count FROM payments WHERE customer_id = ?').get(id)) as any)?.count || 0;
+      if (Number(paymentsCount) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible de supprimer ce client car il possède des paiements enregistrés." 
+        });
+      }
+
+      // 4. Check history
+      const historyCount = ((await db.prepare('SELECT COUNT(*) as count FROM customer_history WHERE customer_id = ?').get(id)) as any)?.count || 0;
+      if (Number(historyCount) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible de supprimer ce client car il possède un historique de transactions enregistré." 
+        });
+      }
+
+      // 5. Check returns
+      const returnsCount = ((await db.prepare('SELECT COUNT(*) as count FROM customer_returns WHERE customer_id = ?').get(id)) as any)?.count || 0;
+      if (Number(returnsCount) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible de supprimer ce client car il possède des retours enregistrés." 
+        });
+      }
+
+      // Clean up any draft sales
+      await db.prepare('DELETE FROM draft_sales WHERE customer_id = ?').run(id);
+
+      // Delete customer
+      await db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+
+      logActivity(req, 'CUSTOMER', 'delete', `Client supprimé : ${customer.name}`, 'system', 'System');
+      res.json({ status: "success", message: "Client supprimé avec succès" });
+    } catch (error: any) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
   // --- Suppliers API ---
   app.get("/api/suppliers", async (req, res) => {
     const suppliers = await db.prepare(`
