@@ -1360,6 +1360,33 @@ async function startServer() {
   app.post("/api/customers/:id/return", async (req, res) => {
     const { id } = req.params;
     const { productId, qty, price, action, description, actor } = req.body;
+    
+    // In-memory debounce check (5 seconds)
+    const reqKey = `cust_ret_${id}_${productId}_${qty}_${price}_${action || 'debt'}`;
+    if (isDuplicateTransactionRequest(reqKey, 5000)) {
+      console.warn(`[Anti-Duplicate] Duplicate customer return blocked in-memory`);
+      return res.json({ status: "success", duplicateIgnored: true });
+    }
+
+    // Database duplicate check (within last 5 seconds)
+    try {
+      const recentDuplicate = await db.prepare(`
+        SELECT id FROM customer_returns 
+        WHERE (customer_id = ? OR (customer_id IS NULL AND ? = 'walking'))
+          AND product_id = ?
+          AND ABS(qty - ?) < 0.001
+          AND ABS(total_refund - ?) < 0.01 
+          AND date >= NOW() - INTERVAL '5 seconds'
+      `).get(id === 'walking' ? null : id, id, productId, Number(qty), Number(qty) * Number(price));
+
+      if (recentDuplicate) {
+        console.warn(`[Anti-Duplicate] Duplicate customer return blocked via DB check`);
+        return res.json({ status: "success", duplicateIgnored: true });
+      }
+    } catch (checkErr) {
+      console.error("[Anti-Duplicate] Error checking duplicate return:", checkErr);
+    }
+
     const returnId = uuidv4();
     const movementId = uuidv4();
     

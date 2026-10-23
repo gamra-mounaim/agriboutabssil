@@ -82,7 +82,7 @@ export default function CustomerList() {
     setIsProductDropdownOpen(false);
     setReturnQty('');
     setReturnPrice('');
-    setReturnAction(customer.id === 'walking' ? 'cash' : 'debt');
+    setReturnAction(customer.id === 'walking' || (Number(customer.debt) || 0) <= 0 ? 'cash' : 'debt');
     setReturnDescription('');
     setIsReturnFlahActive(false);
     setShowAllProductsInReturn(false);
@@ -487,8 +487,8 @@ export default function CustomerList() {
         const match = item.description.match(/facture #(\d+)/i);
         if (match) {
           const invoiceNum = match[1];
-          const matchingSale = customerHistory.find(h => h.type === 'SALE' && h.description.includes('Sale #' + invoiceNum));
-          if (matchingSale && matchingSale.amount === item.amount) {
+          const matchingSale = customerHistory.find(h => h.type === 'SALE' && (String(h.invoice_number) === String(invoiceNum) || h.description?.includes('Sale #' + invoiceNum) || h.description?.includes('Facture #' + invoiceNum)));
+          if (matchingSale) {
             return false;
           }
         }
@@ -1576,7 +1576,7 @@ export default function CustomerList() {
                           </div>
                           <div>
                             <div className="text-xl sm:text-2xl font-black text-text-main tabular-nums tracking-tight">
-                              <span dir="ltr">{formatNumber(totalAccruedAmount)}</span> <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
+                              <span dir="ltr">{formatNumber(currentSelectedCustomer?.totalSpent !== undefined ? Number(currentSelectedCustomer.totalSpent) : totalAccruedAmount)}</span> <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
                             </div>
                             <div className="text-[10px] font-semibold text-text-secondary/70 mt-1">
                               {language === 'ar' ? 'إجمالي المشتريات' : 'Total des achats'}

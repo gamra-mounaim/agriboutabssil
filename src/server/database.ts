@@ -413,6 +413,8 @@ export async function initDb() {
 
   // Retroactive migration for ALL past returns from stock_movements
   try {
+    const existingReturnsCount = ((await db.prepare('SELECT COUNT(*) as count FROM customer_returns').get()) as any)?.count || 0;
+    if (Number(existingReturnsCount) === 0) {
     const pastReturns = await db.prepare(`
       SELECT 
         sm.id as movement_id,
@@ -430,7 +432,7 @@ export async function initDb() {
       LEFT JOIN products p ON sm.product_id = p.id
       LEFT JOIN customers c ON LOWER(TRIM(c.name)) = LOWER(TRIM(REPLACE(sm.reason, 'Customer Return: ', '')))
       WHERE sm.reason LIKE 'Customer Return%'
-      AND NOT EXISTS (SELECT 1 FROM customer_returns cr WHERE cr.id = 'mig_' || sm.id)
+      AND NOT EXISTS (SELECT 1 FROM customer_returns cr WHERE cr.id = 'mig_' || sm.id OR (cr.product_id = sm.product_id AND ABS(EXTRACT(EPOCH FROM (cr.date - sm.timestamp))) < 120))
     `).all() as any[];
 
     for (const ret of pastReturns) {
@@ -497,12 +499,15 @@ export async function initDb() {
     if (pastReturns.length > 0) {
       console.log(`Successfully migrated ${pastReturns.length} past customer returns into customer_returns.`);
     }
+    }
   } catch (e) {
     console.warn("Notice during past returns migration:", e);
   }
 
   // Also check customer_history for any standalone returns not in customer_returns
   try {
+    const existingReturnsCount2 = ((await db.prepare('SELECT COUNT(*) as count FROM customer_returns').get()) as any)?.count || 0;
+    if (Number(existingReturnsCount2) === 0) {
     const standaloneHistoryReturns = await db.prepare(`
       SELECT ch.id, ch.customer_id, ch.amount, ch.description, ch.date, c.name as customer_name
       FROM customer_history ch
@@ -561,6 +566,7 @@ export async function initDb() {
         'System',
         hRet.date
       );
+    }
     }
   } catch (e) {
     console.warn("Notice during standalone returns migration:", e);
