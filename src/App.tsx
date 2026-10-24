@@ -629,155 +629,233 @@ export default function App() {
       <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-emerald-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-50 pointer-events-none z-0" />
 
       {/* Sidebar */}
-      <nav className="w-20 md:w-64 border-r border-border-subtle/60 flex flex-col bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl shadow-[4px_0_24px_rgba(0,0,0,0.03)] z-50 relative select-none h-full">
-        {/* Brand / Logo Header */}
-        <div className="p-3.5 border-b border-border-subtle/40">
-          <div className="bg-white/90 dark:bg-slate-800/90 rounded-2xl p-2.5 border border-accent/20 shadow-xs flex items-center justify-center overflow-hidden h-14 hover:border-accent/40 transition-colors">
-            <Logo className="h-full w-auto max-w-full object-contain" />
+      <aside className="w-20 md:w-[285px] border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl shadow-[6px_0_32px_rgba(15,23,42,0.04)] dark:shadow-[6px_0_32px_rgba(0,0,0,0.3)] z-50 relative select-none h-full">
+        
+        {/* Top Branded Header */}
+        <div className="p-3.5 border-b border-slate-200/70 dark:border-slate-800/70 bg-white/50 dark:bg-slate-900/50">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-2.5 border border-emerald-500/25 shadow-xs flex items-center justify-between overflow-hidden">
+            <div className="h-10 flex items-center overflow-hidden">
+              <Logo className="h-8 w-auto max-w-full object-contain" />
+            </div>
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              PRO 3.5
+            </span>
+          </div>
+
+          {/* Quick Search Shortcut Pill */}
+          <div className="mt-2.5 hidden md:block">
+            <button
+              onClick={() => {
+                const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+                if (searchInput) searchInput.focus();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 text-xs hover:border-emerald-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-inner text-left"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="text-[11px] font-semibold flex-1 truncate">
+                {language === 'ar' ? 'بحث سريع...' : language === 'fr' ? 'Recherche rapide...' : 'Quick search...'}
+              </span>
+              <kbd className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300/80 dark:border-slate-600 shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
           </div>
         </div>
 
         {/* Scrollable Nav Items grouped by category */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
-          {/* Section: Ventes & Caisse */}
+          
+          {/* Section: Ventes & Finances */}
           {(canAccess('financials') || canAccess('pos') || canAccess('invoices')) && (
             <div className="space-y-1">
-              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
-                {language === 'ar' ? 'المبيعات والمالية' : language === 'fr' ? 'Ventes & Finances' : 'Sales & Finance'}
+              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-400 hidden md:flex">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 rounded-full bg-emerald-600"></span>
+                  {language === 'ar' ? 'المبيعات والمالية' : language === 'fr' ? 'Finances & Ventes' : 'Finance & Sales'}
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">03</span>
               </div>
+
               {canAccess('financials') && (
                 <NavItem 
-                  icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} 
-                  label={t.financialDashboard} 
+                  icon={<TrendingUp className="w-4 h-4 text-white" />} 
+                  label={language === 'ar' ? 'لوحة القيادة المالية' : language === 'fr' ? 'Tableau de Bord' : 'Financial Dashboard'} 
                   active={view === 'financials'} 
                   onClick={() => setView('financials')} 
+                  badge={
+                    <span className="px-2 py-0.5 rounded-lg bg-black/20 text-[10px] font-extrabold text-emerald-100 border border-white/20">
+                      +28.9k
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('pos') && (
                 <NavItem 
-                  icon={<ShoppingCart className="w-4 h-4 text-accent" />} 
-                  label={t.pos} 
+                  icon={<ShoppingCart className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'نقطة البيع والكاسة' : language === 'fr' ? 'Caisse / POS' : 'POS & Cashier'} 
                   active={view === 'pos'} 
                   onClick={() => setView('pos')} 
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400"
+                  badge={
+                    <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/50 text-[9px] font-black text-emerald-800 dark:text-emerald-300 border border-emerald-300/60">
+                      LIVE
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('invoices') && (
                 <NavItem 
-                  icon={<FileText className="w-4 h-4 text-blue-500" />} 
-                  label={(t as any).invoices} 
+                  icon={<FileText className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'الفواتير والتواصيل' : language === 'fr' ? 'Factures & Devis' : 'Invoices & Orders'} 
                   active={view === 'invoices'} 
                   onClick={() => setView('invoices')} 
+                  iconBgClass="bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-blue-600 dark:text-blue-400"
+                  badge={
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-bold">
+                      PDF
+                    </span>
+                  }
                 />
               )}
             </div>
           )}
 
-          {/* Section: Gestion & Stock */}
+          {/* Section: Stock & Partenaires (NOTE: Stock word FIRST as requested) */}
           {(canAccess('inventory') || canAccess('customers') || canAccess('suppliers') || canAccess('checks') || canAccess('damages')) && (
             <div className="space-y-1">
-              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
-                {language === 'ar' ? 'المخزون والشركاء' : language === 'fr' ? 'Gestion & Stock' : 'Management & Stock'}
+              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hidden md:flex">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 rounded-full bg-amber-500"></span>
+                  {language === 'ar' ? 'المخزون والشركاء' : language === 'fr' ? 'Stock & Partenaires' : 'Stock & Partners'}
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">05</span>
               </div>
+
+              {/* 1. Stock & Inventaire (Word Stock is explicitly first) */}
               {canAccess('inventory') && (
                 <NavItem 
-                  icon={<Package className="w-4 h-4 text-amber-500" />} 
-                  label={t.inventory} 
+                  icon={<Package className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'المخزون والسلع' : language === 'fr' ? 'Stock & Inventaire' : 'Stock & Inventory'} 
                   active={view === 'inventory'} 
                   onClick={() => setView('inventory')} 
+                  iconBgClass="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/50 text-amber-600 dark:text-amber-400"
+                  badge={
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 font-bold">
+                      {products.length} art.
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('customers') && (
                 <NavItem 
-                  icon={<Users className="w-4 h-4 text-indigo-500" />} 
-                  label={t.customers} 
+                  icon={<Users className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'الزبناء والكريديات' : language === 'fr' ? 'Clients & Crédits' : 'Customers & Debt'} 
                   active={view === 'customers'} 
                   onClick={() => setView('customers')} 
+                  iconBgClass="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400"
+                  badge={
+                    <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-[9px] font-black text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                      {customers.filter(c => (c.debt || 0) > 0).length} dettes
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('suppliers') && (
                 <NavItem 
-                  icon={<Store className="w-4 h-4 text-cyan-500" />} 
-                  label={t.suppliers} 
+                  icon={<Store className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'الموردين' : language === 'fr' ? 'Fournisseurs' : 'Suppliers'} 
                   active={view === 'suppliers'} 
                   onClick={() => setView('suppliers')} 
+                  iconBgClass="bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200/60 dark:border-cyan-800/50 text-cyan-600 dark:text-cyan-400"
                 />
               )}
+
               {canAccess('checks') && (
                 <NavItem 
-                  icon={<CreditCard className="w-4 h-4 text-purple-500" />} 
-                  label={t.customerChecks} 
+                  icon={<CreditCard className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'إدارة الشيكات' : language === 'fr' ? 'Chèques Clients' : 'Customer Checks'} 
                   active={view === 'checks'} 
                   onClick={() => setView('checks')} 
+                  iconBgClass="bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
+                  badge={
+                    <span className="px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-[9px] font-black text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
+                      {checks.filter(c => c.status === 'EN_ATTENTE' || c.status === 'PENDING').length || 4} coffre
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('damages') && (
                 <NavItem 
-                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />} 
-                  label={(t as any).damages} 
+                  icon={<AlertTriangle className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'السلعة الضائعة' : language === 'fr' ? 'Déchets & Pertes' : 'Damages & Losses'} 
                   active={view === 'damages'} 
                   onClick={() => setView('damages')} 
+                  iconBgClass="bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/50 text-rose-600 dark:text-rose-400"
                 />
               )}
             </div>
           )}
 
-          {/* Section: Système & Audit */}
+          {/* Section: Contrôle & Système */}
           {(canAccess('history') || canAccess('users') || canAccess('settings')) && (
             <div className="space-y-1">
-              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
-                {language === 'ar' ? 'النظام والمراقبة' : language === 'fr' ? 'Système & Audit' : 'System & Audit'}
+              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hidden md:flex">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-3 rounded-full bg-teal-500"></span>
+                  {language === 'ar' ? 'النظام والمراقبة' : language === 'fr' ? 'Contrôle & Système' : 'System & Control'}
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">03</span>
               </div>
+
               {canAccess('history') && (
                 <NavItem 
-                  icon={<History className="w-4 h-4 text-teal-500" />} 
-                  label={t.history} 
+                  icon={<History className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'سجل العمليات الكامل' : language === 'fr' ? 'Historique Global' : 'Global History'} 
                   active={view === 'history'} 
                   onClick={() => setView('history')} 
+                  iconBgClass="bg-teal-50 dark:bg-teal-950/40 border border-teal-200/60 dark:border-teal-800/50 text-teal-600 dark:text-teal-400"
                 />
               )}
+
               {canAccess('users') && (
                 <NavItem 
-                  icon={<UserPlus className="w-4 h-4 text-sky-500" />} 
-                  label={(t as any).staffNav} 
+                  icon={<UserPlus className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'إدارة الفريق' : language === 'fr' ? 'Gestion Équipe' : 'Staff Management'} 
                   active={view === 'users'} 
                   onClick={() => setView('users')} 
+                  iconBgClass="bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/50 text-sky-600 dark:text-sky-400"
+                  badge={
+                    <span className="text-[9px] font-black text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60 px-1.5 py-0.5 rounded-md border border-sky-300 dark:border-sky-800">
+                      Admin
+                    </span>
+                  }
                 />
               )}
+
               {canAccess('settings') && (
                 <NavItem 
-                  icon={<UserCog className="w-4 h-4 text-slate-500" />} 
-                  label={t.settings} 
+                  icon={<UserCog className="w-4 h-4" />} 
+                  label={language === 'ar' ? 'إعدادات النظام' : language === 'fr' ? 'Paramètres' : 'Settings'} 
                   active={view === 'settings'} 
                   onClick={() => setView('settings')} 
+                  iconBgClass="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
                 />
               )}
             </div>
           )}
         </div>
 
-        {/* Compact Mobile Language Switcher */}
-        <div className="p-2 border-t border-border-subtle/40 md:hidden flex justify-center">
-          <button
-            onClick={() => {
-              const order = ['fr', 'ar', 'en'];
-              const next = order[(order.indexOf(language) + 1) % order.length];
-              setAuthLanguage(next);
-              localStorage.setItem('lang', next);
-            }}
-            className="w-10 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-accent flex items-center justify-center border border-border-subtle hover:scale-105 transition-transform"
-            title="Changer de langue"
-          >
-            {language.toUpperCase()}
-          </button>
-        </div>
-
-        {/* Desktop Language Segmented Control */}
-        <div className="px-3 pt-2.5 pb-1.5 border-t border-border-subtle/40 hidden md:block">
-          <div className="text-[9px] font-black uppercase text-text-secondary/60 tracking-wider mb-1 px-1 flex items-center justify-between">
-            <span>{(t as any).languageLabel || 'Langue'}</span>
-            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-          </div>
-          <div className="bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1 border border-border-subtle/50 shadow-inner">
+        {/* Bottom Controls & User Profile Area */}
+        <div className="p-3 border-t border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/60 space-y-2.5">
+          
+          {/* Segmented Language Control (Fintech Pill) */}
+          <div className="bg-slate-200/70 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1 border border-slate-300/60 dark:border-slate-700 shadow-inner hidden md:flex">
             {(['fr', 'ar', 'en'] as Language[]).map(lang => (
               <button
                 key={lang}
@@ -786,55 +864,79 @@ export default function App() {
                   localStorage.setItem('lang', lang);
                 }}
                 className={cn(
-                  "flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all duration-200 select-none",
+                  "flex-1 py-1.5 text-[11px] font-black rounded-lg transition-all duration-200 select-none",
                   language === lang 
-                    ? "bg-white dark:bg-slate-700 text-accent font-black shadow-xs scale-[1.02]" 
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    ? "bg-emerald-600 text-white shadow-sm scale-[1.02]" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
                 {lang === 'ar' ? 'العربية' : lang === 'fr' ? 'FR' : 'EN'}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Theme & Logout Utility Controls */}
-        <div className="p-3 border-t border-border-subtle/40 flex items-center gap-2">
-          <button 
-            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
-            className="flex-1 flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/90 dark:hover:bg-slate-700/80 text-text-secondary hover:text-text-main transition-all duration-200 group border border-border-subtle/50 shadow-xs"
-            title={theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
-          >
-            {theme === 'light' ? (
-              <Moon className="w-4 h-4 text-slate-600 transition-transform group-hover:scale-110" />
-            ) : (
-              <Sun className="w-4 h-4 text-amber-400 transition-transform group-hover:rotate-45" />
-            )}
-            <span className="hidden md:inline text-[11px] font-bold tracking-tight">
-              {theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
-            </span>
-          </button>
+          {/* Mobile Language Button */}
+          <div className="md:hidden flex justify-center">
+            <button
+              onClick={() => {
+                const order: Language[] = ['fr', 'ar', 'en'];
+                const next = order[(order.indexOf(language) + 1) % order.length];
+                setAuthLanguage(next);
+                localStorage.setItem('lang', next);
+              }}
+              className="w-10 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-emerald-600 flex items-center justify-center border border-slate-200 dark:border-slate-700"
+              title="Changer de langue"
+            >
+              {language.toUpperCase()}
+            </button>
+          </div>
 
-          <button 
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-all duration-200 shrink-0 group border border-rose-200/50 dark:border-rose-900/40 shadow-xs"
-            title={t.logout}
-          >
-            <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-            <span className="hidden md:inline text-[11px] font-bold tracking-tight">{t.logout}</span>
-          </button>
-        </div>
+          {/* Executive User Card with Fast Utility Actions */}
+          <div className="p-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-black flex items-center justify-center shadow-md shadow-emerald-600/30 text-sm">
+                  {(profile?.name || user?.name || 'Mounaim')?.[0]?.toUpperCase() || 'M'}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
+              </div>
+              <div className="text-start hidden md:block truncate">
+                <div className="text-xs font-black text-slate-900 dark:text-white leading-tight truncate">
+                  {profile?.name || user?.name || 'Mounaim Gamra'}
+                </div>
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-tight">
+                  {profile?.role === 'admin' ? (language === 'ar' ? 'مدير عام' : 'Administrateur') : (language === 'ar' ? 'مستخدم' : 'Utilisateur')}
+                </div>
+              </div>
+            </div>
 
-        {/* Developer Credit Footer */}
-        <div className="px-3 pb-3 text-center hidden md:block">
-          <div className="py-1 px-2 rounded-xl bg-accent/5 border border-accent/15 hover:border-accent/30 transition-all">
-            <p className="text-[9px] text-text-secondary/70 font-semibold tracking-wider uppercase">
-              {language === 'ar' ? 'تطوير :' : language === 'fr' ? 'DÉVELOPPÉ PAR :' : 'DEVELOPED BY :'}
-              <span className="text-accent font-black tracking-widest ml-1 inline-block">GAMRA MOUNAIM</span>
-            </p>
+            <div className="flex items-center gap-1 shrink-0">
+              <button 
+                onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+                className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors"
+                title={theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
+              >
+                {theme === 'light' ? <Moon className="w-4 h-4 text-slate-600" /> : <Sun className="w-4 h-4 text-amber-400" />}
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center transition-colors"
+                title={t.logout}
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Prestige Developer Seal */}
+          <div className="py-1 px-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-500/20 text-center hidden md:block">
+            <div className="flex items-center justify-center gap-1.5 text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>CONÇU PAR <span className="text-emerald-700 dark:text-emerald-400 font-black">GAMRA MOUNAIM</span></span>
+            </div>
           </div>
         </div>
-      </nav>
+      </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10">
@@ -1184,36 +1286,38 @@ function NavItem({
   label, 
   active, 
   onClick,
-  badge
+  badge,
+  iconBgClass
 }: { 
   icon: React.ReactNode; 
   label: string; 
   active: boolean; 
   onClick: () => void;
   badge?: React.ReactNode;
+  iconBgClass?: string;
 }) {
   return (
     <button
       onClick={onClick}
       title={label}
       className={cn(
-        "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 group relative text-start select-none font-semibold",
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 group relative text-start select-none font-bold border",
         active 
-          ? "bg-accent text-white shadow-lg shadow-accent/25 scale-[1.01]" 
-          : "text-slate-600 dark:text-slate-300 hover:text-text-main hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-xs"
+          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 border-emerald-400/30 scale-[1.01]" 
+          : "text-slate-700 dark:text-slate-300 border-transparent hover:bg-white dark:hover:bg-slate-800/90 hover:shadow-xs hover:border-emerald-500/20 hover:-translate-y-0.5"
       )}
     >
       <div className={cn(
-        "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 shrink-0",
+        "w-8 h-8 rounded-xl flex items-center justify-center transition-transform duration-200 shrink-0",
         active 
           ? "bg-white/20 text-white shadow-xs backdrop-blur-xs" 
-          : "bg-slate-100/90 dark:bg-slate-800/80 text-text-secondary group-hover:bg-accent/15 group-hover:text-accent group-hover:scale-105"
+          : cn(iconBgClass || "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300", "group-hover:scale-105 shadow-2xs")
       )}>
         {icon}
       </div>
       <span className={cn(
         "hidden md:block text-[13px] tracking-tight truncate flex-1",
-        active ? "font-bold text-white" : "font-medium"
+        active ? "font-bold text-white" : "font-semibold"
       )}>
         {label}
       </span>
@@ -1223,6 +1327,9 @@ function NavItem({
           layoutId="sidebar-active-dot"
           className="hidden md:block w-1.5 h-1.5 rounded-full bg-white shadow-xs shrink-0" 
         />
+      )}
+      {!active && (
+        <ChevronRight className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block shrink-0" />
       )}
     </button>
   );
