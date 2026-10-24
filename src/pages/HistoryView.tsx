@@ -274,6 +274,43 @@ export default function HistoryView({
   const t = translations[language] || translations.fr;
   const l = LABELS[language] || LABELS.fr;
 
+  const isGamraAccount = (u?: any) => {
+    if (!u) return false;
+    const uname = (u.username || '').toLowerCase();
+    const uid = (u.id || '').toLowerCase();
+    const name = (u.displayName || u.name || '').toLowerCase();
+    return uname === 'gamra' || uid === 'admin' || name.includes('gamra');
+  };
+
+  const isViewingAsGamra = isGamraAccount(currentUser);
+
+  const isGamraActivity = (a: ActivityLog) => {
+    const aid = (a.actorId || '').toLowerCase();
+    const aname = (a.actorName || '').toLowerCase();
+    const det = (a.details || '').toLowerCase();
+    return (
+      aid === 'admin' ||
+      aid === 'gamra' ||
+      aname === 'gamra' ||
+      det.includes('user logged in: gamra') ||
+      det.includes('connecté : gamra') ||
+      det.includes('login: gamra') ||
+      det.includes('shop settings updated') ||
+      det.includes('paramètres')
+    );
+  };
+
+  const isGamraSale = (s: Sale) => {
+    const staffId = (s.staffId || '').toLowerCase();
+    const staffName = ((s as any).staffName || '').toLowerCase();
+    return staffId === 'admin' || staffId === 'gamra' || staffName.includes('gamra');
+  };
+
+  const isGamraPayment = (p: Payment) => {
+    const staffId = (p.staffId || '').toLowerCase();
+    return staffId === 'admin' || staffId === 'gamra';
+  };
+
   // Navigation & Filter States
   const [subView, setSubView] = useState<'activity' | 'sales' | 'payments'>('activity');
   const [timePreset, setTimePreset] = useState<'all' | 'today' | 'month' | 'year'>('month');
@@ -581,21 +618,32 @@ export default function HistoryView({
   const distinctActors = useMemo(() => {
     const map = new Map<string, string>();
     (appUsers || []).forEach(u => {
+      if (!isViewingAsGamra && (u.username?.toLowerCase() === 'gamra' || u.id?.toLowerCase() === 'admin')) {
+        return;
+      }
       const name = (u as any).displayName || (u as any).username || u.email;
       if (name) map.set(u.id, name);
     });
     (activities || []).forEach(a => {
+      if (!isViewingAsGamra && isGamraActivity(a)) {
+        return;
+      }
       const name = getActorDisplayName(a);
       if (a.actorId && name && !map.has(a.actorId)) {
         map.set(a.actorId, name);
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [appUsers, activities]);
+  }, [appUsers, activities, isViewingAsGamra]);
 
   // Main Filtered Activities
   const filteredActivities = useMemo(() => {
     return (activities || []).filter(a => {
+      // Privacy & Security: Non-gamra users cannot see any actions done by Gamra
+      if (!isViewingAsGamra && isGamraActivity(a)) {
+        return false;
+      }
+
       if (!canViewAll && a.actorId !== currentUser?.id) {
         return false;
       }
@@ -652,6 +700,11 @@ export default function HistoryView({
   // Main Filtered Sales
   const filteredSales = useMemo(() => {
     return sales.filter(s => {
+      // Privacy & Security: Non-gamra users cannot see sales made by Gamra
+      if (!isViewingAsGamra && isGamraSale(s)) {
+        return false;
+      }
+
       if (!canViewAll && s.staffId !== currentUser?.id) return false;
       const d = new Date(s.date);
       if (isNaN(d.getTime())) return false;
@@ -686,6 +739,11 @@ export default function HistoryView({
   // Main Filtered Payments
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
+      // Privacy & Security: Non-gamra users cannot see payments made by Gamra
+      if (!isViewingAsGamra && isGamraPayment(p)) {
+        return false;
+      }
+
       if (!canViewAll && p.staffId !== currentUser?.id) return false;
       const d = new Date(p.date);
       if (isNaN(d.getTime())) return false;

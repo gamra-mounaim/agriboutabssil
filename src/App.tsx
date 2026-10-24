@@ -151,10 +151,20 @@ export default function App() {
       }
     : ((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms);
 
+  const isGamraSuperAdmin = (u?: any, prof?: any) => {
+    const uname = (prof?.username || u?.username || '').toLowerCase();
+    const uid = (prof?.id || u?.id || '').toLowerCase();
+    const name = (prof?.displayName || prof?.name || u?.name || '').toLowerCase();
+    return uname === 'gamra' || uid === 'admin' || name.includes('gamra');
+  };
+
   const canAccess = (targetView: View) => {
-    if (targetView === 'settings' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
+    // Only Gamra primary owner can access staff management (users) and system settings
+    if (targetView === 'settings' || targetView === 'users') {
+      return isGamraSuperAdmin(user, profile);
+    }
+
     if (targetView === 'pos') return true;
-    
     if (targetView === 'checks' && userPermissions.customers) return true;
     if (targetView === 'financials' && (userPermissions.financials || userPermissions.financialsRestricted)) return true;
     if (targetView === 'inventory' && userPermissions.stock) return true;
@@ -163,7 +173,6 @@ export default function App() {
     if (targetView === 'history' && userPermissions.history) return true;
     if (targetView === 'invoices' && userPermissions.manageInvoices) return true;
     if (targetView === 'damages') return true;
-    if (targetView === 'users' && (profile?.role === 'admin' || profile?.role === 'manager')) return true;
     
     return false;
   };
@@ -674,7 +683,9 @@ export default function App() {
                   <span className="w-1.5 h-3 rounded-full bg-emerald-600"></span>
                   {language === 'ar' ? 'المبيعات والمالية' : language === 'fr' ? 'Finances & Ventes' : 'Finance & Sales'}
                 </span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">03</span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">
+                  {canAccess('users') && canAccess('settings') ? '03' : '01'}
+                </span>
               </div>
 
               {canAccess('financials') && (

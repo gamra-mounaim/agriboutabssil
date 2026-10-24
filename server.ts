@@ -2576,15 +2576,34 @@ async function startServer() {
 
   app.get("/api/activity", async (req, res) => {
     const { userId } = req.query;
+
+    // Caller identity check
+    let callerId = req.headers['x-actor-id'] as string;
+    let callerName = req.headers['x-actor-name'] ? decodeURIComponent(req.headers['x-actor-name'] as string) : '';
+    if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
+        callerId = decoded?.userId;
+      } catch {}
+    }
+    const isGamraCaller = callerId?.toLowerCase() === 'admin' || callerId?.toLowerCase() === 'gamra' || callerName?.toLowerCase().includes('gamra');
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (!isGamraCaller) {
+      conditions.push("actor_id NOT IN ('admin', 'gamra') AND (actor_name IS NULL OR LOWER(actor_name) NOT LIKE '%gamra%') AND (details IS NULL OR LOWER(details) NOT LIKE '%gamra%')");
+    }
+
+    if (userId) {
+      conditions.push("actor_id = ?");
+      params.push(userId);
+    }
+
+    const whereClause = conditions.length > 0 ? " WHERE " + conditions.join(" AND ") : "";
     
     if (!req.query.page) {
-      let query = 'SELECT * FROM activity_log';
-      const params = [];
-      if (userId) {
-        query += ' WHERE actor_id = ?';
-        params.push(userId);
-      }
-      query += ' ORDER BY timestamp DESC LIMIT 100';
+      let query = `SELECT * FROM activity_log ${whereClause} ORDER BY timestamp DESC LIMIT 100`;
       const logs = await db.prepare(query).all(...params);
       return res.json(toCamel(logs));
     }
@@ -2593,21 +2612,12 @@ async function startServer() {
     const limit = parseInt(req.query.limit as string) || 50;
     
     try {
-      let countQuery = 'SELECT COUNT(*) as count FROM activity_log';
-      let dataQuery = 'SELECT * FROM activity_log';
-      const params = [];
-      
-      if (userId) {
-        countQuery += ' WHERE actor_id = ?';
-        dataQuery += ' WHERE actor_id = ?';
-        params.push(userId);
-      }
-      
-      dataQuery += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-      params.push(limit, (page - 1) * limit);
+      let countQuery = `SELECT COUNT(*) as count FROM activity_log ${whereClause}`;
+      let dataQuery = `SELECT * FROM activity_log ${whereClause} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+      const dataParams = [...params, limit, (page - 1) * limit];
  
-      const total = (await db.prepare(countQuery).get(...(userId ? [userId] : [])) as any).count;
-      const logs = await db.prepare(dataQuery).all(...params);
+      const total = (await db.prepare(countQuery).get(...params) as any).count;
+      const logs = await db.prepare(dataQuery).all(...dataParams);
       res.json({ data: toCamel(logs), total, page, limit });
     } catch (e: any) {
       res.status(500).json({ status: "error", message: e.message });
