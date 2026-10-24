@@ -578,7 +578,7 @@ export default function POS() {
 
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 pb-10">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(215px,1fr))] gap-3 sm:gap-4 pb-10">
             {filteredProducts.map(p => {
               const inCart = cart.find(item => item.productId === p.id);
               const isTopSeller = (Number(p.soldQty) || 0) > 0;
@@ -596,26 +596,29 @@ export default function POS() {
                   onClick={() => addToCart(p)}
                   title={p.name}
                   className={cn(
-                    "group relative flex flex-col justify-between p-4 rounded-2xl sm:rounded-3xl border text-left transition-all hover:shadow-lg hover:-translate-y-0.5 active:shadow-none select-none",
+                    "group relative flex flex-col justify-between p-4 rounded-2xl sm:rounded-3xl border text-left transition-all hover:shadow-xl hover:-translate-y-1 active:shadow-none select-none min-h-[180px] sm:min-h-[195px]",
                     isOutOfStock 
                       ? "bg-red-50/20 dark:bg-red-950/10 border-danger/30 opacity-70 cursor-not-allowed" 
                       : inCart 
-                        ? "bg-accent/[0.03] dark:bg-accent/[0.06] border-accent ring-2 ring-accent/30 shadow-sm"
-                        : "bg-card border-border-subtle hover:border-accent/60",
+                        ? "bg-accent/[0.04] dark:bg-accent/[0.08] border-accent ring-2 ring-accent/40 shadow-sm"
+                        : "bg-card border-border-subtle hover:border-accent/60 shadow-xs",
                     isLowStock && !inCart && "border-amber-300 dark:border-amber-500/50 ring-1 ring-amber-400/20",
                     language === 'ar' && "text-right"
                   )}
                 >
-                  <div>
+                  <div className="w-full space-y-2">
                     {/* Header Row: Category & Badges */}
-                    <div className="flex items-center justify-between gap-1.5 mb-2">
-                      <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider truncate max-w-[120px]">
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                      <span 
+                        className="text-[10px] font-bold text-text-secondary uppercase tracking-wider truncate flex-1 min-w-0" 
+                        title={categories.find(c => c.id === p.categoryId)?.name || t.noCategory}
+                      >
                         {categories.find(c => c.id === p.categoryId)?.name || t.noCategory}
                       </span>
                       <div className="flex items-center gap-1 shrink-0">
                         {isTopSeller && (
                           <span 
-                            className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                            className="inline-flex items-center gap-1 text-[9.5px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 shadow-2xs"
                             title={`${p.soldQty} vendus au total`}
                           >
                             <Flame className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
@@ -630,9 +633,9 @@ export default function POS() {
                       </div>
                     </div>
 
-                    {/* Product Name */}
+                    {/* Product Name - NEVER cut off / no line-clamp */}
                     <h4 
-                      className="font-bold text-[13px] sm:text-sm text-text-main group-hover:text-accent transition-colors line-clamp-2 leading-snug min-h-[2.5rem]" 
+                      className="font-black text-[13px] sm:text-sm text-text-main group-hover:text-accent transition-colors leading-snug break-words tracking-tight" 
                       title={p.name}
                     >
                       {p.name}
@@ -640,18 +643,18 @@ export default function POS() {
 
                     {/* Stock Status Badge if critical */}
                     {isOutOfStock ? (
-                      <span className="inline-block mt-1 text-[9px] font-black uppercase bg-danger/15 text-danger px-2 py-0.5 rounded-md">
+                      <span className="inline-block text-[9px] font-black uppercase bg-danger/15 text-danger px-2 py-0.5 rounded-md">
                         {language === 'ar' ? 'نفذت الكمية' : 'RUPTURE'}
                       </span>
                     ) : isLowStock ? (
-                      <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                      <span className="inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                         {language === 'ar' ? 'مخزون ضعيف' : 'Stock faible'}
                       </span>
                     ) : null}
                   </div>
 
                   {/* Bottom Row: Price & Stock & Quick Add */}
-                  <div className="mt-4 pt-3 border-t border-border-subtle/50 flex flex-col gap-2">
+                  <div className="w-full mt-4 pt-3 border-t border-border-subtle/50 flex flex-col gap-2">
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-1">
                         <span className="text-lg sm:text-xl font-black text-text-main font-mono tracking-tight">
@@ -661,18 +664,19 @@ export default function POS() {
                       </div>
                       
                       {/* Plus icon on hover */}
-                      <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-text-secondary group-hover:bg-accent group-hover:text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 group-hover:scale-105">
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <div className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-text-secondary group-hover:bg-accent group-hover:text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 group-hover:scale-110 shadow-2xs">
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
                       </div>
                     </div>
                     
                     <div className="flex items-center justify-between text-[10px] text-text-secondary font-bold">
                       <div className={cn(
-                        "flex items-center gap-1",
+                        "flex items-center gap-1.5",
                         isLowStock ? "text-amber-600 dark:text-amber-400" : isOutOfStock ? "text-danger" : "text-text-secondary"
                       )}>
-                        <Package className="w-3 h-3" />
-                        <span>{p.qty} {language === 'ar' ? 'بالمخزون' : 'en stock'}</span>
+                        <Package className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-mono font-black">{p.qty}</span>
+                        <span className="opacity-75">{language === 'ar' ? 'بالمخزون' : 'en stock'}</span>
                       </div>
                       {p.barcode && (
                         <span className="font-mono text-[9px] opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[80px]">
@@ -682,7 +686,7 @@ export default function POS() {
                     </div>
                   </div>
 
-                  {/* Subtle hover effect */}
+                  {/* Subtle hover glow */}
                   <div className="absolute inset-0 bg-accent/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl sm:rounded-3xl" />
                 </motion.button>
               );
