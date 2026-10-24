@@ -250,7 +250,7 @@ export default function StaffManagement({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 px-4 pb-12">
+    <div className="w-full max-w-[1720px] mx-auto space-y-6 pb-24 px-1 sm:px-2 md:px-4">
       <div className={cn("flex flex-col md:flex-row md:items-end justify-between gap-4", language === 'ar' && "md:flex-row-reverse")}>
         <div className={cn(language === 'ar' && "text-right")}>
           <h3 className="text-3xl font-black tracking-tighter mb-1 uppercase italic font-serif opacity-90">{t.staff}</h3>

@@ -876,7 +876,7 @@ export default function HistoryView({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 px-4 pb-24">
+    <div className="w-full max-w-[1720px] mx-auto space-y-6 pb-24 px-1 sm:px-2 md:px-4">
       {/* ── TOP HEADER & ACTIONS ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -947,82 +947,82 @@ export default function HistoryView({
       </div>
 
       {/* ── KPI METRICS CARDS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Card 1: Total Operations */}
-        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-accent/40 transition-all">
+        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-accent/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
               {l.kpiTotalOps}
             </span>
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 shadow-xs">
+              <Activity className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-text-main font-mono tracking-tight">
-            {formatNumber(statsMetrics.totalOps)}
+          <div className="text-2xl sm:text-3xl font-black text-text-main font-mono tracking-tight">
+            {statsMetrics.totalOps.toLocaleString()}
           </div>
-          <div className="text-[11px] text-text-secondary font-bold mt-1">
-            {statsMetrics.totalOps} {l.kpiTotalOpsSub}
+          <div className="text-[11px] text-text-secondary font-bold mt-1.5">
+            {statsMetrics.totalOps.toLocaleString()} {l.kpiTotalOpsSub}
           </div>
         </div>
 
         {/* Card 2: Sales Revenue */}
-        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-emerald-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
               {l.kpiSales}
             </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center">
-              <ShoppingCart className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-xs">
+              <ShoppingCart className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
             {formatNumber(statsMetrics.totalSalesAmount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
           </div>
-          <div className="text-[11px] text-text-secondary font-bold mt-1">
-            {statsMetrics.salesCount} {l.kpiSalesSub}
+          <div className="text-[11px] text-text-secondary font-bold mt-1.5">
+            {statsMetrics.salesCount.toLocaleString()} {l.kpiSalesSub}
           </div>
         </div>
 
         {/* Card 3: Payments Collected */}
-        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-teal-500/40 transition-all">
+        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-teal-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
               {l.kpiPayments}
             </span>
-            <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400 flex items-center justify-center border border-teal-500/20 shadow-xs">
+              <Wallet className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-teal-600 dark:text-teal-400 font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-teal-600 dark:text-teal-400 font-mono tracking-tight">
             +{formatNumber(statsMetrics.totalPaymentsAmount)} <span className="text-xs font-bold text-text-secondary">{t.currency}</span>
           </div>
-          <div className="text-[11px] text-text-secondary font-bold mt-1">
-            {statsMetrics.paymentsCount} {l.kpiPaymentsSub}
+          <div className="text-[11px] text-text-secondary font-bold mt-1.5">
+            {statsMetrics.paymentsCount.toLocaleString()} {l.kpiPaymentsSub}
           </div>
         </div>
 
         {/* Card 4: Stock & Pricing Operations */}
-        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 rounded-2xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-amber-500/40 transition-all">
+        <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm backdrop-blur-sm relative overflow-hidden group hover:border-amber-500/40 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
               {l.kpiStockPricing}
             </span>
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 flex items-center justify-center border border-amber-500/20 shadow-xs">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
-            {formatNumber(statsMetrics.stockOps + statsMetrics.priceOps)}
+          <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
+            {(statsMetrics.stockOps + statsMetrics.priceOps).toLocaleString()}
           </div>
-          <div className="text-[11px] text-text-secondary font-bold mt-1">
-            {statsMetrics.stockOps} {l.chipStock} • {statsMetrics.priceOps} {l.priceChange}
+          <div className="text-[11px] text-text-secondary font-bold mt-1.5">
+            {statsMetrics.stockOps.toLocaleString()} {l.chipStock} • {statsMetrics.priceOps.toLocaleString()} {l.priceChange}
           </div>
         </div>
       </div>
 
       {/* ── SUBVIEW TABS & CONTROLS ── */}
-      <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-4 rounded-2xl shadow-sm backdrop-blur-sm space-y-4">
+      <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm backdrop-blur-sm space-y-4">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           {/* Main Navigation Tabs */}
           <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-900/60 rounded-xl border border-border-subtle">
@@ -1239,7 +1239,7 @@ export default function HistoryView({
       </div>
 
       {/* ── MAIN CONTENT CONTAINER ── */}
-      <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle rounded-2xl overflow-hidden shadow-sm backdrop-blur-sm min-h-[460px]">
+      <div className="bg-white/90 dark:bg-slate-800/90 border border-border-subtle rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm backdrop-blur-sm min-h-[460px]">
         {/* VIEW 1: ACTIVITY LOG FEED */}
         {subView === 'activity' && (
           <div className="divide-y divide-border-subtle">
@@ -1251,7 +1251,7 @@ export default function HistoryView({
                 <div
                   key={activity.id}
                   onClick={() => setSelectedActivity(activity)}
-                  className="p-4 sm:p-5 hover:bg-slate-50/70 dark:hover:bg-slate-750 transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 lg:px-6 hover:bg-slate-50/70 dark:hover:bg-slate-750 transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   {/* Left: Icon & Description */}
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
@@ -1420,8 +1420,8 @@ export default function HistoryView({
                           <div className="text-[11px] text-text-secondary font-mono">{customer.phone}</div>
                         )}
                       </td>
-                      <td className="p-4">
-                        <div className="flex flex-wrap gap-1 max-w-xs">
+                      <td className="p-4 sm:px-6">
+                        <div className="flex flex-wrap gap-1 max-w-md xl:max-w-xl">
                           {(sale.items || []).slice(0, 3).map((item, idx) => (
                             <span key={idx} className="bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-md text-[10px] font-bold border border-border-subtle">
                               {item.qty}x {item.name}

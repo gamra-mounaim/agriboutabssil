@@ -142,7 +142,7 @@ export default function CheckListView() {
   
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 px-4 pb-12">
+    <div className="w-full max-w-[1720px] mx-auto space-y-6 pb-24 px-1 sm:px-2 md:px-4">
       <div
         className={cn(
           "flex flex-col md:flex-row md:items-end justify-between gap-4",
