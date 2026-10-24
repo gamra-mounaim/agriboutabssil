@@ -550,7 +550,7 @@ async function startServer() {
           params.push(search, search);
         }
         
-        query += ' ORDER BY p.name ASC LIMIT ? OFFSET ?';
+        query += ' ORDER BY COALESCE(sales.sold_qty, 0) DESC, p.name ASC LIMIT ? OFFSET ?';
         
         const totalResult = await db.prepare(countQuery).get(...params) as any;
         const total = totalResult?.count ? parseInt(totalResult.count) : 0;
@@ -571,6 +571,7 @@ async function startServer() {
           FROM sale_items 
           GROUP BY product_id
         ) sales ON p.id = sales.product_id
+        ORDER BY COALESCE(sales.sold_qty, 0) DESC, p.name ASC
       `;
       const products = await db.prepare(query).all();
       const rawLots = await db.prepare('SELECT id, product_id, qty, cost_price, supplier, supplier_id, created_at FROM product_lots WHERE qty > 0 ORDER BY created_at ASC').all();

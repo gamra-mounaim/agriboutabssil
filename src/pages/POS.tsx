@@ -17,7 +17,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 // Destructure common icons to avoid TS errors
-const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
+const { Search, Archive, Flame, ArrowUpDown, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe } = LucideIcons;
 
 export default function POS() {
   const { products, categories, customers, settings, draftSales, fetchData: onRefresh, setMessage } = useStore();
@@ -32,6 +32,7 @@ export default function POS() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all');
+  const [sortBy, setSortBy] = useState<'mostSold' | 'name' | 'priceAsc' | 'priceDesc' | 'stock'>('mostSold');
   const [discount, setDiscount] = useState<string>('0');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'debt' | 'check' | 'mixte'>('cash');
   const [mixteCash, setMixteCash] = useState<string>('');
@@ -73,26 +74,54 @@ export default function POS() {
     }
   };
 
-  const filteredProducts = products.filter(p => {
-    const matchesCategory = !selectedCategoryId || p.categoryId === selectedCategoryId;
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                         (p.barcode && p.barcode.includes(search));
-    
-    const minP = parseFloat(minPrice);
-    const maxP = parseFloat(maxPrice);
-    const minQ = parseInt(minQty);
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (products || []).forEach(p => {
+      if (p.categoryId) counts[p.categoryId] = (counts[p.categoryId] || 0) + 1;
+    });
+    return counts;
+  }, [products]);
 
-    const matchesMinPrice = isNaN(minP) || p.price >= minP;
-    const matchesMaxPrice = isNaN(maxP) || p.price <= maxP;
-    const matchesMinQty = isNaN(minQ) || p.qty >= minQ;
+  const filteredProducts = useMemo(() => {
+    const filtered = (products || []).filter(p => {
+      const matchesCategory = !selectedCategoryId || p.categoryId === selectedCategoryId;
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                           (p.barcode && p.barcode.includes(search));
+      
+      const minP = parseFloat(minPrice);
+      const maxP = parseFloat(maxPrice);
+      const minQ = parseInt(minQty);
 
-    let matchesStockStatus = true;
-    if (stockStatusFilter === 'inStock') matchesStockStatus = p.qty > 0;
-    else if (stockStatusFilter === 'outOfStock') matchesStockStatus = p.qty === 0;
-    else if (stockStatusFilter === 'lowStock') matchesStockStatus = p.qty > 0 && p.qty <= (p.minStock ?? 5);
+      const matchesMinPrice = isNaN(minP) || p.price >= minP;
+      const matchesMaxPrice = isNaN(maxP) || p.price <= maxP;
+      const matchesMinQty = isNaN(minQ) || p.qty >= minQ;
 
-    return matchesCategory && matchesSearch && matchesMinPrice && matchesMaxPrice && matchesMinQty && matchesStockStatus;
-  });
+      let matchesStockStatus = true;
+      if (stockStatusFilter === 'inStock') matchesStockStatus = p.qty > 0;
+      else if (stockStatusFilter === 'outOfStock') matchesStockStatus = p.qty === 0;
+      else if (stockStatusFilter === 'lowStock') matchesStockStatus = p.qty > 0 && p.qty <= (p.minStock ?? 5);
+
+      return matchesCategory && matchesSearch && matchesMinPrice && matchesMaxPrice && matchesMinQty && matchesStockStatus;
+    });
+
+    return filtered.sort((a, b) => {
+      // Default: Best-sellers always appear first!
+      if (sortBy === 'mostSold') {
+        const soldDiff = (Number(b.soldQty) || 0) - (Number(a.soldQty) || 0);
+        if (soldDiff !== 0) return soldDiff;
+        // In-stock before out-of-stock
+        const inStockA = a.qty > 0 ? 1 : 0;
+        const inStockB = b.qty > 0 ? 1 : 0;
+        if (inStockB !== inStockA) return inStockB - inStockA;
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'priceAsc') return a.price - b.price;
+      if (sortBy === 'priceDesc') return b.price - a.price;
+      if (sortBy === 'stock') return b.qty - a.qty;
+      return 0;
+    });
+  }, [products, selectedCategoryId, search, minPrice, maxPrice, minQty, stockStatusFilter, sortBy]);
 
   // Auto-add if exact barcode match is found in search (scanner behavior)
   useEffect(() => {
@@ -365,37 +394,59 @@ export default function POS() {
       </AnimatePresence>
 
       {/* --- Left Column: Categories Vertical Sidebar (Desktop) --- */}
-      <div className="hidden xl:flex w-64 flex-col bg-card border border-border-subtle rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-border-subtle bg-bg-base/30">
+      <div className="hidden xl:flex w-72 flex-col bg-card border border-border-subtle rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-4 sm:p-5 border-b border-border-subtle bg-bg-base/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-accent" />
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{t.categories}</span>
           </div>
+          <span className="text-[10px] font-mono font-bold text-text-secondary bg-bg-base px-2 py-0.5 rounded-full border border-border-subtle">
+            {categories.length}
+          </span>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 no-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
           <button 
             onClick={() => setSelectedCategoryId('')}
             className={cn(
-              "w-full px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-left transition-all flex items-center justify-between group",
-              selectedCategoryId === '' ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-text-secondary hover:bg-bg-base hover:text-accent"
+              "w-full px-3.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group",
+              selectedCategoryId === '' 
+                ? "bg-accent text-white shadow-md shadow-accent/20" 
+                : "text-text-secondary hover:bg-bg-base hover:text-text-main"
             )}
           >
-            {t.allCategories}
-            <ChevronRight className={cn("w-3 h-3 transition-transform", selectedCategoryId === '' ? "translate-x-1" : "opacity-0 group-hover:opacity-100")} />
+            <span className="truncate">{t.allCategories}</span>
+            <span className={cn(
+              "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+              selectedCategoryId === '' ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-text-secondary"
+            )}>
+              {products.length}
+            </span>
           </button>
-          {(categories || []).map(c => (
-            <button 
-              key={c.id}
-              onClick={() => setSelectedCategoryId(c.id)}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-left transition-all flex items-center justify-between group",
-                selectedCategoryId === c.id ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-text-secondary hover:bg-bg-base hover:text-accent"
-              )}
-            >
-              <span className="truncate">{c.name}</span>
-              <ChevronRight className={cn("w-3 h-3 transition-transform", selectedCategoryId === c.id ? "translate-x-1" : "opacity-0 group-hover:opacity-100")} />
-            </button>
-          ))}
+          {(categories || []).map(c => {
+            const count = categoryCounts[c.id] || 0;
+            const isSelected = selectedCategoryId === c.id;
+            return (
+              <button 
+                key={c.id}
+                onClick={() => setSelectedCategoryId(c.id)}
+                title={c.name}
+                className={cn(
+                  "w-full px-3.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group",
+                  isSelected 
+                    ? "bg-accent text-white shadow-md shadow-accent/20" 
+                    : "text-text-secondary hover:bg-bg-base hover:text-text-main"
+                )}
+              >
+                <span className="truncate pr-2">{c.name}</span>
+                <span className={cn(
+                  "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold shrink-0",
+                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-text-secondary"
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -458,114 +509,184 @@ export default function POS() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 items-center border-t border-border-subtle pt-4">
-             <div className="flex items-center gap-3 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-               <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest">{t.price}:</span>
-               <input 
-                 type="number" placeholder="min"
-                 className="w-16 bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center"
-                 value={minPrice || ''} onChange={e => setMinPrice(e.target.value)}
-               />
-               <span className="text-text-secondary text-[10px]">-</span>
-               <input 
-                 type="number" placeholder="max"
-                 className="w-16 bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center"
-                 value={maxPrice || ''} onChange={e => setMaxPrice(e.target.value)}
-               />
+          <div className="flex flex-wrap gap-3 sm:gap-4 items-center justify-between border-t border-border-subtle pt-3 sm:pt-4">
+             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+               {/* Sort Selector: Best-sellers on top */}
+               <div className="flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-xl border border-border-subtle">
+                 <ArrowUpDown className="w-3.5 h-3.5 text-accent" />
+                 <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest">
+                   {language === 'ar' ? 'الترتيب:' : language === 'fr' ? 'Tri:' : 'Sort:'}
+                 </span>
+                 <select 
+                   className="bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center cursor-pointer"
+                   value={sortBy} 
+                   onChange={e => setSortBy(e.target.value as any)}
+                 >
+                   <option value="mostSold">{language === 'ar' ? '🔥 الأكثر مبيعاً (افتراضي)' : language === 'fr' ? '🔥 Plus vendus (Défaut)' : '🔥 Best Sellers (Default)'}</option>
+                   <option value="name">{language === 'ar' ? '🔤 الاسم (أ - ي)' : language === 'fr' ? '🔤 Nom (A - Z)' : '🔤 Name (A - Z)'}</option>
+                   <option value="priceAsc">{language === 'ar' ? '💰 السعر (تصاعدي)' : language === 'fr' ? '💰 Prix croissant' : '💰 Price (Low to High)'}</option>
+                   <option value="priceDesc">{language === 'ar' ? '💎 السعر (تنازلي)' : language === 'fr' ? '💎 Prix décroissant' : '💎 Price (High to Low)'}</option>
+                   <option value="stock">{language === 'ar' ? '📦 المخزون المتوفر' : language === 'fr' ? '📦 Stock disponible' : '📦 In Stock Qty'}</option>
+                 </select>
+               </div>
+
+               {/* Price Filter */}
+               <div className="flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-xl border border-border-subtle">
+                 <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest">{t.price}:</span>
+                 <input 
+                   type="number" placeholder="min"
+                   className="w-14 sm:w-16 bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center"
+                   value={minPrice || ''} onChange={e => setMinPrice(e.target.value)}
+                 />
+                 <span className="text-text-secondary text-[10px]">-</span>
+                 <input 
+                   type="number" placeholder="max"
+                   className="w-14 sm:w-16 bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center"
+                   value={maxPrice || ''} onChange={e => setMaxPrice(e.target.value)}
+                 />
+               </div>
+
+               {/* Stock Filter */}
+               <div className="flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-xl border border-border-subtle">
+                 <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest">{t.stockStatus}:</span>
+                 <select 
+                   className="bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center cursor-pointer"
+                   value={stockStatusFilter || ''} onChange={e => setStockStatusFilter(e.target.value as any)}
+                 >
+                   <option value="all">{language === 'ar' ? "الكل" : language === 'fr' ? "Tous" : "All"}</option>
+                   <option value="inStock">{t.inStock}</option>
+                   <option value="lowStock">{t.lowStock}</option>
+                   <option value="outOfStock">{t.outOfStock}</option>
+                 </select>
+               </div>
              </div>
 
-             <div className="flex items-center gap-2 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-               <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest">{t.stockStatus}:</span>
-               <select 
-                 className="bg-transparent text-xs font-bold outline-none border-b border-transparent focus:border-accent text-center cursor-pointer"
-                 value={stockStatusFilter || ''} onChange={e => setStockStatusFilter(e.target.value as any)}
+             <div className="flex items-center gap-3 ml-auto">
+               <span className="text-[10px] font-mono font-bold text-text-secondary">
+                 {filteredProducts.length} {language === 'ar' ? 'منتج' : language === 'fr' ? 'articles' : 'items'}
+               </span>
+               <button 
+                  onClick={() => { setMinPrice(''); setMaxPrice(''); setMinQty(''); setSearch(''); setSelectedCategoryId(''); setStockStatusFilter('all'); setSortBy('mostSold'); }}
+                  className="text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-widest transition-colors flex items-center gap-1.5 bg-bg-base hover:bg-slate-100 dark:hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-border-subtle"
                >
-                 <option value="all">{language === 'ar' ? "الكل" : language === 'fr' ? "Tous" : "All"}</option>
-                 <option value="inStock">{t.inStock}</option>
-                 <option value="lowStock">{t.lowStock}</option>
-                 <option value="outOfStock">{t.outOfStock}</option>
-               </select>
+                  <X className="w-3 h-3" />
+                  {language === 'ar' ? "إعادة" : language === 'fr' ? "Réinitialiser" : "Reset"}
+               </button>
              </div>
-
-             <button 
-                onClick={() => { setMinPrice(''); setMaxPrice(''); setMinQty(''); setSearch(''); setSelectedCategoryId(''); setStockStatusFilter('all'); }}
-                className="ml-auto text-[9px] font-black text-text-secondary hover:text-accent uppercase tracking-widest transition-colors flex items-center gap-1.5"
-             >
-                <X className="w-3 h-3" />
-                {language === 'ar' ? "إعادة" : language === 'fr' ? "Réinitialiser" : "Reset"}
-             </button>
           </div>
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto pr-2 no-scrollbar">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
-            {filteredProducts.map(p => (
-              <motion.button 
-                key={p.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileTap={{ scale: 0.97 }}
-                disabled={p.qty <= 0}
-                onClick={() => addToCart(p)}
-                title={p.name}
-                className={cn(
-                  "group relative flex flex-col justify-between p-4 rounded-2xl border bg-card text-left transition-all hover:shadow-xl hover:-translate-y-1 hover:border-accent active:shadow-none",
-                  p.qty <= 0 ? "bg-red-50/20 dark:bg-red-950/10 border-danger/30 opacity-75 cursor-not-allowed" : "border-border-subtle",
-                  p.qty <= (p.minStock ?? 5) && p.qty > 0 && "border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400/20",
-                  language === 'ar' && "text-right"
-                )}
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] mb-1">
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 pb-10">
+            {filteredProducts.map(p => {
+              const inCart = cart.find(item => item.productId === p.id);
+              const isTopSeller = (Number(p.soldQty) || 0) > 0;
+              const isLowStock = p.qty > 0 && p.qty <= (p.minStock ?? 5);
+              const isOutOfStock = p.qty <= 0;
+
+              return (
+                <motion.button 
+                  key={p.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileTap={{ scale: 0.97 }}
+                  disabled={isOutOfStock}
+                  onClick={() => addToCart(p)}
+                  title={p.name}
+                  className={cn(
+                    "group relative flex flex-col justify-between p-4 rounded-2xl sm:rounded-3xl border text-left transition-all hover:shadow-lg hover:-translate-y-0.5 active:shadow-none select-none",
+                    isOutOfStock 
+                      ? "bg-red-50/20 dark:bg-red-950/10 border-danger/30 opacity-70 cursor-not-allowed" 
+                      : inCart 
+                        ? "bg-accent/[0.03] dark:bg-accent/[0.06] border-accent ring-2 ring-accent/30 shadow-sm"
+                        : "bg-card border-border-subtle hover:border-accent/60",
+                    isLowStock && !inCart && "border-amber-300 dark:border-amber-500/50 ring-1 ring-amber-400/20",
+                    language === 'ar' && "text-right"
+                  )}
+                >
+                  <div>
+                    {/* Header Row: Category & Badges */}
+                    <div className="flex items-center justify-between gap-1.5 mb-2">
+                      <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider truncate max-w-[120px]">
                         {categories.find(c => c.id === p.categoryId)?.name || t.noCategory}
                       </span>
-                      <h4 className="font-bold text-[13px] text-text-main group-hover:text-accent transition-colors line-clamp-2 leading-tight" title={p.name}>
-                        {p.name}
-                      </h4>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isTopSeller && (
+                          <span 
+                            className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                            title={`${p.soldQty} vendus au total`}
+                          >
+                            <Flame className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                            <span>{p.soldQty >= 1000 ? `${(p.soldQty / 1000).toFixed(1)}k` : p.soldQty}</span>
+                          </span>
+                        )}
+                        {inCart && (
+                          <span className="inline-flex items-center justify-center h-5 px-1.5 rounded-full bg-accent text-white text-[10px] font-black shadow-xs ring-1 ring-white dark:ring-slate-900 animate-in zoom-in-75 duration-150">
+                            x{inCart.qty}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {p.qty <= 0 ? (
-                      <span className="text-[9px] font-black bg-danger/15 text-danger px-2 py-0.5 rounded-md animate-pulse">
+
+                    {/* Product Name */}
+                    <h4 
+                      className="font-bold text-[13px] sm:text-sm text-text-main group-hover:text-accent transition-colors line-clamp-2 leading-snug min-h-[2.5rem]" 
+                      title={p.name}
+                    >
+                      {p.name}
+                    </h4>
+
+                    {/* Stock Status Badge if critical */}
+                    {isOutOfStock ? (
+                      <span className="inline-block mt-1 text-[9px] font-black uppercase bg-danger/15 text-danger px-2 py-0.5 rounded-md">
                         {language === 'ar' ? 'نفذت الكمية' : 'RUPTURE'}
                       </span>
-                    ) : p.qty <= (p.minStock ?? 5) && p.qty > 0 && (
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 shrink-0">{language === 'ar' ? 'مخزون ضعيف' : language === 'fr' ? 'Stock faible' : 'Low stock'}</span>
-                    )}
+                    ) : isLowStock ? (
+                      <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                        {language === 'ar' ? 'مخزون ضعيف' : 'Stock faible'}
+                      </span>
+                    ) : null}
                   </div>
-                </div>
 
-                <div className="mt-6 flex flex-col gap-3">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-text-main tracking-tight">{formatNumber(p.price)}</span>
-                    <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
-                  </div>
-                  
-                  <div className={cn(
-                    "flex items-center justify-between pt-3 border-t",
-                    p.qty <= (p.minStock ?? 5) ? "border-orange-100" : "border-border-subtle/40"
-                  )}>
-                    <div className={cn(
-                      "text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
-                      p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-secondary"
-                    )}>
-                      <Archive className="w-3 h-3" />
-                      {p.qty}
-                    </div>
-                    {p.barcode && (
-                      <div className="text-[9px] font-mono text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
-                        {p.barcode}
+                  {/* Bottom Row: Price & Stock & Quick Add */}
+                  <div className="mt-4 pt-3 border-t border-border-subtle/50 flex flex-col gap-2">
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg sm:text-xl font-black text-text-main font-mono tracking-tight">
+                          {formatNumber(p.price)}
+                        </span>
+                        <span className="text-[10px] font-bold text-text-secondary uppercase">{t.currency}</span>
                       </div>
-                    )}
+                      
+                      {/* Plus icon on hover */}
+                      <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-text-secondary group-hover:bg-accent group-hover:text-white flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 group-hover:scale-105">
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-[10px] text-text-secondary font-bold">
+                      <div className={cn(
+                        "flex items-center gap-1",
+                        isLowStock ? "text-amber-600 dark:text-amber-400" : isOutOfStock ? "text-danger" : "text-text-secondary"
+                      )}>
+                        <Package className="w-3 h-3" />
+                        <span>{p.qty} {language === 'ar' ? 'بالمخزون' : 'en stock'}</span>
+                      </div>
+                      {p.barcode && (
+                        <span className="font-mono text-[9px] opacity-0 group-hover:opacity-100 transition-opacity truncate max-w-[80px]">
+                          {p.barcode}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Hover Add Glow */}
-                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl" />
-              </motion.button>
-            ))}
+                  {/* Subtle hover effect */}
+                  <div className="absolute inset-0 bg-accent/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl sm:rounded-3xl" />
+                </motion.button>
+              );
+            })}
             {filteredProducts.length === 0 && (
               <div className="col-span-full py-20 flex flex-col items-center justify-center text-text-secondary opacity-40 grayscale">
                 <Search className="w-12 h-12 mb-4" />
