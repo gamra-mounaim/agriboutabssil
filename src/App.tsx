@@ -629,33 +629,156 @@ export default function App() {
       <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-emerald-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-50 pointer-events-none z-0" />
 
       {/* Sidebar */}
-      <nav className="w-20 md:w-60 border-r border-white/20 flex flex-col bg-white/40 dark:bg-black/40 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-50 relative">
-        <div className="p-4 hidden md:block">
-          <div className="bg-white rounded-2xl p-2 border border-accent/20 shadow-md flex items-center justify-center overflow-hidden h-14">
+      <nav className="w-20 md:w-64 border-r border-border-subtle/60 flex flex-col bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl shadow-[4px_0_24px_rgba(0,0,0,0.03)] z-50 relative select-none h-full">
+        {/* Brand / Logo Header */}
+        <div className="p-3.5 border-b border-border-subtle/40">
+          <div className="bg-white/90 dark:bg-slate-800/90 rounded-2xl p-2.5 border border-accent/20 shadow-xs flex items-center justify-center overflow-hidden h-14 hover:border-accent/40 transition-colors">
             <Logo className="h-full w-auto max-w-full object-contain" />
           </div>
         </div>
-        <div className="flex-1 px-4 py-4 space-y-2">
-          {canAccess('financials') && <NavItem icon={<TrendingUp className="w-5 h-5 text-success" />} label={t.financialDashboard} active={view === 'financials'} onClick={() => setView('financials')} />}
-          {canAccess('pos') && <NavItem icon={<ShoppingCart className="w-5 h-5 text-accent" />} label={t.pos} active={view === 'pos'} onClick={() => setView('pos')} />}
-          {canAccess('inventory') && <NavItem icon={<Package className="w-5 h-5" />} label={t.inventory} active={view === 'inventory'} onClick={() => setView('inventory')} />}
-          {canAccess('customers') && <NavItem icon={<Users className="w-5 h-5" />} label={t.customers} active={view === 'customers'} onClick={() => setView('customers')} />}
-          {canAccess('suppliers') && <NavItem icon={<Store className="w-5 h-5" />} label={t.suppliers} active={view === 'suppliers'} onClick={() => setView('suppliers')} />}
-          {canAccess('checks') && <NavItem icon={<CreditCard className="w-5 h-5" />} label={t.customerChecks} active={view === 'checks'} onClick={() => setView('checks')} />}
-          {canAccess('users') && <NavItem icon={<UserPlus className="w-5 h-5" />} label={(t as any).staffNav} active={view === 'users'} onClick={() => setView('users')} />}
-          {canAccess('settings') && <NavItem icon={<UserCog className="w-5 h-5" />} label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} />}
-          {canAccess('history') && <NavItem icon={<History className="w-5 h-5" />} label={t.history} active={view === 'history'} onClick={() => setView('history')} />}
-          {canAccess('invoices') && <NavItem icon={<FileText className="w-5 h-5" />} label={(t as any).invoices} active={view === 'invoices'} onClick={() => setView('invoices')} />}
-          {canAccess('damages') && <NavItem icon={<AlertTriangle className="w-5 h-5 text-red-500" />} label={(t as any).damages} active={view === 'damages'} onClick={() => setView('damages')} />}
+
+        {/* Scrollable Nav Items grouped by category */}
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
+          {/* Section: Ventes & Caisse */}
+          {(canAccess('financials') || canAccess('pos') || canAccess('invoices')) && (
+            <div className="space-y-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
+                {language === 'ar' ? 'المبيعات والمالية' : language === 'fr' ? 'Ventes & Finances' : 'Sales & Finance'}
+              </div>
+              {canAccess('financials') && (
+                <NavItem 
+                  icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} 
+                  label={t.financialDashboard} 
+                  active={view === 'financials'} 
+                  onClick={() => setView('financials')} 
+                />
+              )}
+              {canAccess('pos') && (
+                <NavItem 
+                  icon={<ShoppingCart className="w-4 h-4 text-accent" />} 
+                  label={t.pos} 
+                  active={view === 'pos'} 
+                  onClick={() => setView('pos')} 
+                />
+              )}
+              {canAccess('invoices') && (
+                <NavItem 
+                  icon={<FileText className="w-4 h-4 text-blue-500" />} 
+                  label={(t as any).invoices} 
+                  active={view === 'invoices'} 
+                  onClick={() => setView('invoices')} 
+                />
+              )}
+            </div>
+          )}
+
+          {/* Section: Gestion & Stock */}
+          {(canAccess('inventory') || canAccess('customers') || canAccess('suppliers') || canAccess('checks') || canAccess('damages')) && (
+            <div className="space-y-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
+                {language === 'ar' ? 'المخزون والشركاء' : language === 'fr' ? 'Gestion & Stock' : 'Management & Stock'}
+              </div>
+              {canAccess('inventory') && (
+                <NavItem 
+                  icon={<Package className="w-4 h-4 text-amber-500" />} 
+                  label={t.inventory} 
+                  active={view === 'inventory'} 
+                  onClick={() => setView('inventory')} 
+                />
+              )}
+              {canAccess('customers') && (
+                <NavItem 
+                  icon={<Users className="w-4 h-4 text-indigo-500" />} 
+                  label={t.customers} 
+                  active={view === 'customers'} 
+                  onClick={() => setView('customers')} 
+                />
+              )}
+              {canAccess('suppliers') && (
+                <NavItem 
+                  icon={<Store className="w-4 h-4 text-cyan-500" />} 
+                  label={t.suppliers} 
+                  active={view === 'suppliers'} 
+                  onClick={() => setView('suppliers')} 
+                />
+              )}
+              {canAccess('checks') && (
+                <NavItem 
+                  icon={<CreditCard className="w-4 h-4 text-purple-500" />} 
+                  label={t.customerChecks} 
+                  active={view === 'checks'} 
+                  onClick={() => setView('checks')} 
+                />
+              )}
+              {canAccess('damages') && (
+                <NavItem 
+                  icon={<AlertTriangle className="w-4 h-4 text-rose-500" />} 
+                  label={(t as any).damages} 
+                  active={view === 'damages'} 
+                  onClick={() => setView('damages')} 
+                />
+              )}
+            </div>
+          )}
+
+          {/* Section: Système & Audit */}
+          {(canAccess('history') || canAccess('users') || canAccess('settings')) && (
+            <div className="space-y-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-text-secondary/50 px-3 py-1 hidden md:block">
+                {language === 'ar' ? 'النظام والمراقبة' : language === 'fr' ? 'Système & Audit' : 'System & Audit'}
+              </div>
+              {canAccess('history') && (
+                <NavItem 
+                  icon={<History className="w-4 h-4 text-teal-500" />} 
+                  label={t.history} 
+                  active={view === 'history'} 
+                  onClick={() => setView('history')} 
+                />
+              )}
+              {canAccess('users') && (
+                <NavItem 
+                  icon={<UserPlus className="w-4 h-4 text-sky-500" />} 
+                  label={(t as any).staffNav} 
+                  active={view === 'users'} 
+                  onClick={() => setView('users')} 
+                />
+              )}
+              {canAccess('settings') && (
+                <NavItem 
+                  icon={<UserCog className="w-4 h-4 text-slate-500" />} 
+                  label={t.settings} 
+                  active={view === 'settings'} 
+                  onClick={() => setView('settings')} 
+                />
+              )}
+            </div>
+          )}
         </div>
-        
-        <div className="mx-4 my-2 p-3 bg-bg-base/80 border-2 border-accent/30 rounded-2xl shadow-inner text-center">
-          <div className="text-[9px] font-black uppercase text-accent tracking-[0.25em] mb-2 flex items-center justify-center gap-1.5">
-            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-ping"></span>
-            {(t as any).languageLabel}
+
+        {/* Compact Mobile Language Switcher */}
+        <div className="p-2 border-t border-border-subtle/40 md:hidden flex justify-center">
+          <button
+            onClick={() => {
+              const order = ['fr', 'ar', 'en'];
+              const next = order[(order.indexOf(language) + 1) % order.length];
+              setAuthLanguage(next);
+              localStorage.setItem('lang', next);
+            }}
+            className="w-10 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-accent flex items-center justify-center border border-border-subtle hover:scale-105 transition-transform"
+            title="Changer de langue"
+          >
+            {language.toUpperCase()}
+          </button>
+        </div>
+
+        {/* Desktop Language Segmented Control */}
+        <div className="px-3 pt-2.5 pb-1.5 border-t border-border-subtle/40 hidden md:block">
+          <div className="text-[9px] font-black uppercase text-text-secondary/60 tracking-wider mb-1 px-1 flex items-center justify-between">
+            <span>{(t as any).languageLabel || 'Langue'}</span>
+            <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
           </div>
-          <div className="flex gap-1.5 justify-center">
-            {(['en', 'fr', 'ar'] as Language[]).map(lang => (
+          <div className="bg-slate-100/90 dark:bg-slate-800/80 p-1 rounded-xl flex items-center gap-1 border border-border-subtle/50 shadow-inner">
+            {(['fr', 'ar', 'en'] as Language[]).map(lang => (
               <button
                 key={lang}
                 onClick={() => {
@@ -663,10 +786,10 @@ export default function App() {
                   localStorage.setItem('lang', lang);
                 }}
                 className={cn(
-                  "flex-1 py-1.5 text-xs font-black rounded-xl uppercase transition-all duration-300 transform active:scale-95 shadow-sm",
+                  "flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all duration-200 select-none",
                   language === lang 
-                    ? "bg-accent text-white border border-accent scale-105 shadow-md shadow-accent/25" 
-                    : "bg-card text-text-secondary border border-border-subtle hover:text-text-main hover:border-text-secondary/30"
+                    ? "bg-white dark:bg-slate-700 text-accent font-black shadow-xs scale-[1.02]" 
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 )}
               >
                 {lang === 'ar' ? 'العربية' : lang === 'fr' ? 'FR' : 'EN'}
@@ -675,34 +798,41 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-4 border-t border-border-subtle">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 p-3 text-text-secondary hover:text-text-main hover:bg-bg-base/50 rounded-lg transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden md:block text-xs font-semibold uppercase tracking-wider">{t.logout}</span>
-          </button>
-        </div>
-
-        <div className="p-4 border-t border-border-subtle">
+        {/* Theme & Logout Utility Controls */}
+        <div className="p-3 border-t border-border-subtle/40 flex items-center gap-2">
           <button 
             onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
-            className="w-full flex items-center gap-3 p-3 text-text-secondary hover:text-text-main hover:bg-bg-base/50 rounded-lg transition-all group"
+            className="flex-1 flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/90 dark:hover:bg-slate-700/80 text-text-secondary hover:text-text-main transition-all duration-200 group border border-border-subtle/50 shadow-xs"
+            title={theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
           >
-            {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-accent" />}
-            <span className="hidden md:block text-[11px] font-bold uppercase tracking-widest">
+            {theme === 'light' ? (
+              <Moon className="w-4 h-4 text-slate-600 transition-transform group-hover:scale-110" />
+            ) : (
+              <Sun className="w-4 h-4 text-amber-400 transition-transform group-hover:rotate-45" />
+            )}
+            <span className="hidden md:inline text-[11px] font-bold tracking-tight">
               {theme === 'light' ? (t as any).darkMode : (t as any).lightMode}
             </span>
           </button>
+
+          <button 
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-all duration-200 shrink-0 group border border-rose-200/50 dark:border-rose-900/40 shadow-xs"
+            title={t.logout}
+          >
+            <LogOut className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+            <span className="hidden md:inline text-[11px] font-bold tracking-tight">{t.logout}</span>
+          </button>
         </div>
 
-        <div className="p-4 border-t border-border-subtle text-center hidden md:block pb-6">
-          <p className="text-[9px] text-text-secondary/60 font-semibold uppercase tracking-[0.2em]">
-            {language === 'ar' ? 'تم التطوير بواسطة' : language === 'fr' ? 'DÉVELOPPÉ PAR' : 'DEVELOPED BY'}
-            <br />
-            <span className="text-accent font-black tracking-widest mt-1 inline-block opacity-80 hover:opacity-100 transition-opacity">GAMRA MOUNAIM</span>
-          </p>
+        {/* Developer Credit Footer */}
+        <div className="px-3 pb-3 text-center hidden md:block">
+          <div className="py-1 px-2 rounded-xl bg-accent/5 border border-accent/15 hover:border-accent/30 transition-all">
+            <p className="text-[9px] text-text-secondary/70 font-semibold tracking-wider uppercase">
+              {language === 'ar' ? 'تطوير :' : language === 'fr' ? 'DÉVELOPPÉ PAR :' : 'DEVELOPED BY :'}
+              <span className="text-accent font-black tracking-widest ml-1 inline-block">GAMRA MOUNAIM</span>
+            </p>
+          </div>
         </div>
       </nav>
 
@@ -1049,23 +1179,49 @@ export default function App() {
 }
 
 
-function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+function NavItem({ 
+  icon, 
+  label, 
+  active, 
+  onClick,
+  badge
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  active: boolean; 
+  onClick: () => void;
+  badge?: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
+      title={label}
       className={cn(
-        "w-full flex items-center gap-3 p-3 rounded-xl transition-all group relative font-semibold",
-        active ? "bg-accent/20 text-accent shadow-inner" : "text-text-secondary hover:text-text-main hover:bg-bg-base/50"
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 group relative text-start select-none font-semibold",
+        active 
+          ? "bg-accent text-white shadow-lg shadow-accent/25 scale-[1.01]" 
+          : "text-slate-600 dark:text-slate-300 hover:text-text-main hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-xs"
       )}
     >
-      <div className={cn("transition-transform duration-200 group-hover:scale-110", active && "scale-110")}>
+      <div className={cn(
+        "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 shrink-0",
+        active 
+          ? "bg-white/20 text-white shadow-xs backdrop-blur-xs" 
+          : "bg-slate-100/90 dark:bg-slate-800/80 text-text-secondary group-hover:bg-accent/15 group-hover:text-accent group-hover:scale-105"
+      )}>
         {icon}
       </div>
-      <span className="hidden md:block text-[14px]">{label}</span>
+      <span className={cn(
+        "hidden md:block text-[13px] tracking-tight truncate flex-1",
+        active ? "font-bold text-white" : "font-medium"
+      )}>
+        {label}
+      </span>
+      {badge && <span className="hidden md:inline-flex shrink-0">{badge}</span>}
       {active && (
-        <motion.div 
-          layoutId="sidebar-active"
-          className="absolute right-[-16px] w-1.5 h-6 bg-accent rounded-l-full shadow-[0_0_10px_rgba(241,90,36,0.5)]"
+        <motion.span 
+          layoutId="sidebar-active-dot"
+          className="hidden md:block w-1.5 h-1.5 rounded-full bg-white shadow-xs shrink-0" 
         />
       )}
     </button>
