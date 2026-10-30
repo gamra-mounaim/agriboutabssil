@@ -720,16 +720,20 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                             <div className={cn(language === 'ar' && "text-right")}>
                               <div className="text-[13px] font-semibold text-text-main group-hover:text-accent transition-colors">{p.name}</div>
                               <div className="text-[10px] text-text-secondary font-mono">#{p.id.slice(0, 6).toUpperCase()} {p.supplier && <span className="ml-2 font-bold opacity-60 text-accent">/ {p.supplier}</span>}</div>
-                              {permissions.viewCostPrice && p.lots && p.lots.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {p.lots.map((lot, idx) => (
-                                    <span key={lot.id || idx} className="inline-flex items-center gap-1 text-[8px] bg-accent/10 border border-accent/20 text-accent font-bold px-1 py-0.5 rounded">
-                                      <span>📦 {lot.qty}</span>
-                                      <span>@ {formatNumber(lot.costPrice)} {t.currency}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              {permissions.viewCostPrice && p.lots && p.lots.length > 0 && (() => {
+                                const olderLots = p.lots.filter(l => Number(l.qty) > 0 && Math.abs(Number(l.costPrice) - Number(p.costPrice || 0)) > 0.001);
+                                if (olderLots.length === 0) return null;
+                                return (
+                                  <div className="flex flex-wrap gap-1 mt-1.5">
+                                    {olderLots.map((lot, idx) => (
+                                      <span key={lot.id || idx} className="inline-flex items-center gap-1 text-[9px] bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded shadow-xs" title={`Lot #${(lot.id || '').slice(0, 6)}`}>
+                                        <span>⚠️ {language === 'ar' ? `باقي ${lot.qty} حبة مشريّة بـ` : language === 'fr' ? `Reste ${lot.qty} unités à` : `Remaining ${lot.qty} @`}</span>
+                                        <span className="font-black underline">{formatNumber(lot.costPrice)} {t.currency}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="flex items-center gap-2">
                                <div className="text-right">
@@ -832,16 +836,21 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                             {p.barcode ? <span>{p.barcode}</span> : <span>#{p.id.slice(0, 8).toUpperCase()}</span>}
                             {category && <span className="opacity-70 text-accent font-bold bg-accent/10 px-1.5 py-0.5 rounded">• {category.name}</span>}
                           </div>
-                          {permissions.viewCostPrice && p.lots && p.lots.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {p.lots.map((lot, idx) => (
-                                <span key={lot.id || idx} className="inline-flex items-center gap-1 text-[9px] bg-accent/10 border border-accent/20 text-accent font-bold px-1.5 py-0.5 rounded shadow-xs" title={`Lot #${(lot.id || '').slice(0, 6)}`}>
-                                  <span>📦 {lot.qty} {language === 'ar' ? 'حبة' : 'units'}</span>
-                                  <span>@ {formatNumber(lot.costPrice)} {t.currency}</span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          {permissions.viewCostPrice && p.lots && p.lots.length > 0 && (() => {
+                            const olderLots = p.lots.filter(l => Number(l.qty) > 0 && Math.abs(Number(l.costPrice) - Number(p.costPrice || 0)) > 0.001);
+                            if (olderLots.length === 0) return null;
+                            return (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {olderLots.map((lot, idx) => (
+                                  <span key={lot.id || idx} className="inline-flex items-center gap-1.5 text-[10px] bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-lg shadow-xs" title={`Lot #${(lot.id || '').slice(0, 6)} - ${language === 'ar' ? 'دفعة سابقة' : 'Ancien lot'}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                    <span>{language === 'ar' ? `باقي ${lot.qty} حبة مشريّة بـ` : language === 'fr' ? `Reste ${lot.qty} unités à` : `Remaining ${lot.qty} @`}</span>
+                                    <span className="font-black text-amber-900 dark:text-amber-200 underline">{formatNumber(lot.costPrice)} {t.currency}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </td>
                         {permissions.viewCostPrice && <td className="p-4 text-text-secondary italic">{formatNumber(p.costPrice || 0)} {t.currency}</td>}
                         <td className="p-4 text-text-main font-bold">{formatNumber(p.price)} {t.currency}</td>

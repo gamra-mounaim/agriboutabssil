@@ -325,6 +325,10 @@ export async function initDb() {
   } catch (e) {}
 
   try {
+    await db.prepare('ALTER TABLE sale_items ADD COLUMN cost_price REAL').run();
+  } catch (e) {}
+
+  try {
     await db.prepare("ALTER TABLE sales ADD COLUMN check_status TEXT DEFAULT 'PENDING'").run();
     await db.prepare('ALTER TABLE sales ADD COLUMN check_due_date TIMESTAMP').run();
     await db.prepare('ALTER TABLE sales ADD COLUMN check_amount REAL').run();
@@ -410,6 +414,35 @@ export async function initDb() {
   } catch (e) {
     console.error("Error auto-syncing product_lots:", e);
   }
+
+  // Ensure products.cost_price matches the latest lot for all products
+  try {
+    await db.prepare(`
+      UPDATE products p
+      SET cost_price = sub.cost_price
+      FROM (
+        SELECT DISTINCT ON (product_id) product_id, cost_price
+        FROM product_lots
+        WHERE qty > 0
+        ORDER BY product_id, created_at DESC
+      ) sub
+      WHERE p.id = sub.product_id
+    `).run();
+  } catch (e) {
+    console.error("Error syncing latest lot cost price:", e);
+  }
+
+  // Populate cost_price for past sale_items without one
+  try {
+    await db.prepare(`
+      UPDATE sale_items si
+      SET cost_price = COALESCE(
+        (SELECT p.cost_price FROM products p WHERE p.id = si.product_id),
+        si.price
+      )
+      WHERE si.cost_price IS NULL
+    `).run();
+  } catch (e) {}
 
   // Retroactive migration for ALL past returns from stock_movements
   try {

@@ -583,10 +583,16 @@ async function startServer() {
         lotsByProduct[pId].push(toCamel(lot));
       }
 
-      const productsWithLots = products.map((p: any) => ({
-        ...toCamel(p),
-        lots: lotsByProduct[p.id] || []
-      }));
+      const productsWithLots = products.map((p: any) => {
+        const pLots = lotsByProduct[p.id] || [];
+        const latestLot = pLots.length > 0 ? pLots[pLots.length - 1] : null;
+        const currentCostPrice = latestLot && latestLot.costPrice !== undefined ? latestLot.costPrice : p.cost_price;
+        return {
+          ...toCamel(p),
+          costPrice: currentCostPrice,
+          lots: pLots
+        };
+      });
 
       res.json(productsWithLots);
     } catch (err: any) {
@@ -945,6 +951,17 @@ async function startServer() {
         SET name = ?, price = ?, cost_price = ?, qty = ?, min_stock = ?, barcode = ?, category_id = ?, supplier = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(name, price, costPrice, finalQty, minStock, barcode, categoryId, supplier, supplierId, id);
+
+      // Keep product lots synchronized with cost_price and quantity
+      const activeLots = await db.prepare('SELECT id, qty, cost_price FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(id);
+      if (activeLots.length === 1) {
+        await db.prepare('UPDATE product_lots SET cost_price = ?, qty = ? WHERE id = ?').run(costPrice || 0, finalQty, activeLots[0].id);
+      } else if (activeLots.length === 0 && finalQty > 0) {
+        await db.prepare(`
+          INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(uuidv4(), id, finalQty, costPrice || 0, supplier || null, supplierId || null);
+      }
       
       let details = `Modification [${name || oldProduct?.name || 'Produit'}]`;
       if (oldProduct) {
@@ -1144,14 +1161,16 @@ async function startServer() {
       const unitCost = costPrice !== undefined && costPrice !== null ? costPrice : (product.cost_price || 0);
       const costAmount = unitCost * quantity;
 
-      await db.prepare('UPDATE products SET qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newQty, id);
-      
       if (type === 'in') {
+        await db.prepare('UPDATE products SET qty = ?, cost_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newQty, unitCost, id);
         await db.prepare(`
           INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(uuidv4(), id, quantity, unitCost, product.supplier || null, supplierId || product.supplier_id || null);
-      } else if (type === 'out') {
+      } else {
+        await db.prepare('UPDATE products SET qty = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newQty, id);
+      }
+      if (type === 'out') {
         let rem = quantity;
         const activeLots = await db.prepare('SELECT id, qty FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(id);
         for (const lot of activeLots) {
@@ -1233,7 +1252,7 @@ async function startServer() {
       const customers = await db.prepare(`
         SELECT c.*, 
           COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(cr.total_refund) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_spent, 
-          COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
+          COALESCE((SELECT SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
             - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) 
             - COALESCE((SELECT SUM(cr.profit_loss) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_profit 
         FROM customers c 
@@ -1247,7 +1266,7 @@ async function startServer() {
     const customers = await db.prepare(`
       SELECT c.*, 
         COALESCE((SELECT SUM(s.total) FROM sales s WHERE s.customer_id = c.id), 0) - COALESCE((SELECT SUM(cr.total_refund) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_spent, 
-        COALESCE((SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
+        COALESCE((SELECT SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty) FROM sale_items si JOIN sales s ON si.sale_id = s.id LEFT JOIN products p ON si.product_id = p.id WHERE s.customer_id = c.id), 0) 
           - COALESCE((SELECT SUM(s2.discount) FROM sales s2 WHERE s2.customer_id = c.id), 0) 
           - COALESCE((SELECT SUM(cr.profit_loss) FROM customer_returns cr WHERE cr.customer_id = c.id), 0) as total_profit 
       FROM customers c 
@@ -1504,7 +1523,7 @@ async function startServer() {
           COALESCE(s.subtotal, s.total + COALESCE(s.discount, 0)) as subtotal,
           (
             COALESCE((
-              SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+              SELECT SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty)
               FROM sale_items si
               LEFT JOIN products p ON si.product_id = p.id
               WHERE si.sale_id = s.id
@@ -1659,7 +1678,7 @@ async function startServer() {
       SELECT s.*, 
              (SELECT COALESCE(SUM(qty * cost_price), 0) FROM products WHERE supplier_id = s.id AND qty > 0) as stock_value,
              (SELECT COALESCE(SUM(sm.quantity * sm.cost_price), 0) FROM stock_movements sm JOIN products p ON sm.product_id = p.id WHERE p.supplier_id = s.id AND sm.type = 'sale') as sold_value,
-             (SELECT COALESCE(SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty), 0) FROM sale_items si JOIN products p ON si.product_id = p.id WHERE p.supplier_id = s.id) as profit
+             (SELECT COALESCE(SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty), 0) FROM sale_items si JOIN products p ON si.product_id = p.id WHERE p.supplier_id = s.id) as profit
       FROM suppliers s
     `).all();
     res.json(toCamel(suppliers));
@@ -1848,7 +1867,7 @@ async function startServer() {
           s.*,
           COALESCE(
             (
-              SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+              SELECT SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty)
               FROM sale_items si
               LEFT JOIN products p ON si.product_id = p.id
               WHERE si.sale_id = s.id
@@ -1858,7 +1877,7 @@ async function startServer() {
         ORDER BY s.date DESC
       `).all();
       const saleItems = await db.prepare(`
-        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        SELECT si.*, COALESCE(si.cost_price, p.cost_price, 0) as cost_price 
         FROM sale_items si 
         LEFT JOIN products p ON si.product_id = p.id
       `).all();
@@ -1884,7 +1903,7 @@ async function startServer() {
         COALESCE(u.username, u.email, s.staff_id) as staff_name,
         COALESCE(
           (
-            SELECT SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty)
+            SELECT SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty)
             FROM sale_items si
             LEFT JOIN products p ON si.product_id = p.id
             WHERE si.sale_id = s.id
@@ -1914,7 +1933,7 @@ async function startServer() {
     if (saleIds.length > 0) {
       const placeholders = saleIds.map(() => '?').join(',');
       const saleItems = await db.prepare(`
-        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        SELECT si.*, COALESCE(si.cost_price, p.cost_price, 0) as cost_price 
         FROM sale_items si 
         LEFT JOIN products p ON si.product_id = p.id 
         WHERE si.sale_id IN (${placeholders})
@@ -1938,7 +1957,7 @@ async function startServer() {
     const { id } = req.params;
     try {
       const items = await db.prepare(`
-        SELECT si.*, COALESCE(p.cost_price, 0) as cost_price 
+        SELECT si.*, COALESCE(si.cost_price, p.cost_price, 0) as cost_price 
         FROM sale_items si 
         LEFT JOIN products p ON si.product_id = p.id 
         WHERE si.sale_id = ?
@@ -2213,30 +2232,43 @@ async function startServer() {
           throw new Error(`Stock insuffisant pour le produit: ${item.name}`);
         }
 
-        await db.prepare(`
-          INSERT INTO sale_items (sale_id, product_id, name, price, qty)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(saleId, item.productId, item.name, item.price, item.qty);
-
         await db.prepare('UPDATE products SET qty = qty - ? WHERE id = ?').run(item.qty, item.productId);
 
-        // Deduct from product_lots in FIFO order (oldest lot first)
+        // Deduct from product_lots in FIFO order (oldest lot first) and calculate exact FIFO cost
         let remainingToDeduct = item.qty;
-        const activeLots = await db.prepare('SELECT id, qty FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(item.productId);
+        let totalCostForLine = 0;
+        const activeLots = await db.prepare('SELECT id, qty, cost_price FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(item.productId);
         for (const lot of activeLots) {
           if (remainingToDeduct <= 0) break;
           const deduct = Math.min(lot.qty, remainingToDeduct);
           await db.prepare('UPDATE product_lots SET qty = qty - ? WHERE id = ?').run(deduct, lot.id);
+          const lotUnitCost = Number(lot.cost_price || 0);
+          totalCostForLine += deduct * lotUnitCost;
           remainingToDeduct -= deduct;
+
+          // Record stock movement for this FIFO lot deduction
+          await db.prepare(`
+            INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+            VALUES (?, ?, ?, 'sale', ?, ?, ?, ?)
+          `).run(uuidv4(), item.productId, item.name, deduct, `Sale #${saleId.slice(0, 8)}`, staffId, lotUnitCost);
         }
 
-        const pCost = (await db.prepare('SELECT cost_price FROM products WHERE id = ?').get(item.productId) as any)?.cost_price || 0;
+        // If any remaining quantity without lot (e.g. legacy stock), fallback to product cost_price
+        if (remainingToDeduct > 0) {
+          const fallbackCost = Number(currentProduct.cost_price || 0);
+          totalCostForLine += remainingToDeduct * fallbackCost;
+          await db.prepare(`
+            INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
+            VALUES (?, ?, ?, 'sale', ?, ?, ?, ?)
+          `).run(uuidv4(), item.productId, item.name, remainingToDeduct, `Sale #${saleId.slice(0, 8)}`, staffId, fallbackCost);
+        }
 
-        // Record stock movement for sale
+        const avgUnitCost = item.qty > 0 ? (totalCostForLine / item.qty) : (currentProduct.cost_price || 0);
+
         await db.prepare(`
-          INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(uuidv4(), item.productId, item.name, 'sale', item.qty, `Sale #${saleId.slice(0, 8)}`, staffId, pCost);
+          INSERT INTO sale_items (sale_id, product_id, name, price, qty, cost_price)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(saleId, item.productId, item.name, item.price, item.qty, avgUnitCost);
 
         // Check for low stock alert
         const updatedProduct = (await db.prepare('SELECT name, qty, min_stock FROM products WHERE id = ?').get(item.productId)) as any;
@@ -2336,7 +2368,7 @@ async function startServer() {
             WHEN s.payment_method = 'check' AND s.check_status = 'CASHED' THEN 'cash'
             ELSE s.payment_method
           END as payment_method,
-          SUM((si.price - COALESCE(p.cost_price, si.price)) * si.qty) as profit
+          SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty) as profit
         FROM sale_items si 
         JOIN sales s ON si.sale_id = s.id 
         LEFT JOIN products p ON si.product_id = p.id 
