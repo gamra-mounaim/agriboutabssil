@@ -4,7 +4,7 @@ import {
   Search, Archive, ArrowRightLeft, FolderOpen, Plus, Minus, Edit2, Trash2, 
   AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown,
   History, Lock, Sparkles, TrendingUp, Filter, CheckCircle2, ChevronUp, Printer, 
-  BarChart3, Boxes, AlertCircle, Coins, ArrowUpRight
+  BarChart3, Boxes, AlertCircle, Coins, ArrowUpRight, Tag, Info
 } from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Supplier } from '../types';
@@ -333,28 +333,74 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
     }
   };
 
+  const resetAddProductForm = () => {
+    setName('');
+    setPrice('');
+    setCostPrice('');
+    setQty('');
+    setBarcode('');
+    setMinStock('5');
+    setCategoryId('');
+    setSupplier('');
+  };
+
+  const handleCloseAddProduct = () => {
+    setShowAddProduct(false);
+    resetAddProductForm();
+  };
+
+  const generateBarcode = () => {
+    const timestamp = Date.now().toString().slice(-8);
+    const random = Math.floor(1000 + Math.random() * 9000).toString();
+    setBarcode(`${timestamp}${random}`);
+  };
+
   const addProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !qty || isAddingProduct) return;
+    if (!name || !name.trim()) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال اسم المنتج." : language === 'fr' ? "Veuillez saisir le nom du produit." : "Please enter product name.", 
+        type: 'error' 
+      });
+      return;
+    }
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال سعر بيع صحيح أكبر من 0." : language === 'fr' ? "Veuillez saisir un prix de vente valide (> 0)." : "Please enter a valid selling price (> 0).", 
+        type: 'error' 
+      });
+      return;
+    }
+    if (isAddingProduct) return;
     setIsAddingProduct(true);
     try {
       await api.addProduct({
-        name,
-        price: parseFloat(price),
+        name: name.trim(),
+        price: parsedPrice,
         costPrice: parseFloat(costPrice) || 0,
-        qty: parseFloat(qty),
-        minStock: parseFloat(minStock) || 0,
-        barcode: barcode || null,
+        qty: qty === '' || isNaN(parseFloat(qty)) ? 0 : parseFloat(qty),
+        minStock: minStock === '' || isNaN(parseFloat(minStock)) ? 5 : parseFloat(minStock),
+        barcode: barcode?.trim() || null,
         categoryId: categoryId || null,
         supplier: supplier || null,
         supplierId: suppliers.find(s => s.name === supplier)?.id || null,
         actor: user?.username || 'system'
       });
-      setName(''); setPrice(''); setCostPrice(''); setQty(''); setBarcode(''); setMinStock('5'); setCategoryId(''); setSupplier('');
-      setMessage({ text: language === 'ar' ? "تمت إضافة المنتج." : language === 'fr' ? "Produit ajouté au stock." : "Product added to inventory.", type: 'success' });
+      resetAddProductForm();
+      setShowAddProduct(false);
+      setMessage({ 
+        text: language === 'ar' ? "تمت إضافة المنتج بنجاح." : language === 'fr' ? "Produit ajouté avec succès au catalogue." : "Product added to inventory.", 
+        type: 'success' 
+      });
       onRefresh();
     } catch (err: any) {
-      setMessage({ text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message}`, type: 'error' });
+      setMessage({ 
+        text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message || 'Erreur'}`, 
+        type: 'error' 
+      });
+    } finally {
+      setIsAddingProduct(false);
     }
   };
 
@@ -735,31 +781,20 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       {/* --- ACTION BAR (QUICK TOGGLES & TOOLS) --- */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-card p-3 sm:p-4 rounded-2xl border border-border-subtle shadow-xs">
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Toggle Add Product */}
+          {/* Add Product Button (Opens Executive Modal) */}
           <button 
             type="button"
-            onClick={() => {
-              setShowAddProduct(!showAddProduct);
-              if (showCategoryManager) setShowCategoryManager(false);
-            }}
-            className={cn(
-              "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-xs",
-              showAddProduct 
-                ? "bg-accent text-white shadow-md shadow-accent/25" 
-                : "bg-bg-base hover:bg-bg-base/80 text-text-main border border-border-subtle"
-            )}
+            onClick={() => setShowAddProduct(true)}
+            className="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-accent hover:bg-accent/90 text-white shadow-md shadow-accent/25 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
           >
-            {showAddProduct ? <ChevronUp className="w-4 h-4" /> : <Plus className="w-4 h-4 text-accent" />}
+            <Plus className="w-4 h-4 text-white" />
             <span>{t.addProduct}</span>
           </button>
 
           {/* Toggle Categories */}
           <button 
             type="button"
-            onClick={() => {
-              setShowCategoryManager(!showCategoryManager);
-              if (showAddProduct) setShowAddProduct(false);
-            }}
+            onClick={() => setShowCategoryManager(!showCategoryManager)}
             className={cn(
               "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-xs",
               showCategoryManager 
@@ -767,7 +802,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                 : "bg-bg-base hover:bg-bg-base/80 text-text-main border border-border-subtle"
             )}
           >
-            <Package className="w-4 h-4 text-accent" />
+            <FolderOpen className="w-4 h-4 text-accent" />
             <span>{t.categories} ({categories.length})</span>
           </button>
 
@@ -816,204 +851,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         </div>
       </div>
 
-      {/* --- COLLAPSIBLE: ADD PRODUCT FORM --- */}
-      <AnimatePresence>
-        {showAddProduct && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }} 
-            animate={{ opacity: 1, height: 'auto' }} 
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <section className="bg-card border-2 border-accent/30 p-6 sm:p-8 rounded-3xl shadow-md">
-              <div className="flex items-center justify-between pb-4 border-b border-border-subtle mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-text-main tracking-tight uppercase">
-                      {t.addProduct}
-                    </h3>
-                    <p className="text-xs text-text-secondary">Ajoutez une nouvelle référence au catalogue du magasin</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowAddProduct(false)}
-                  className="p-2 rounded-xl hover:bg-bg-base text-text-secondary hover:text-text-main transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
 
-              <form onSubmit={addProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                {/* Product Name */}
-                <div className="md:col-span-2 space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                    <Package className="w-3.5 h-3.5 text-accent" />
-                    {t.productName}
-                  </label>
-                  <input 
-                    placeholder="Ex: POMPE IMMERGEE 10/10 2HP" 
-                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all" 
-                    value={name || ''} 
-                    onChange={e => setName(e.target.value)} 
-                    required
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                    <FolderOpen className="w-3.5 h-3.5 text-accent" />
-                    {t.category}
-                  </label>
-                  <select 
-                    className={cn("w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all", language === 'ar' && "text-right")} 
-                    value={categoryId || ''} 
-                    onChange={e => setCategoryId(e.target.value)}
-                  >
-                    <option value="">{t.noCategory}</option>
-                    {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-
-                {/* Barcode */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                    <Tag className="w-3.5 h-3.5 text-accent" />
-                    {t.barcode}
-                  </label>
-                  <input 
-                    placeholder="Ex: 611123456789" 
-                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all" 
-                    value={barcode || ''} 
-                    onChange={e => setBarcode(e.target.value)} 
-                  />
-                </div>
-
-                {/* Supplier */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                      <Store className="w-3.5 h-3.5 text-accent" />
-                      {t.supplier}
-                    </label>
-                    <button 
-                      type="button" 
-                      onClick={() => setShowQuickSupplierModal(true)} 
-                      className="text-accent hover:underline text-[10px] font-black cursor-pointer"
-                    >
-                      + {language === 'ar' ? "مورد جديد" : "Nouveau"}
-                    </button>
-                  </div>
-                  <select 
-                    className={cn("w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all", language === 'ar' && "text-right")} 
-                    value={supplier || ''} 
-                    onChange={e => setSupplier(e.target.value)}
-                  >
-                    <option value="">{language === 'ar' ? "اختر مورد" : "Sélectionner Fournisseur"}</option>
-                    {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
-                </div>
-
-                {/* Cost Price */}
-                {permissions.viewCostPrice && (
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                      <Coins className="w-3.5 h-3.5 text-purple-500" />
-                      {t.costPrice} ({t.currency})
-                    </label>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0.00" 
-                      className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none transition-all" 
-                      value={costPrice || ''} 
-                      onChange={e => setCostPrice(e.target.value)} 
-                    />
-                  </div>
-                )}
-
-                {/* Selling Price */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                    {t.price} ({t.currency})
-                  </label>
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    placeholder="0.00" 
-                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 outline-none transition-all" 
-                    value={price || ''} 
-                    onChange={e => setPrice(e.target.value)} 
-                    required
-                  />
-                </div>
-
-                {/* Initial Qty */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary">
-                    {t.qty} (Stock initial)
-                  </label>
-                  <input 
-                    type="number" 
-                    placeholder="0" 
-                    disabled={!permissions.editStock} 
-                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none disabled:opacity-50 transition-all" 
-                    value={qty || ''} 
-                    onChange={e => setQty(e.target.value)} 
-                  />
-                </div>
-
-                {/* Min Stock Alert Threshold */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                    Seuil Alerte (Min)
-                  </label>
-                  <input 
-                    type="number" 
-                    placeholder="5" 
-                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none transition-all" 
-                    value={minStock || ''} 
-                    onChange={e => setMinStock(e.target.value)} 
-                  />
-                </div>
-
-                {/* Live Margin Calculation Preview */}
-                {costPrice && price && Number(costPrice) > 0 && (
-                  <div className="md:col-span-2 lg:col-span-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/25 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-500" />
-                      Calcul de rentabilité en direct :
-                    </span>
-                    <div className="flex items-center gap-4 font-mono">
-                      <span>Bénéfice : <strong className="font-black">+{formatNumber(Number(price) - Number(costPrice))} DH</strong> / pièce</span>
-                      <span className="bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg text-xs font-black">
-                        +{(((Number(price) - Number(costPrice)) / Number(costPrice)) * 100).toFixed(1)}% Marge
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Submit button */}
-                <div className="md:col-span-2 lg:col-span-4 pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={isAddingProduct}
-                    className="w-full bg-accent hover:bg-accent/90 text-white font-black rounded-xl py-3.5 transition-all text-xs uppercase tracking-widest shadow-lg shadow-accent/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{isAddingProduct ? "Enregistrement..." : t.save}</span>
-                  </button>
-                </div>
-              </form>
-            </section>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* --- COLLAPSIBLE: CATEGORIES MANAGEMENT PANEL --- */}
       <AnimatePresence>
@@ -1464,6 +1302,363 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
       {/* --- MODALS --- */}
       <AnimatePresence>
+        {/* ========================================================================= */}
+        {/* --- MODAL: AJOUTER UN PRODUIT (EXECUTIVE DESIGN) --- */}
+        {/* ========================================================================= */}
+        {showAddProduct && (
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="bg-card border-2 border-accent/40 rounded-3xl w-full max-w-3xl my-auto shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 pb-4 border-b border-border-subtle flex items-center justify-between shrink-0 bg-accent/5">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/25 shrink-0">
+                    <Plus className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-text-main tracking-tight uppercase flex items-center gap-2">
+                      <span>{t.addProduct}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 lowercase">
+                        nouveau
+                      </span>
+                    </h3>
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      {language === 'ar' 
+                        ? 'إضافة مرجع جديد مع تحديد سعر الشراء، البيع والمخزون'
+                        : 'Enregistrez une nouvelle référence dans le catalogue du magasin'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseAddProduct}
+                  className="p-2 rounded-xl text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors cursor-pointer"
+                  title="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body / Form */}
+              <form onSubmit={addProduct} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
+                  
+                  {/* --- SECTION 1: INFORMATIONS GÉNÉRALES --- */}
+                  <div className="bg-bg-base/50 p-4 sm:p-5 rounded-2xl border border-border-subtle space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-accent flex items-center gap-1.5">
+                        <Boxes className="w-4 h-4" />
+                        1. {language === 'ar' ? 'معلومات المنتج' : 'Informations Générales'}
+                      </span>
+                      <span className="text-[11px] text-text-secondary">
+                        * {language === 'ar' ? 'حقول إلزامية' : 'Champs requis'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Product Name */}
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                          <Package className="w-3.5 h-3.5 text-accent" />
+                          <span>{t.productName} *</span>
+                        </label>
+                        <input
+                          autoFocus
+                          type="text"
+                          required
+                          placeholder="Ex: POMPE IMMERGEE 10/10 2HP - 380V..."
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full bg-card border-2 border-border-subtle focus:border-accent rounded-xl px-4 py-3 text-sm font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all shadow-2xs"
+                        />
+                      </div>
+
+                      {/* Category */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                            <FolderOpen className="w-3.5 h-3.5 text-accent" />
+                            <span>{t.category}</span>
+                          </label>
+                        </div>
+                        <select
+                          value={categoryId}
+                          onChange={(e) => setCategoryId(e.target.value)}
+                          className={cn(
+                            "w-full bg-card border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all shadow-2xs cursor-pointer",
+                            language === 'ar' && "text-right"
+                          )}
+                        >
+                          <option value="">{t.noCategory}</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Supplier */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                            <Store className="w-3.5 h-3.5 text-accent" />
+                            <span>{t.supplier}</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowQuickSupplierModal(true)}
+                            className="text-accent hover:underline text-[10px] font-black cursor-pointer flex items-center gap-0.5"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>{language === 'ar' ? 'مورد جديد' : 'Nouveau'}</span>
+                          </button>
+                        </div>
+                        <select
+                          value={supplier}
+                          onChange={(e) => setSupplier(e.target.value)}
+                          className={cn(
+                            "w-full bg-card border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all shadow-2xs cursor-pointer",
+                            language === 'ar' && "text-right"
+                          )}
+                        >
+                          <option value="">{language === 'ar' ? 'اختر مورد...' : 'Sélectionner Fournisseur...'}</option>
+                          {suppliers.map((s) => (
+                            <option key={s.id} value={s.name}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Barcode / Ref */}
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                            <Tag className="w-3.5 h-3.5 text-accent" />
+                            <span>{t.barcode} (Optionnel)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={generateBarcode}
+                            className="text-[10px] font-black uppercase text-accent hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>{language === 'ar' ? 'توليد كود تلقائي' : 'Générer Auto'}</span>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Ex: 611123456789 ou laissez vide"
+                          value={barcode}
+                          onChange={(e) => setBarcode(e.target.value)}
+                          className="w-full bg-card border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all shadow-2xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* --- SECTION 2: TARIFICATION & RENTABILITÉ --- */}
+                  <div className="bg-bg-base/50 p-4 sm:p-5 rounded-2xl border border-border-subtle space-y-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <TrendingUp className="w-4 h-4" />
+                      2. {language === 'ar' ? 'التسعير والأرباح' : 'Tarification & Rentabilité'}
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Cost Price */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                          <Coins className="w-3.5 h-3.5 text-purple-500" />
+                          <span>{t.costPrice} (Prix Achat HT)</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={costPrice}
+                            onChange={(e) => setCostPrice(e.target.value)}
+                            className="w-full bg-card border border-border-subtle focus:border-purple-500 rounded-xl px-4 py-2.5 pr-12 text-sm font-mono font-bold text-text-main outline-none transition-all shadow-2xs"
+                          />
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-text-secondary">
+                            DH
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Selling Price */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{t.price} (Prix de Vente) *</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            required
+                            placeholder="0.00"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            className="w-full bg-card border-2 border-emerald-500/40 focus:border-emerald-500 rounded-xl px-4 py-2.5 pr-12 text-sm font-mono font-black text-emerald-600 dark:text-emerald-400 outline-none transition-all shadow-2xs"
+                          />
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                            DH
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Financial Margin Calculation */}
+                    {price && parseFloat(price) > 0 && (
+                      <div className="p-3.5 rounded-xl border transition-all text-xs font-bold flex flex-wrap items-center justify-between gap-3 bg-card shadow-2xs">
+                        {costPrice && parseFloat(costPrice) > 0 ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-7 h-7 rounded-lg flex items-center justify-center font-black",
+                                parseFloat(price) >= parseFloat(costPrice)
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-red-500/15 text-red-600"
+                              )}>
+                                <Sparkles className="w-4 h-4" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] uppercase font-black text-text-secondary">
+                                  {language === 'ar' ? 'هامش الربح المتوقع' : 'Marge Commerciale'}
+                                </span>
+                                <span className={cn(
+                                  "font-black text-sm font-mono",
+                                  parseFloat(price) >= parseFloat(costPrice) ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
+                                )}>
+                                  {parseFloat(price) >= parseFloat(costPrice) ? '+' : ''}
+                                  {formatNumber(parseFloat(price) - parseFloat(costPrice))} DH <span className="text-[11px] text-text-secondary font-medium">/ unité</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "px-3 py-1 rounded-lg text-xs font-black font-mono shadow-2xs uppercase tracking-wider",
+                                parseFloat(price) >= parseFloat(costPrice)
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-red-600 text-white"
+                              )}>
+                                {parseFloat(price) >= parseFloat(costPrice) ? '+' : ''}
+                                {(((parseFloat(price) - parseFloat(costPrice)) / parseFloat(costPrice)) * 100).toFixed(1)}% Marge
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 text-text-secondary text-[11px]">
+                            <Info className="w-4 h-4 text-accent" />
+                            <span>
+                              {language === 'ar' 
+                                ? 'أدخل سعر الشراء أعلاه لاحتساب هامش الربح والنسبة المئوية تلقائياً.' 
+                                : 'Saisissez le prix d\'achat pour visualiser la rentabilité et la marge nette unitaire.'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* --- SECTION 3: STOCK & SEUIL D'ALERTE --- */}
+                  <div className="bg-bg-base/50 p-4 sm:p-5 rounded-2xl border border-border-subtle space-y-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      3. {language === 'ar' ? 'المخزون والتنبيه' : 'Stock Initial & Seuil Critique'}
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Initial Qty */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-black text-text-secondary">
+                          {t.qty} ({language === 'ar' ? 'المخزون الأولي' : 'Stock Initial'})
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="0"
+                          disabled={!permissions.editStock}
+                          value={qty}
+                          onChange={(e) => setQty(e.target.value)}
+                          className="w-full bg-card border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none disabled:opacity-50 transition-all shadow-2xs"
+                        />
+                        <p className="text-[10px] text-text-secondary">
+                          {language === 'ar' ? 'اتركه فارغاً أو 0 إذا لم يكن متوفراً حالياً' : 'Laissez vide ou 0 si aucun stock actuel'}
+                        </p>
+                      </div>
+
+                      {/* Min Stock Alert */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                          <span>{t.minStock} (Alerte Rupture)</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="5"
+                          value={minStock}
+                          onChange={(e) => setMinStock(e.target.value)}
+                          className="w-full bg-card border border-border-subtle focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none transition-all shadow-2xs"
+                        />
+                        <p className="text-[10px] text-text-secondary">
+                          {language === 'ar' ? 'إشعار فوري عند انخفاض المخزون إلى هذا الحد' : 'Déclenche l\'alerte rouge dès que le stock atteint ce niveau'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-6 border-t border-border-subtle bg-bg-base/80 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCloseAddProduct}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl border border-border-subtle bg-card hover:bg-bg-base text-text-secondary hover:text-text-main text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    {t.cancel}
+                  </button>
+
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    <button
+                      type="submit"
+                      disabled={isAddingProduct}
+                      className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent/25 active:scale-[0.99] text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isAddingProduct ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>{language === 'ar' ? 'جاري الإضافة...' : 'Enregistrement...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          <span>{language === 'ar' ? 'حفظ وإضافة للمخزون' : 'Enregistrer le Produit'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
         {/* Adjustment Modal */}
         {showAdjModal && adjProduct && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1642,7 +1837,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
         {/* Quick Supplier Modal */}
         {showQuickSupplierModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[140] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-card w-full max-w-md rounded-3xl p-8 border border-border-subtle shadow-2xl">
               <h4 className="text-xl font-black mb-6 flex items-center gap-2"><Store className="w-5 h-5 text-accent" />{t.addSupplier}</h4>
               <form onSubmit={addQuickSupplier} className="space-y-6">
