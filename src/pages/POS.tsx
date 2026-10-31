@@ -31,6 +31,7 @@ export default function POS() {
   const [minQty, setMinQty] = useState<string>('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [categorySearch, setCategorySearch] = useState<string>('');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all');
   const [sortBy, setSortBy] = useState<'mostSold' | 'name' | 'priceAsc' | 'priceDesc' | 'stock'>('mostSold');
   const [discount, setDiscount] = useState<string>('0');
@@ -81,6 +82,12 @@ export default function POS() {
     });
     return counts;
   }, [products]);
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories || [];
+    const q = categorySearch.toLowerCase().trim();
+    return (categories || []).filter(c => c.name.toLowerCase().includes(q));
+  }, [categories, categorySearch]);
 
   const filteredProducts = useMemo(() => {
     const filtered = (products || []).filter(p => {
@@ -394,59 +401,115 @@ export default function POS() {
       </AnimatePresence>
 
       {/* --- Left Column: Categories Vertical Sidebar (Desktop) --- */}
-      <div className="hidden xl:flex w-72 flex-col bg-card border border-border-subtle rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-4 sm:p-5 border-b border-border-subtle bg-bg-base/30 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutGrid className="w-4 h-4 text-accent" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{t.categories}</span>
+      <div className="hidden xl:flex w-72 flex-col bg-card border border-border-subtle rounded-3xl overflow-hidden shadow-sm shrink-0 h-full">
+        {/* Header with Search */}
+        <div className="p-4 border-b border-border-subtle bg-bg-base/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                <LayoutGrid className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider text-text-main">{t.categories}</span>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-text-secondary bg-card px-2.5 py-0.5 rounded-full border border-border-subtle shadow-2xs">
+              {categories.length}
+            </span>
           </div>
-          <span className="text-[10px] font-mono font-bold text-text-secondary bg-bg-base px-2 py-0.5 rounded-full border border-border-subtle">
-            {categories.length}
-          </span>
+
+          {/* Quick search input */}
+          <div className="relative group">
+            <Search className="absolute top-1/2 -translate-y-1/2 left-3 w-3 h-3 text-text-secondary group-focus-within:text-accent transition-colors" />
+            <input 
+              type="text"
+              placeholder={language === 'ar' ? 'تصفية الفئات...' : 'Filtrer catégories...'}
+              value={categorySearch}
+              onChange={e => setCategorySearch(e.target.value)}
+              className="w-full bg-card border border-border-subtle rounded-xl py-1.5 pl-8 pr-7 text-xs font-bold text-text-main placeholder:text-text-secondary/40 outline-none focus:border-accent transition-all"
+            />
+            {categorySearch && (
+              <button 
+                onClick={() => setCategorySearch('')}
+                className="absolute top-1/2 -translate-y-1/2 right-2 text-text-secondary hover:text-text-main p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
+
+        {/* Scrollable Categories List */}
+        <div className="flex-1 overflow-y-auto p-2.5 space-y-1 custom-scrollbar">
+          {/* All Categories item */}
           <button 
             onClick={() => setSelectedCategoryId('')}
             className={cn(
-              "w-full px-3.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group",
+              "w-full px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group cursor-pointer",
               selectedCategoryId === '' 
-                ? "bg-accent text-white shadow-md shadow-accent/20" 
+                ? "bg-accent text-white shadow-md shadow-accent/25" 
                 : "text-text-secondary hover:bg-bg-base hover:text-text-main"
             )}
           >
-            <span className="truncate">{t.allCategories}</span>
+            <div className="flex items-center gap-2.5 truncate">
+              <div className={cn(
+                "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 font-bold",
+                selectedCategoryId === '' ? "bg-white/20 text-white" : "bg-accent/10 text-accent"
+              )}>
+                <Package className="w-3.5 h-3.5" />
+              </div>
+              <span className="truncate">{t.allCategories}</span>
+            </div>
             <span className={cn(
-              "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
-              selectedCategoryId === '' ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-text-secondary"
+              "text-[10px] font-mono px-2 py-0.5 rounded-md font-bold shrink-0",
+              selectedCategoryId === '' ? "bg-white/25 text-white" : "bg-bg-base text-text-secondary border border-border-subtle"
             )}>
               {products.length}
             </span>
           </button>
-          {(categories || []).map(c => {
-            const count = categoryCounts[c.id] || 0;
-            const isSelected = selectedCategoryId === c.id;
-            return (
-              <button 
-                key={c.id}
-                onClick={() => setSelectedCategoryId(c.id)}
-                title={c.name}
-                className={cn(
-                  "w-full px-3.5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group",
-                  isSelected 
-                    ? "bg-accent text-white shadow-md shadow-accent/20" 
-                    : "text-text-secondary hover:bg-bg-base hover:text-text-main"
-                )}
-              >
-                <span className="truncate pr-2">{c.name}</span>
-                <span className={cn(
-                  "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold shrink-0",
-                  isSelected ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-text-secondary"
-                )}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+
+          {/* Individual Categories */}
+          {filteredCategories.length === 0 ? (
+            <div className="py-8 text-center text-text-secondary text-xs italic">
+              {language === 'ar' ? 'لا توجد نتائج' : 'Aucune catégorie'}
+            </div>
+          ) : (
+            filteredCategories.map(c => {
+              const count = categoryCounts[c.id] || 0;
+              const isSelected = selectedCategoryId === c.id;
+              const initial = c.name.charAt(0).toUpperCase();
+
+              return (
+                <button 
+                  key={c.id}
+                  onClick={() => setSelectedCategoryId(c.id)}
+                  title={c.name}
+                  className={cn(
+                    "w-full px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-left transition-all flex items-center justify-between group cursor-pointer",
+                    isSelected 
+                      ? "bg-accent text-white shadow-md shadow-accent/25" 
+                      : "text-text-secondary hover:bg-bg-base hover:text-text-main"
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <div className={cn(
+                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 font-black",
+                      isSelected 
+                        ? "bg-white/20 text-white" 
+                        : "bg-slate-100 dark:bg-slate-800 text-text-secondary group-hover:bg-accent/10 group-hover:text-accent transition-colors"
+                    )}>
+                      {initial}
+                    </div>
+                    <span className="truncate pr-1">{c.name}</span>
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-mono px-2 py-0.5 rounded-md font-bold shrink-0",
+                    isSelected ? "bg-white/25 text-white" : "bg-bg-base text-text-secondary border border-border-subtle"
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 

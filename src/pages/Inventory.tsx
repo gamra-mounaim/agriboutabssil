@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Search, Archive, ArrowRightLeft, FolderOpen, Plus, Edit2, Trash2, 
+  Search, Archive, ArrowRightLeft, FolderOpen, Plus, Minus, Edit2, Trash2, 
   AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown,
-  History,
-  Lock
+  History, Lock, Sparkles, TrendingUp, Filter, CheckCircle2, ChevronUp, Printer, 
+  BarChart3, Boxes, AlertCircle, Coins, ArrowUpRight
 } from 'lucide-react';
 import { formatNumber, cn } from '../utils';
 import { Product, Category, Supplier } from '../types';
@@ -153,12 +153,81 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  // --- Low Stock Alert ---
+  // --- Panels & Toggles ---
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+
+  // --- Low Stock Alert State ---
   const [hasDismissedLowStock, setHasDismissedLowStock] = useState(false);
+  const [alertSearch, setAlertSearch] = useState('');
+  const [alertFilter, setAlertFilter] = useState<'all' | 'zero' | 'low'>('all');
+
   const lowStockProductsAlert = useMemo(() => {
     return products.filter(p => p.qty <= (p.minStock ?? 5));
   }, [products]);
+
+  const zeroStockProducts = useMemo(() => {
+    return lowStockProductsAlert.filter(p => p.qty <= 0);
+  }, [lowStockProductsAlert]);
+
+  const criticalStockProducts = useMemo(() => {
+    return lowStockProductsAlert.filter(p => p.qty > 0 && p.qty <= (p.minStock ?? 5));
+  }, [lowStockProductsAlert]);
+
+  const filteredAlertProducts = useMemo(() => {
+    return lowStockProductsAlert.filter(p => {
+      const matchFilter = alertFilter === 'all' 
+        ? true 
+        : alertFilter === 'zero' 
+          ? p.qty <= 0 
+          : (p.qty > 0 && p.qty <= (p.minStock ?? 5));
+      const q = alertSearch.toLowerCase().trim();
+      const matchSearch = !q || 
+        p.name.toLowerCase().includes(q) || 
+        (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+        (p.supplier && p.supplier.toLowerCase().includes(q));
+      return matchFilter && matchSearch;
+    });
+  }, [lowStockProductsAlert, alertFilter, alertSearch]);
+
   const showLowStockAlert = lowStockProductsAlert.length > 0 && !hasDismissedLowStock;
+
+  // Stock KPI Stats
+  const stockStats = useMemo(() => {
+    const totalRefs = products.length;
+    const totalUnits = products.reduce((acc, p) => acc + (Number(p.qty) || 0), 0);
+    const totalRetailValue = products.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.price) || 0)), 0);
+    const totalCostValue = products.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.costPrice) || 0)), 0);
+    return {
+      totalRefs,
+      totalUnits,
+      totalRetailValue,
+      totalCostValue,
+      outOfStockCount: zeroStockProducts.length,
+      lowStockCount: criticalStockProducts.length
+    };
+  }, [products, zeroStockProducts, criticalStockProducts]);
+
+  const exportLowStockCSV = () => {
+    const headers = language === 'ar'
+      ? ['المنتج', 'الباركود', 'الفئة', 'الكمية الحالية', 'الحد الأدنى', 'المورد']
+      : ['Nom', 'Code-barres', 'Catégorie', 'Qté Actuelle', 'Seuil Min', 'Fournisseur'];
+    const rows = lowStockProductsAlert.map(p => [
+      `"${p.name.replace(/"/g, '""')}"`,
+      p.barcode ? `"${p.barcode}"` : '',
+      `"${categories.find(c => c.id === p.categoryId)?.name || ''}"`,
+      p.qty,
+      p.minStock || 5,
+      p.supplier ? `"${p.supplier}"` : ''
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(';'), ...rows.map(e => e.join(';'))].join("\n");
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `ruptures_stock_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // --- External Target Focus (from Notifications) ---
   const [highlightedProductId, setHighlightedProductId] = useState<string | null>(null);
@@ -552,153 +621,572 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   // ============================================================================
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-12 max-w-[1800px] mx-auto px-1 sm:px-2 md:px-4">
       
-      {/* --- FORMS SECTION --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Add Product Form */}
-        <section className="lg:col-span-2 bg-card border border-border-subtle p-8 rounded-xl shadow-sm h-full">
-          <h3 className="section-title text-sm font-bold mb-6 flex items-center gap-2 uppercase tracking-widest text-text-secondary">
-            <Plus className="w-4 h-4 text-accent" />
-            {t.addProduct}
-          </h3>
-          <form onSubmit={addProduct} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.productName}</label>
-              <input placeholder={t.productName} className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none" value={name || ''} onChange={e => setName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.category}</label>
-              <select className={cn("w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none", language === 'ar' && "text-right")} value={categoryId || ''} onChange={e => setCategoryId(e.target.value)}>
-                <option value="">{t.noCategory}</option>
-                {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.barcode}</label>
-                <input placeholder={t.barcode} className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none" value={barcode || ''} onChange={e => setBarcode(e.target.value)} />
-              </div>
-              <div className="space-y-1.5 overflow-visible">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1 flex justify-between items-center">
-                  <span>{t.supplier}</span>
-                  <button type="button" onClick={() => setShowQuickSupplierModal(true)} className="text-accent hover:underline text-[9px] font-black">+ {language === 'ar' ? "مورد جديد" : language === 'fr' ? "NOUVEAU" : "NEW"}</button>
-                </label>
-                <select className={cn("w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none", language === 'ar' && "text-right")} value={supplier || ''} onChange={e => setSupplier(e.target.value)}>
-                  <option value="">{language === 'ar' ? "اختر مورد" : language === 'fr' ? "Sélectionner Fournisseur" : "Select Supplier"}</option>
-                  {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className={cn("grid gap-5", permissions.viewCostPrice ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3")}>
-              {permissions.viewCostPrice && (
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.costPrice}</label>
-                  <input type="number" step="0.01" placeholder={t.costPrice} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={costPrice || ''} onChange={e => setCostPrice(e.target.value)} />
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.price}</label>
-                <input type="number" step="0.01" placeholder={t.price} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={price || ''} onChange={e => setPrice(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.qty}</label>
-                <input type="number" placeholder={t.qty} disabled={!permissions.editStock} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none disabled:opacity-50" value={qty || ''} onChange={e => setQty(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{language === 'ar' ? "تنبيه" : language === 'fr' ? "Alerte" : "Alert"}</label>
-                <input type="number" placeholder={language === 'ar' ? "تنبيه" : language === 'fr' ? "Alerte" : "Alert"} className="w-full bg-bg-base border border-border-subtle rounded-xl px-4 py-3 text-sm font-medium focus:border-accent outline-none" value={minStock || ''} onChange={e => setMinStock(e.target.value)} />
-              </div>
-            </div>
-            <button type="submit" className="md:col-span-2 bg-accent text-white font-bold rounded-lg py-3 hover:opacity-90 transition-opacity text-sm uppercase tracking-widest shadow-md">
-              {t.save}
-            </button>
-          </form>
-        </section>
-
-        {/* Add Category Section */}
-        <section className="bg-card border border-border-subtle p-8 rounded-xl shadow-sm h-full">
-          <h3 className="section-title text-sm font-bold mb-6 flex items-center gap-2 uppercase tracking-widest text-text-secondary">
-            <Package className="w-4 h-4 text-accent" />
-            {t.addCategory}
-          </h3>
-          <form onSubmit={addCategory} className="space-y-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-text-secondary px-1">{t.categoryName}</label>
-              <input placeholder={t.categoryName} className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-2.5 text-sm focus:border-accent outline-none" value={newCategoryName || ''} onChange={e => setNewCategoryName(e.target.value)} />
-            </div>
-            <button type="submit" className="w-full bg-white border border-border-subtle text-text-main font-bold rounded-lg py-3 hover:bg-bg-base transition-colors text-sm uppercase tracking-widest">
-              {t.save}
-            </button>
-          </form>
-
-          <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-[10px] uppercase font-bold text-text-secondary tracking-widest">{t.categories}</h4>
-              <button onClick={seedDefaults} className="text-[9px] font-black text-accent hover:underline uppercase tracking-widest flex items-center gap-1">
-                <Plus className="w-2.5 h-2.5" />{language === 'ar' ? "إعداد افتراضي" : language === 'fr' ? "CONFIG PAR DÉFAUT" : "SETUP DEFAULTS"}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(categories || []).map(c => (
-                <div key={c.id} className="group/cat flex items-center gap-2 bg-bg-base border border-border-subtle px-3 py-1.5 rounded-xl text-[11px] font-bold text-text-main hover:border-accent/40 transition-colors">
-                  <span>{c.name}</span>
-                  <button onClick={() => deleteCategory(c.id)} className="text-text-secondary hover:text-danger opacity-0 group-hover/cat:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                </div>
-              ))}
-              {categories.length === 0 && <div className="text-[11px] text-text-secondary italic">{language === 'ar' ? "لا توجد فئات حالياً" : language === 'fr' ? "Aucune catégorie pour le moment" : "No categories yet"}</div>}
+      {/* --- EXECUTIVE KPI SUMMARY CARDS --- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total References */}
+        <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border-subtle shadow-xs relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-text-secondary">
+              {language === 'ar' ? 'إجمالي المنتجات' : 'Total Références'}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Boxes className="w-4 h-4" />
             </div>
           </div>
-        </section>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-black text-text-main font-mono">{stockStats.totalRefs}</span>
+            <span className="text-[11px] font-bold text-text-secondary">articles</span>
+          </div>
+          <div className="mt-1 text-[10px] text-text-secondary font-medium">
+            {formatNumber(stockStats.totalUnits)} unités au dépôt
+          </div>
+        </div>
+
+        {/* Total Retail Value */}
+        <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border-subtle shadow-xs relative overflow-hidden group hover:border-blue-500/40 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-text-secondary">
+              {language === 'ar' ? 'قيمة البيع الإجمالية' : 'Valeur Stock (Vente)'}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">
+              {formatNumber(stockStats.totalRetailValue)}
+            </span>
+            <span className="text-[10px] font-black text-text-secondary">{t.currency}</span>
+          </div>
+          <div className="mt-1 text-[10px] text-text-secondary font-medium">
+            Chiffre d'affaires potentiel
+          </div>
+        </div>
+
+        {/* Total Cost Value */}
+        {permissions.viewCostPrice ? (
+          <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border-subtle shadow-xs relative overflow-hidden group hover:border-purple-500/40 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                {language === 'ar' ? 'تكلفة الشراء الإجمالية' : 'Valeur d\'Achat (Coût)'}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <Coins className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">
+                {formatNumber(stockStats.totalCostValue)}
+              </span>
+              <span className="text-[10px] font-black text-text-secondary">{t.currency}</span>
+            </div>
+            <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+              Marge potentielle: +{stockStats.totalCostValue > 0 ? (((stockStats.totalRetailValue - stockStats.totalCostValue) / stockStats.totalCostValue) * 100).toFixed(1) : 0}%
+            </div>
+          </div>
+        ) : (
+          <div className="bg-card p-4 sm:p-5 rounded-2xl border border-border-subtle shadow-xs relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                Catégories Actives
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-xl sm:text-2xl font-black text-text-main font-mono">{categories.length}</span>
+              <span className="text-[11px] font-bold text-text-secondary">familles</span>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Alerts */}
+        <div 
+          onClick={() => setHasDismissedLowStock(false)}
+          className="bg-card p-4 sm:p-5 rounded-2xl border border-red-500/30 shadow-xs relative overflow-hidden group hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              {language === 'ar' ? 'تنبيهات المخزون' : 'Alertes & Ruptures'}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-black text-red-600 font-mono">
+              {lowStockProductsAlert.length}
+            </span>
+            <span className="text-[11px] font-bold text-red-500/80">articles critiques</span>
+          </div>
+          <div className="mt-1 text-[10px] text-text-secondary font-medium flex items-center gap-2">
+            <span className="text-red-600 font-bold">{stockStats.outOfStockCount} épuisés</span>
+            <span>•</span>
+            <span className="text-amber-600 font-bold">{stockStats.lowStockCount} faibles</span>
+            <span className="underline ml-auto text-accent">Voir</span>
+          </div>
+        </div>
       </div>
 
+      {/* --- ACTION BAR (QUICK TOGGLES & TOOLS) --- */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-card p-3 sm:p-4 rounded-2xl border border-border-subtle shadow-xs">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Toggle Add Product */}
+          <button 
+            type="button"
+            onClick={() => {
+              setShowAddProduct(!showAddProduct);
+              if (showCategoryManager) setShowCategoryManager(false);
+            }}
+            className={cn(
+              "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-xs",
+              showAddProduct 
+                ? "bg-accent text-white shadow-md shadow-accent/25" 
+                : "bg-bg-base hover:bg-bg-base/80 text-text-main border border-border-subtle"
+            )}
+          >
+            {showAddProduct ? <ChevronUp className="w-4 h-4" /> : <Plus className="w-4 h-4 text-accent" />}
+            <span>{t.addProduct}</span>
+          </button>
+
+          {/* Toggle Categories */}
+          <button 
+            type="button"
+            onClick={() => {
+              setShowCategoryManager(!showCategoryManager);
+              if (showAddProduct) setShowAddProduct(false);
+            }}
+            className={cn(
+              "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-xs",
+              showCategoryManager 
+                ? "bg-accent text-white shadow-md shadow-accent/25" 
+                : "bg-bg-base hover:bg-bg-base/80 text-text-main border border-border-subtle"
+            )}
+          >
+            <Package className="w-4 h-4 text-accent" />
+            <span>{t.categories} ({categories.length})</span>
+          </button>
+
+          {/* View Low Stock Alert button */}
+          {lowStockProductsAlert.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setHasDismissedLowStock(false)}
+              className="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 border border-red-200 dark:border-red-800 cursor-pointer"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500 animate-pulse" />
+              <span>{language === 'ar' ? 'قائمة النواقص' : 'Alertes'} ({lowStockProductsAlert.length})</span>
+            </button>
+          )}
+        </div>
+
+        {/* Right actions: Export / Import / View Mode */}
+        <div className="flex items-center gap-2">
+          {/* CSV Tools */}
+          <div className="flex bg-bg-base border border-border-subtle rounded-xl overflow-hidden shadow-2xs">
+            <button 
+              onClick={exportToCSV} 
+              className="px-3.5 py-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-main hover:bg-card transition-colors border-r border-border-subtle cursor-pointer"
+              title="Exporter tout en CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">{language === 'ar' ? "تصدير" : "Exporter"}</span>
+            </button>
+            <label className={cn("px-3.5 py-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-main hover:bg-card transition-colors cursor-pointer", isImporting && "opacity-50 pointer-events-none")}>
+              <Upload className="w-3.5 h-3.5 text-accent" />
+              <span className="hidden sm:inline">{isImporting ? "..." : (language === 'ar' ? "استيراد" : "Importer")}</span>
+              <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImportCSV} />
+            </label>
+          </div>
+
+          <button 
+            onClick={() => setShowGrouped(!showGrouped)} 
+            className={cn(
+              "px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border shadow-2xs flex items-center gap-1.5 cursor-pointer", 
+              showGrouped ? "bg-accent text-white border-accent" : "bg-bg-base text-text-secondary border-border-subtle hover:bg-card"
+            )}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{showGrouped ? "Vue Liste" : "Par Catégorie"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* --- COLLAPSIBLE: ADD PRODUCT FORM --- */}
+      <AnimatePresence>
+        {showAddProduct && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <section className="bg-card border-2 border-accent/30 p-6 sm:p-8 rounded-3xl shadow-md">
+              <div className="flex items-center justify-between pb-4 border-b border-border-subtle mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
+                    <Plus className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-text-main tracking-tight uppercase">
+                      {t.addProduct}
+                    </h3>
+                    <p className="text-xs text-text-secondary">Ajoutez une nouvelle référence au catalogue du magasin</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowAddProduct(false)}
+                  className="p-2 rounded-xl hover:bg-bg-base text-text-secondary hover:text-text-main transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={addProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* Product Name */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                    <Package className="w-3.5 h-3.5 text-accent" />
+                    {t.productName}
+                  </label>
+                  <input 
+                    placeholder="Ex: POMPE IMMERGEE 10/10 2HP" 
+                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all" 
+                    value={name || ''} 
+                    onChange={e => setName(e.target.value)} 
+                    required
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                    <FolderOpen className="w-3.5 h-3.5 text-accent" />
+                    {t.category}
+                  </label>
+                  <select 
+                    className={cn("w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all", language === 'ar' && "text-right")} 
+                    value={categoryId || ''} 
+                    onChange={e => setCategoryId(e.target.value)}
+                  >
+                    <option value="">{t.noCategory}</option>
+                    {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                {/* Barcode */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-accent" />
+                    {t.barcode}
+                  </label>
+                  <input 
+                    placeholder="Ex: 611123456789" 
+                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main placeholder:text-text-secondary/40 outline-none transition-all" 
+                    value={barcode || ''} 
+                    onChange={e => setBarcode(e.target.value)} 
+                  />
+                </div>
+
+                {/* Supplier */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                      <Store className="w-3.5 h-3.5 text-accent" />
+                      {t.supplier}
+                    </label>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowQuickSupplierModal(true)} 
+                      className="text-accent hover:underline text-[10px] font-black cursor-pointer"
+                    >
+                      + {language === 'ar' ? "مورد جديد" : "Nouveau"}
+                    </button>
+                  </div>
+                  <select 
+                    className={cn("w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-bold text-text-main outline-none transition-all", language === 'ar' && "text-right")} 
+                    value={supplier || ''} 
+                    onChange={e => setSupplier(e.target.value)}
+                  >
+                    <option value="">{language === 'ar' ? "اختر مورد" : "Sélectionner Fournisseur"}</option>
+                    {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </select>
+                </div>
+
+                {/* Cost Price */}
+                {permissions.viewCostPrice && (
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5 text-purple-500" />
+                      {t.costPrice} ({t.currency})
+                    </label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0.00" 
+                      className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none transition-all" 
+                      value={costPrice || ''} 
+                      onChange={e => setCostPrice(e.target.value)} 
+                    />
+                  </div>
+                )}
+
+                {/* Selling Price */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                    {t.price} ({t.currency})
+                  </label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0.00" 
+                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 outline-none transition-all" 
+                    value={price || ''} 
+                    onChange={e => setPrice(e.target.value)} 
+                    required
+                  />
+                </div>
+
+                {/* Initial Qty */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary">
+                    {t.qty} (Stock initial)
+                  </label>
+                  <input 
+                    type="number" 
+                    placeholder="0" 
+                    disabled={!permissions.editStock} 
+                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none disabled:opacity-50 transition-all" 
+                    value={qty || ''} 
+                    onChange={e => setQty(e.target.value)} 
+                  />
+                </div>
+
+                {/* Min Stock Alert Threshold */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase font-black text-text-secondary flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                    Seuil Alerte (Min)
+                  </label>
+                  <input 
+                    type="number" 
+                    placeholder="5" 
+                    className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-accent rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-text-main outline-none transition-all" 
+                    value={minStock || ''} 
+                    onChange={e => setMinStock(e.target.value)} 
+                  />
+                </div>
+
+                {/* Live Margin Calculation Preview */}
+                {costPrice && price && Number(costPrice) > 0 && (
+                  <div className="md:col-span-2 lg:col-span-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/25 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-500" />
+                      Calcul de rentabilité en direct :
+                    </span>
+                    <div className="flex items-center gap-4 font-mono">
+                      <span>Bénéfice : <strong className="font-black">+{formatNumber(Number(price) - Number(costPrice))} DH</strong> / pièce</span>
+                      <span className="bg-emerald-600 text-white px-2.5 py-0.5 rounded-lg text-xs font-black">
+                        +{(((Number(price) - Number(costPrice)) / Number(costPrice)) * 100).toFixed(1)}% Marge
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit button */}
+                <div className="md:col-span-2 lg:col-span-4 pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={isAddingProduct}
+                    className="w-full bg-accent hover:bg-accent/90 text-white font-black rounded-xl py-3.5 transition-all text-xs uppercase tracking-widest shadow-lg shadow-accent/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isAddingProduct ? "Enregistrement..." : t.save}</span>
+                  </button>
+                </div>
+              </form>
+            </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- COLLAPSIBLE: CATEGORIES MANAGEMENT PANEL --- */}
+      <AnimatePresence>
+        {showCategoryManager && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <section className="bg-card border-2 border-border-subtle p-6 sm:p-8 rounded-3xl shadow-sm">
+              <div className="flex items-center justify-between pb-4 border-b border-border-subtle mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-text-main tracking-tight uppercase">
+                      Gestion des Catégories ({categories.length})
+                    </h3>
+                    <p className="text-xs text-text-secondary">Organisez vos familles d'articles (Pompage, Tuyauterie, Solaire, Raccords...)</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCategoryManager(false)}
+                  className="p-2 rounded-xl hover:bg-bg-base text-text-secondary hover:text-text-main transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Add Category Form */}
+                <form onSubmit={addCategory} className="lg:col-span-4 space-y-4 bg-bg-base/40 p-5 rounded-2xl border border-border-subtle">
+                  <label className="text-[11px] uppercase font-black text-text-secondary block">
+                    {t.addCategory}
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      placeholder="Nom de la catégorie" 
+                      className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-sm font-bold focus:border-accent outline-none" 
+                      value={newCategoryName || ''} 
+                      onChange={e => setNewCategoryName(e.target.value)} 
+                    />
+                    <button 
+                      type="submit" 
+                      className="bg-accent text-white px-5 py-2.5 font-black rounded-xl text-xs uppercase tracking-wider hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
+                    >
+                      {t.save}
+                    </button>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={seedDefaults} 
+                    className="w-full text-center text-[10px] font-black text-accent hover:underline uppercase tracking-wider py-1 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{language === 'ar' ? "إعداد افتراضي" : "CONFIG PAR DÉFAUT"}</span>
+                  </button>
+                </form>
+
+                {/* Categories Pills */}
+                <div className="lg:col-span-8 space-y-2">
+                  <span className="text-[11px] uppercase font-black text-text-secondary block">
+                    Catégories existantes & Références associées
+                  </span>
+                  <div className="flex flex-wrap gap-2.5 max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                    {(categories || []).map(c => {
+                      const count = products.filter(p => p.categoryId === c.id).length;
+                      return (
+                        <div 
+                          key={c.id} 
+                          className="group/cat flex items-center gap-2 bg-card border border-border-subtle px-3.5 py-2 rounded-xl text-xs font-bold text-text-main hover:border-accent/50 shadow-2xs transition-all"
+                        >
+                          <span>{c.name}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-bg-base text-text-secondary font-black">
+                            {count}
+                          </span>
+                          <button 
+                            type="button"
+                            onClick={() => deleteCategory(c.id)} 
+                            className="text-text-secondary hover:text-danger opacity-0 group-hover/cat:opacity-100 transition-opacity p-0.5 cursor-pointer"
+                            title="Supprimer la catégorie"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* --- INVENTORY LIST SECTION --- */}
-      <div className="space-y-6">
-        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end gap-4">
-          <div className="flex flex-col gap-2">
-            <h3 className="text-xl font-bold tracking-tight text-text-main">{t.inventory}</h3>
-            {/* Search Bar */}
-            <div className="relative w-full xl:w-96">
-              <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary", language === 'ar' ? 'right-3' : 'left-3')} />
-              <input 
-                type="text"
-                placeholder={language === 'ar' ? "بحث باسم، باركود، مورد..." : language === 'fr' ? "Rechercher par nom, code-barres, fournisseur..." : "Search name, barcode, supplier..."}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className={cn("w-full bg-white dark:bg-slate-900 border border-border-subtle rounded-xl py-2.5 text-sm font-bold focus:border-accent outline-none transition-all shadow-sm", language === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4')}
-              />
-            </div>
+      <div className="space-y-4">
+        {/* Search, Status Tabs & Filters */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-border-subtle shadow-xs">
+          {/* Search Bar */}
+          <div className="relative flex-1 max-w-xl group">
+            <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary group-focus-within:text-accent transition-colors", language === 'ar' ? 'right-3.5' : 'left-3.5')} />
+            <input 
+              type="text"
+              placeholder={language === 'ar' ? "بحث باسم المنتج، الباركود، المورد..." : "Rechercher par nom, code-barres, fournisseur..."}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className={cn("w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle rounded-xl py-2.5 text-sm font-bold text-text-main focus:border-accent outline-none transition-all shadow-2xs", language === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4')}
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute top-1/2 -translate-y-1/2 right-3 text-text-secondary hover:text-text-main p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Export / Import CSV */}
-            <div className="flex bg-card border border-border-subtle rounded-lg overflow-hidden shadow-sm">
-               <button onClick={exportToCSV} className="px-4 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors border-r border-border-subtle">
-                 <Download className="w-3.5 h-3.5 text-emerald-500" /> {language === 'ar' ? "تصدير" : language === 'fr' ? "Exporter" : "Export"}
-               </button>
-               <label className={cn("px-4 py-2.5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors cursor-pointer", isImporting && "opacity-50 pointer-events-none")}>
-                 <Upload className="w-3.5 h-3.5 text-accent" /> {isImporting ? "..." : (language === 'ar' ? "استيراد" : language === 'fr' ? "Importer" : "Import")}
-                 <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImportCSV} />
-               </label>
+          {/* Status Segmented Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex p-1 bg-bg-base rounded-xl border border-border-subtle">
+              {(['all', 'inStock', 'lowStock', 'outOfStock'] as const).map(status => {
+                const label = status === 'all' 
+                  ? (language === 'ar' ? 'الكل' : 'Tous') 
+                  : status === 'inStock' 
+                    ? t.inStock 
+                    : status === 'lowStock' 
+                      ? t.lowStock 
+                      : t.outOfStock;
+                const count = status === 'all' 
+                  ? products.length 
+                  : status === 'inStock' 
+                    ? products.filter(p => p.qty > (p.minStock ?? 5)).length 
+                    : status === 'lowStock' 
+                      ? criticalStockProducts.length 
+                      : zeroStockProducts.length;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setFilterStockStatus(status)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
+                      filterStockStatus === status 
+                        ? "bg-card text-text-main shadow-xs border border-border-subtle" 
+                        : "text-text-secondary hover:text-text-main"
+                    )}
+                  >
+                    <span>{label}</span>
+                    <span className={cn(
+                      "text-[9px] font-mono px-1.5 py-0.2 rounded-md font-bold",
+                      status === 'outOfStock' && count > 0 ? "bg-red-500/10 text-red-600" : "bg-bg-base text-text-secondary"
+                    )}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <button onClick={() => setShowGrouped(!showGrouped)} className={cn("px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all border shadow-sm flex items-center gap-2", showGrouped ? "bg-accent text-white border-accent" : "bg-card text-text-secondary border-border-subtle hover:bg-bg-base")}>
-              <LayoutGrid className="w-3.5 h-3.5" />
-              {language === 'ar' ? "عرض حسب الفئة" : language === 'fr' ? "Afficher par catégorie" : "Show By Category"}
-            </button>
-            <div className="flex items-center gap-2">
-              <select className={cn("bg-card border border-border-subtle rounded-lg px-4 py-2.5 text-xs focus:border-accent outline-none font-bold shadow-sm", language === 'ar' && "text-right")} value={filterCategoryId} onChange={e => setFilterCategoryId(e.target.value)}>
-                <option value="">{t.allCategories}</option>
-                <option value="none">{t.noCategory}</option>
-                {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <select className={cn("bg-card border border-border-subtle rounded-lg px-4 py-2.5 text-xs focus:border-accent outline-none font-bold shadow-sm", language === 'ar' && "text-right")} value={filterStockStatus} onChange={e => setFilterStockStatus(e.target.value as any)}>
-                <option value="all">{language === 'ar' ? "كل الحالات" : language === 'fr' ? "Tous les statuts" : "All Status"}</option>
-                <option value="inStock">{t.inStock}</option>
-                <option value="lowStock">{t.lowStock}</option>
-                <option value="outOfStock">{t.outOfStock}</option>
-              </select>
-            </div>
+            {/* Category Filter Select */}
+            <select 
+              className={cn("bg-bg-base border border-border-subtle rounded-xl px-3.5 py-2 text-xs focus:border-accent outline-none font-bold shadow-2xs text-text-main cursor-pointer", language === 'ar' && "text-right")} 
+              value={filterCategoryId} 
+              onChange={e => setFilterCategoryId(e.target.value)}
+            >
+              <option value="">{t.allCategories} ({categories.length})</option>
+              <option value="none">{t.noCategory}</option>
+              {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -852,56 +1340,116 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                             );
                           })()}
                         </td>
-                        {permissions.viewCostPrice && <td className="p-4 text-text-secondary italic">{formatNumber(p.costPrice || 0)} {t.currency}</td>}
-                        <td className="p-4 text-text-main font-bold">{formatNumber(p.price)} {t.currency}</td>
+                        {permissions.viewCostPrice && (
+                          <td className="p-4 text-text-secondary font-mono font-medium">
+                            {formatNumber(p.costPrice || 0)} <span className="text-[10px] opacity-70">{t.currency}</span>
+                          </td>
+                        )}
                         <td className="p-4">
-                          <div className="flex items-center gap-3">
+                          <div className="font-bold text-text-main font-mono text-sm">
+                            {formatNumber(p.price)} <span className="text-[10px] text-text-secondary">{t.currency}</span>
+                          </div>
+                          {permissions.viewCostPrice && p.costPrice && Number(p.costPrice) > 0 && (
+                            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              +{(((Number(p.price) - Number(p.costPrice)) / Number(p.costPrice)) * 100).toFixed(0)}% marge
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
                             {permissions.editStock ? (
-                              <>
-                                <button onClick={() => updateStock(p.id, p.qty - 1)} className="w-6 h-6 border border-border-subtle rounded-md flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors text-text-secondary shadow-sm">-</button>
-                                <span className={cn("font-black w-10 text-center text-sm", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-main")}>{p.qty}</span>
-                                <button onClick={() => updateStock(p.id, p.qty + 1)} className="w-6 h-6 border border-border-subtle rounded-md flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors text-text-secondary shadow-sm">+</button>
+                              <div className="inline-flex items-center bg-bg-base/80 p-0.5 rounded-xl border border-border-subtle shadow-2xs">
                                 <button 
-                                  onClick={() => {
-                                    setAdjProduct(p); setAdjCostPrice(p.costPrice?.toString() || '0'); setAdjSupplierId(p.supplierId || '');
-                                    setShowAdjModal(true);
-                                  }}
-                                  className="ml-2 w-7 h-7 bg-accent/10 rounded-md flex items-center justify-center hover:bg-accent text-accent hover:text-white transition-all shadow-sm"
-                                  title={t.stockAdjustment}
+                                  onClick={() => updateStock(p.id, p.qty - 1)} 
+                                  className="w-6 h-6 rounded-lg bg-card hover:bg-red-500/10 hover:text-red-500 text-text-secondary flex items-center justify-center font-black transition-all cursor-pointer"
+                                  title="Diminuer de 1"
                                 >
-                                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                                  <Minus className="w-3 h-3" />
                                 </button>
-                              </>
+                                <span className={cn(
+                                  "px-2.5 font-mono font-black text-xs text-center min-w-[42px]", 
+                                  p.qty <= 0 ? "text-red-600 dark:text-red-400" : p.qty <= (p.minStock ?? 5) ? "text-amber-600 dark:text-amber-400" : "text-text-main"
+                                )}>
+                                  {formatNumber(p.qty)}
+                                </span>
+                                <button 
+                                  onClick={() => updateStock(p.id, p.qty + 1)} 
+                                  className="w-6 h-6 rounded-lg bg-card hover:bg-emerald-500/10 hover:text-emerald-500 text-text-secondary flex items-center justify-center font-black transition-all cursor-pointer"
+                                  title="Augmenter de 1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
                             ) : (
-                              <span className={cn("font-bold text-sm", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-main")}>{p.qty}</span>
+                              <span className={cn("font-bold font-mono text-sm", p.qty <= (p.minStock ?? 5) ? "text-danger" : "text-text-main")}>{formatNumber(p.qty)}</span>
                             )}
+
+                            {permissions.editStock && (
+                              <button 
+                                onClick={() => {
+                                  setAdjProduct(p); setAdjCostPrice(p.costPrice?.toString() || '0'); setAdjSupplierId(p.supplierId || '');
+                                  setShowAdjModal(true);
+                                }}
+                                className="w-7 h-7 rounded-lg bg-accent/10 hover:bg-accent text-accent hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                                title={t.stockAdjustment}
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
                             {p.qty <= (p.minStock ?? 5) && (
-                              <span className={cn("text-[9px] ml-2 font-black px-2 py-0.5 rounded-full uppercase tracking-tighter border", p.qty === 0 ? "bg-red-100 text-danger border-red-200 dark:bg-red-900/30" : "bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-900/30")}>
-                                {p.qty === 0 ? (language === 'ar' ? 'نفذت' : language === 'fr' ? 'Rupture' : 'Out') : (language === 'ar' ? 'منخفض' : language === 'fr' ? 'Faible' : 'Low')}
+                              <span className={cn(
+                                "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border", 
+                                p.qty === 0 
+                                  ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:border-red-800" 
+                                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800"
+                              )}>
+                                {p.qty === 0 ? (language === 'ar' ? 'نفذت' : 'Rupture') : (language === 'ar' ? 'منخفض' : `Faible (≤${p.minStock ?? 5})`)}
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="p-4 font-bold text-text-main">
+                        <td className="p-4 font-bold text-text-main font-mono">
                           {p.soldQty || 0}
                         </td>
-                        <td className="p-4 text-[11px] font-bold text-text-secondary">{p.supplier || '-'}</td>
+                        <td className="p-4">
+                          {p.supplier ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-text-secondary bg-bg-base/80 px-2 py-0.5 rounded-md border border-border-subtle">
+                              <Store className="w-3 h-3 text-accent" />
+                              {p.supplier}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-text-secondary/50">-</span>
+                          )}
+                        </td>
                         <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1.5">
                             <button 
                               onClick={() => viewProductHistory(p)} 
-                              className="text-text-secondary hover:bg-accent/10 hover:text-accent p-2 rounded-lg transition-colors" 
-                              title={language === 'ar' ? 'سجل المنتج' : language === 'fr' ? 'Historique du produit' : 'Product History'}
+                              className="text-text-secondary hover:bg-blue-500/10 hover:text-blue-600 p-2 rounded-xl transition-colors cursor-pointer" 
+                              title={language === 'ar' ? 'سجل حركة المنتج' : 'Historique des mouvements'}
                             >
                               <History className="w-4 h-4" />
                             </button>
-                            <button onClick={() => startEditing(p)} className="text-accent hover:bg-accent/10 p-2 rounded-lg transition-colors" title={language === 'ar' ? 'تعديل' : language === 'fr' ? 'Modifier' : 'Edit'}><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={async () => {
-                              if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : language === 'fr' ? 'Supprimer ce produit du stock ?' : 'Remove product from inventory?')) {
-                                try { await api.deleteProduct(p.id); setMessage({ text: language === 'ar' ? "تم الحذف." : "Product removed.", type: 'success' }); onRefresh(); } 
-                                catch (err) { setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' }); }
-                              }
-                            }} className="text-text-secondary hover:bg-danger/10 hover:text-danger p-2 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button 
+                              onClick={() => startEditing(p)} 
+                              className="text-text-secondary hover:bg-accent/10 hover:text-accent p-2 rounded-xl transition-colors cursor-pointer" 
+                              title={language === 'ar' ? 'تعديل المنتج' : 'Modifier'}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : language === 'fr' ? 'Supprimer ce produit du stock ?' : 'Remove product from inventory?')) {
+                                  try { await api.deleteProduct(p.id); setMessage({ text: language === 'ar' ? "تم الحذف." : "Product removed.", type: 'success' }); onRefresh(); } 
+                                  catch (err) { setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' }); }
+                                }
+                              }} 
+                              className="text-text-secondary hover:bg-danger/10 hover:text-danger p-2 rounded-xl transition-colors cursor-pointer" 
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1217,66 +1765,221 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
         {/* Low Stock Alert Modal */}
         {showLowStockAlert && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[150] flex items-center justify-center p-3 sm:p-5">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.9, y: 20 }} 
-              className="bg-card border border-red-500/30 rounded-[2rem] p-8 w-full max-w-3xl shadow-[0_0_50px_rgba(239,68,68,0.15)] max-h-[85vh] flex flex-col relative overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 15 }} 
+              className="bg-card border-2 border-red-500/40 rounded-3xl p-5 sm:p-7 w-full max-w-4xl shadow-2xl max-h-[90vh] flex flex-col relative overflow-hidden"
             >
-              {/* Decorative background elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
-              
-              <div className="relative z-10 flex flex-col h-full overflow-hidden">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 shrink-0 bg-red-50 dark:bg-red-900/10 p-4 sm:p-5 rounded-2xl border border-red-100 dark:border-red-900/30">
-                  <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center shadow-inner shrink-0 ring-4 ring-white dark:ring-slate-800">
-                      <AlertTriangle className="w-6 h-6" />
+              {/* Header */}
+              <div className="pb-5 border-b border-border-subtle shrink-0 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-center justify-center shrink-0 shadow-xs">
+                      <AlertTriangle className="w-6 h-6 animate-pulse" />
                     </div>
-                    <div className={cn(language === 'ar' && "text-right")}>
-                      <h3 className="text-lg font-black text-red-600 dark:text-red-400 tracking-tight leading-tight">
-                        {language === 'ar' ? 'تنبيه نفاذ المخزون !' : language === 'fr' ? 'Alerte Rupture de Stock !' : 'Low Stock Alert !'}
-                      </h3>
-                      <div className="text-sm font-bold text-red-500 mt-0.5">
-                        {language === 'ar' ? 'المنتجات الناقصة:' : language === 'fr' ? 'Produits manquants:' : 'Missing products:'} 
-                        <span className="font-black ml-1 text-lg">{lowStockProductsAlert.length}</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-red-600 dark:text-red-400 tracking-tight uppercase">
+                          {language === 'ar' ? 'تنبيه نفاذ المخزون والحد الأدنى' : 'Alerte Ruptures & Réapprovisionnement'}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-500 text-white shadow-xs">
+                          {lowStockProductsAlert.length}
+                        </span>
                       </div>
+                      <p className="text-xs text-text-secondary font-medium mt-0.5">
+                        {language === 'ar'
+                          ? 'المنتجات التالية نفذت أو قاربت على النفاد، يرجى التنسيق مع الموردين.'
+                          : 'Ces articles ont atteint ou dépassé le seuil minimum d\'alerte. Commande fournisseur recommandée.'}
+                      </p>
                     </div>
                   </div>
-                  
-                  <button 
-                    onClick={() => setHasDismissedLowStock(true)}
-                    className="w-full sm:w-auto group relative overflow-hidden bg-red-500 hover:bg-red-600 text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg shadow-red-500/20 active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                  >
-                    <span className="relative z-10">{language === 'ar' ? 'حسناً، فهمت' : language === 'fr' ? 'D\'accord, j\'ai compris' : 'Understood'}</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={exportLowStockCSV}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-bg-base hover:bg-card border border-border-subtle text-text-main flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                      title="Exporter la liste pour les fournisseurs"
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>{language === 'ar' ? 'تصدير الطلبية' : 'Exporter CSV'}</span>
+                    </button>
+                    <button 
+                      onClick={() => setHasDismissedLowStock(true)}
+                      className="p-2 rounded-xl text-text-secondary hover:text-text-main hover:bg-bg-base transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 border border-border-subtle rounded-2xl bg-bg-base/40 shadow-inner p-2 custom-scrollbar">
-                  <div className="grid gap-2">
-                    {lowStockProductsAlert.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border-subtle hover:border-red-500/30 transition-colors shadow-sm group">
-                        <div className={cn("flex flex-col", language === 'ar' && "text-right")}>
-                          <span className="font-bold text-text-main text-sm group-hover:text-red-500 transition-colors">{p.name}</span>
-                          <span className="text-[10px] font-mono text-text-secondary mt-0.5">{p.barcode || `#${p.id.slice(0,8).toUpperCase()}`}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">{language === 'ar' ? 'الكمية' : 'Qty'}</span>
-                            <span className={cn("text-lg font-black", p.qty <= 0 ? "text-red-500" : "text-orange-500")}>{p.qty}</span>
-                          </div>
-                          <div className="h-8 w-px bg-border-subtle mx-2"></div>
-                          <div className="flex flex-col items-center opacity-60">
-                            <span className="text-[10px] uppercase tracking-widest text-text-secondary font-bold">{language === 'ar' ? 'التنبيه' : 'Min'}</span>
-                            <span className="text-sm font-black text-text-secondary">{p.minStock ?? 5}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                {/* Filter and Search Bar inside Alert Modal */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                  {/* Search inside modal */}
+                  <div className="relative flex-1 group">
+                    <Search className="absolute top-1/2 -translate-y-1/2 left-3 w-3.5 h-3.5 text-text-secondary group-focus-within:text-red-500" />
+                    <input 
+                      type="text" 
+                      placeholder={language === 'ar' ? 'بحث في المنتجات الناقصة...' : 'Filtrer les produits critiques...'} 
+                      value={alertSearch} 
+                      onChange={e => setAlertSearch(e.target.value)}
+                      className="w-full bg-bg-base/70 hover:bg-bg-base border border-border-subtle focus:border-red-500 rounded-xl py-2 pl-9 pr-8 text-xs font-bold text-text-main outline-none transition-all"
+                    />
+                    {alertSearch && (
+                      <button onClick={() => setAlertSearch('')} className="absolute top-1/2 -translate-y-1/2 right-2.5 text-text-secondary hover:text-text-main p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-1.5 p-1 bg-bg-base rounded-xl border border-border-subtle shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => setAlertFilter('all')}
+                      className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all", alertFilter === 'all' ? "bg-card text-text-main shadow-2xs" : "text-text-secondary")}
+                    >
+                      Tous ({lowStockProductsAlert.length})
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setAlertFilter('zero')}
+                      className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1", alertFilter === 'zero' ? "bg-red-500 text-white shadow-2xs" : "text-red-600")}
+                    >
+                      <span>Rupture (0)</span>
+                      <span className="font-mono">({zeroStockProducts.length})</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setAlertFilter('low')}
+                      className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1", alertFilter === 'low' ? "bg-amber-500 text-white shadow-2xs" : "text-amber-600")}
+                    >
+                      <span>Critique (≤ Min)</span>
+                      <span className="font-mono">({criticalStockProducts.length})</span>
+                    </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Scrollable Products List */}
+              <div className="flex-1 overflow-y-auto min-h-0 py-3 space-y-2.5 custom-scrollbar pr-1 my-2">
+                {filteredAlertProducts.length === 0 ? (
+                  <div className="py-12 text-center text-text-secondary">
+                    <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500/40 mb-2" />
+                    <p className="font-bold text-xs">Aucun article ne correspond aux critères de recherche.</p>
+                  </div>
+                ) : (
+                  filteredAlertProducts.map(p => {
+                    const category = categories.find(c => c.id === p.categoryId);
+                    const min = p.minStock ?? 5;
+                    const percent = Math.min(100, Math.max(0, (p.qty / min) * 100));
+                    const isZero = p.qty <= 0;
+
+                    return (
+                      <div 
+                        key={p.id} 
+                        className={cn(
+                          "p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs group",
+                          isZero 
+                            ? "bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 hover:border-red-500/50" 
+                            : "bg-amber-50/30 dark:bg-amber-950/15 border-amber-200 dark:border-amber-900/40 hover:border-amber-500/50"
+                        )}
+                      >
+                        {/* Left: Product Info */}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-text-main text-sm group-hover:text-red-600 transition-colors">
+                              {p.name}
+                            </span>
+                            {category && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-card text-text-secondary border border-border-subtle">
+                                {category.name}
+                              </span>
+                            )}
+                            {p.supplier && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                {p.supplier}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] font-mono text-text-secondary flex items-center gap-3">
+                            <span>{p.barcode ? `Code: ${p.barcode}` : `#${p.id.slice(0, 8).toUpperCase()}`}</span>
+                            <span>•</span>
+                            <span>Prix Vente: <strong>{formatNumber(p.price)} DH</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Right: Quantity Metrics & Quick Action */}
+                        <div className="flex items-center justify-between sm:justify-end gap-5">
+                          {/* Stock Status & Progress */}
+                          <div className="flex flex-col items-end min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "text-base font-black font-mono",
+                                isZero ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                              )}>
+                                {formatNumber(p.qty)}
+                              </span>
+                              <span className="text-[10px] font-bold text-text-secondary font-mono">
+                                / seuil {min}
+                              </span>
+                              <span className={cn(
+                                "text-[9px] font-black uppercase px-2 py-0.5 rounded-md",
+                                isZero 
+                                  ? "bg-red-500 text-white" 
+                                  : "bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+                              )}>
+                                {isZero ? 'Rupture' : 'Critique'}
+                              </span>
+                            </div>
+
+                            {/* Mini Progress Bar */}
+                            <div className="w-28 h-1.5 bg-border-subtle rounded-full overflow-hidden mt-1.5">
+                              <div 
+                                className={cn("h-full rounded-full transition-all", isZero ? "w-0 bg-red-500" : "bg-amber-500")}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Quick Adjust Action */}
+                          {permissions.editStock && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAdjProduct(p);
+                                setAdjCostPrice(p.costPrice?.toString() || '0');
+                                setAdjSupplierId(p.supplierId || '');
+                                setShowAdjModal(true);
+                              }}
+                              className="px-3 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                              title="Réapprovisionner le stock immédiatement"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Réapprovisionner</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="pt-4 border-t border-border-subtle shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span className="text-xs text-text-secondary font-medium">
+                  {lowStockProductsAlert.length} articles au total nécessitant attention
+                </span>
+                <button 
+                  onClick={() => setHasDismissedLowStock(true)}
+                  className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-white font-black py-3 px-8 rounded-xl transition-all shadow-lg shadow-accent/25 active:scale-[0.99] text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{language === 'ar' ? 'حسناً، فهمت' : 'D\'accord, j\'ai compris'}</span>
+                </button>
               </div>
             </motion.div>
           </div>
