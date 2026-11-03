@@ -122,6 +122,7 @@ export interface UserProfile {
     financialsTopProducts?: boolean;
     financialsTopDebtors?: boolean;
     manageInvoices?: boolean;
+    cancelInvoices?: boolean;
   };
   createdAt: any;
 }

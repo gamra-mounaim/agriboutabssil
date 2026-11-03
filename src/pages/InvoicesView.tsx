@@ -78,7 +78,8 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
   // Permissions
   const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
   const canEditDiscount = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices;
-  const canDeleteSale = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.manageInvoices;
+  const isAdmin = currentUserRole === 'admin' || currentUser?.role === 'admin';
+  const canDeleteSale = isAdmin || permissions?.cancelInvoices === true;
   const canViewProfits = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.profits !== false;
 
   const [isDeletingSale, setIsDeletingSale] = useState(false);

@@ -2346,6 +2346,43 @@ async function startServer() {
   app.delete("/api/sales/:id", async (req, res) => {
     try {
       const { id } = req.params;
+
+      // --- Security Check: Only Admin or users with explicit cancelInvoices permission ---
+      let callerId = (req.headers['x-actor-id'] as string) || '';
+      if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
+        try {
+          const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
+          callerId = decoded?.userId;
+        } catch {}
+      }
+
+      let isAuthorized = false;
+      if (callerId === 'admin') {
+        isAuthorized = true;
+      } else if (callerId) {
+        const caller = await db.prepare('SELECT role, permissions FROM users WHERE id = ? OR username = ?').get(callerId, callerId) as any;
+        if (caller) {
+          if (caller.role === 'admin') {
+            isAuthorized = true;
+          } else {
+            let perms = caller.permissions;
+            if (typeof perms === 'string') {
+              try { perms = JSON.parse(perms); } catch {}
+            }
+            if (perms && perms.cancelInvoices === true) {
+              isAuthorized = true;
+            }
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        return res.status(403).json({
+          status: "error",
+          message: "Action non autorisée : Seul l'administrateur est autorisé à annuler une facture."
+        });
+      }
+
       const sale = await db.prepare('SELECT * FROM sales WHERE id = ?').get(id) as any;
       if (!sale) return res.status(404).json({ status: "error", message: "Vente introuvable" });
 

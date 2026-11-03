@@ -40,7 +40,7 @@ export default function StaffManagement({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'staff' | 'manager'>('staff');
-  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false });
+  const [newPerms, setNewPerms] = useState({ stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false, manageInvoices: false, cancelInvoices: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
@@ -116,7 +116,7 @@ export default function StaffManagement({
     try {
       const usernameLower = newUsername.toLowerCase().trim();
       const isPowerUser = newRole === 'admin';
-      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true } : newPerms);
+      const result = await api.register(usernameLower, newPassword, newRole, isPowerUser ? { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true, manageInvoices: true, cancelInvoices: true } : newPerms);
       
       if (result.status === "success") {
         setMessage({ text: language === 'ar' ? "تم تسجيل الموظف بنجاح." : language === 'fr' ? "Employé enregistré avec succès." : "Staff member registered successfully.", type: 'success' });
@@ -211,7 +211,7 @@ export default function StaffManagement({
     }
   };
 
-  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted' | 'financialsPaymentMethods' | 'financialsTopProducts' | 'financialsTopDebtors' | 'manageInvoices') => {
+  const togglePermission = async (userId: string, permission: 'stock' | 'customers' | 'history' | 'profits' | 'viewCostPrice' | 'editStock' | 'supplierDebt' | 'financials' | 'financialsSales' | 'financialsDebts' | 'financialsProfits' | 'financialsInventory' | 'viewSupplierDebtAmount' | 'financialsRestricted' | 'financialsPaymentMethods' | 'financialsTopProducts' | 'financialsTopDebtors' | 'manageInvoices' | 'cancelInvoices') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
     
@@ -444,8 +444,8 @@ export default function StaffManagement({
           <tbody>
             {(users || []).map(u => {
               const getIsPermActive = (permission: string) => {
-                const defaultAdminPerms: any = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true };
-                const defaultStaffPerms: any = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false };
+                const defaultAdminPerms: any = { cancelInvoices: true, stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true };
+                const defaultStaffPerms: any = { cancelInvoices: false, stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false };
                 
                 if (u.permissions && u.permissions[permission] !== undefined) {
                   return u.permissions[permission];
@@ -491,6 +491,7 @@ export default function StaffManagement({
                        <PermissionBadge label={t.permCustomers} active={getIsPermActive('customers')} onClick={() => togglePermission(u.id, 'customers')} language={language} />
                        <PermissionBadge label={t.permHistory} active={getIsPermActive('history')} onClick={() => togglePermission(u.id, 'history')} language={language} />
                        <PermissionBadge label={(t as any).manageInvoices} active={getIsPermActive('manageInvoices')} onClick={() => togglePermission(u.id, 'manageInvoices')} language={language} />
+                        <PermissionBadge label={(t as any).cancelInvoices || 'Annuler les Factures'} active={getIsPermActive('cancelInvoices')} onClick={() => togglePermission(u.id, 'cancelInvoices')} language={language} />
                        <PermissionBadge label={t.canViewProfits} active={getIsPermActive('profits')} onClick={() => togglePermission(u.id, 'profits')} language={language} />
                        <PermissionBadge label={t.canViewCostPrice} active={getIsPermActive('viewCostPrice')} onClick={() => togglePermission(u.id, 'viewCostPrice')} language={language} />
                        <PermissionBadge label={t.canEditStock} active={getIsPermActive('editStock')} onClick={() => togglePermission(u.id, 'editStock')} language={language} />
