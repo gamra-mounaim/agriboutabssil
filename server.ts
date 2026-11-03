@@ -2343,6 +2343,79 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/sales/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const sale = await db.prepare('SELECT * FROM sales WHERE id = ?').get(id) as any;
+      if (!sale) return res.status(404).json({ status: "error", message: "Vente introuvable" });
+
+      const items = await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id) as any[];
+
+      await db.transaction(async (client) => {
+        // 1. Restituer le stock de chaque produit
+        for (const item of items) {
+          if (item.product_id) {
+            const qty = Number(item.qty || 0);
+            await client.query('UPDATE products SET qty = qty + $1 WHERE id = $2', [qty, item.product_id]);
+
+            // Mettre à jour le dernier lot dans product_lots
+            const lotRes = await client.query(
+              'SELECT id FROM product_lots WHERE product_id = $1 ORDER BY created_at DESC LIMIT 1',
+              [item.product_id]
+            );
+            if (lotRes.rows.length > 0) {
+              await client.query('UPDATE product_lots SET qty = qty + $1 WHERE id = $2', [qty, lotRes.rows[0].id]);
+            } else {
+              await client.query(
+                'INSERT INTO product_lots (id, product_id, qty, cost_price, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)',
+                [uuidv4(), item.product_id, qty, item.cost_price || 0]
+              );
+            }
+
+            // Enregistrer le mouvement de stock entrant (annulation)
+            await client.query(
+              `INSERT INTO stock_movements (id, product_id, product_name, type, quantity, reason, actor, cost_price, timestamp)
+               VALUES ($1, $2, $3, 'in', $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+              [
+                uuidv4(),
+                item.product_id,
+                item.name,
+                qty,
+                `Annulation Facture #${sale.invoice_number}`,
+                sale.staff_id || 'system',
+                item.cost_price || 0
+              ]
+            );
+          }
+        }
+
+        // 2. Déduire la dette client si la facture était à crédit
+        if (sale.customer_id && Number(sale.debt_amount) > 0) {
+          await client.query(
+            'UPDATE customers SET debt = GREATEST(0, debt - $1), updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [Number(sale.debt_amount), sale.customer_id]
+          );
+          await client.query(
+            `INSERT INTO customer_history (id, customer_id, type, amount, description, date)
+             VALUES ($1, $2, 'DEBT_REDUCTION', $3, $4, CURRENT_TIMESTAMP)`,
+            [uuidv4(), sale.customer_id, Number(sale.debt_amount), `Annulation Facture #${sale.invoice_number}`]
+          );
+        }
+
+        // 3. Supprimer les lignes et la facture
+        await client.query('DELETE FROM sale_items WHERE sale_id = $1', [id]);
+        await client.query('DELETE FROM sales WHERE id = $1', [id]);
+      });
+
+      logActivity(req, 'SALE', 'delete', `Annulation et suppression de la facture N° ${sale.invoice_number} (Total : ${sale.total} DH) - Stock réintégré`, sale.staff_id || 'admin', 'Admin');
+
+      res.json({ status: "success", message: `Facture N° ${sale.invoice_number} annulée et stock restitué avec succès` });
+    } catch (e: any) {
+      console.error("Erreur lors de l'annulation de la vente:", e);
+      res.status(500).json({ status: "error", message: e.message });
+    }
+  });
+
     // --- Stats API ---
   app.get("/api/stats", async (req, res) => {
     try {

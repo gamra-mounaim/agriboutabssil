@@ -3,7 +3,7 @@ import {
   Search, Printer, Edit2, CheckCircle2, AlertTriangle, FileText, X, Eye, 
   RotateCw, Calendar, User, CreditCard, DollarSign, TrendingUp, Filter,
   ArrowUpDown, Download, Tag, Wallet, Clock, ArrowUpRight, ChevronRight,
-  ShieldAlert, Sparkles, Check, Phone, MapPin, Receipt, Hash
+  ShieldAlert, Sparkles, Check, Phone, MapPin, Receipt, Hash, Trash2
 } from 'lucide-react';
 import { cn, formatNumber } from '../utils';
 import { Sale, Customer } from '../types';
@@ -78,7 +78,48 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
   // Permissions
   const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
   const canEditDiscount = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices;
+  const canDeleteSale = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.manageInvoices;
   const canViewProfits = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.profits !== false;
+
+  const [isDeletingSale, setIsDeletingSale] = useState(false);
+  const [toast, setToast] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const handleDeleteSale = async (sale: Sale, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const invoiceNum = sale.invoiceNumber || sale.id.slice(0, 8);
+    const confirmMsg = isAr
+      ? `هل أنت متأكد من إلغاء الفاتورة رقم #${invoiceNum}؟\nسيتم إرجاع جميع السلع تلقائياً إلى المخزون وحذف الفاتورة.`
+      : `Êtes-vous sûr de vouloir annuler la facture N° #${invoiceNum} ?\nTous les articles vendus seront automatiquement réintégrés dans le stock.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsDeletingSale(true);
+    try {
+      await api.deleteSale(sale.id);
+      setToast({
+        text: isAr
+          ? `تم إلغاء الفاتورة #${invoiceNum} وإرجاع السلع إلى المخزون بنجاح.`
+          : `Facture N° #${invoiceNum} annulée et marchandise réintégrée dans le stock avec succès.`,
+        type: 'success'
+      });
+      setViewingSale(null);
+      await Promise.all([fetchData(), fetchSalesPage(salesPage, searchQuery)]);
+    } catch (err: any) {
+      setToast({
+        text: isAr ? `فشل إلغاء الفاتورة: ${err.message}` : `Échec de l'annulation: ${err.message}`,
+        type: 'error'
+      });
+    } finally {
+      setIsDeletingSale(false);
+    }
+  };
 
   // Filtered and sorted sales
   const processedSales = useMemo(() => {
@@ -720,6 +761,17 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                         )}
+
+                        {/* Cancel Invoice & Restore Stock */}
+                        {canDeleteSale && (
+                          <button
+                            onClick={(e) => handleDeleteSale(sale, e)}
+                            className="p-2 rounded-xl bg-bg-base hover:bg-rose-600 hover:text-white border border-border-subtle text-text-secondary transition-all cursor-pointer shadow-2xs"
+                            title={isAr ? 'إلغاء الفاتورة واسترجاع السلعة' : 'Annuler la facture et réintégrer le stock'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -950,6 +1002,18 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                   </button>
                 )}
 
+                {canDeleteSale && (
+                  <button
+                    disabled={isDeletingSale}
+                    onClick={() => handleDeleteSale(viewingSale)}
+                    className="py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/40 transition-all font-bold text-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                    title={isAr ? 'إلغاء الفاتورة وإرجاع السلعة للمخزون' : 'Annuler la facture et retourner le stock'}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{isDeletingSale ? (isAr ? 'جاري الإلغاء...' : 'Annulation...') : (isAr ? 'إلغاء الفاتورة' : 'Annuler la Facture')}</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => setViewingSale(null)}
                   className="py-3 px-5 rounded-2xl bg-bg-base hover:bg-border-subtle border border-border-subtle text-text-secondary font-bold text-xs cursor-pointer"
@@ -1061,6 +1125,29 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <div className="fixed bottom-6 right-6 z-[120] max-w-md">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className={cn(
+                "px-5 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 font-bold text-xs text-white",
+                toast.type === 'success' ? "bg-emerald-600 border-emerald-500 shadow-emerald-600/25" : "bg-rose-600 border-rose-500 shadow-rose-600/25"
+              )}
+            >
+              {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
+              <span>{toast.text}</span>
+              <button onClick={() => setToast(null)} className="ml-auto p-1 hover:opacity-80 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
             </motion.div>
           </div>
         )}
