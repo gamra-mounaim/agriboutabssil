@@ -364,7 +364,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       });
       return;
     }
-    const parsedPrice = parseFloat(price);
+    const parsedPrice = parseFloat(String(price).replace(',', '.'));
     if (isNaN(parsedPrice) || parsedPrice <= 0) {
       setMessage({ 
         text: language === 'ar' ? "يرجى إدخال سعر بيع صحيح أكبر من 0." : language === 'fr' ? "Veuillez saisir un prix de vente valide (> 0)." : "Please enter a valid selling price (> 0).", 
@@ -372,15 +372,26 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       });
       return;
     }
+    const parsedCost = costPrice !== '' ? parseFloat(String(costPrice).replace(',', '.')) : 0;
+    if (isNaN(parsedCost) || parsedCost < 0) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال سعر شراء صحيح أكبر من أو يساوي 0." : language === 'fr' ? "Veuillez saisir un prix d'achat valide (≥ 0)." : "Please enter a valid cost price (≥ 0).", 
+        type: 'error' 
+      });
+      return;
+    }
+    const parsedQty = qty === '' || isNaN(parseFloat(String(qty).replace(',', '.'))) ? 0 : parseFloat(String(qty).replace(',', '.'));
+    const parsedMinStock = minStock === '' || isNaN(parseFloat(String(minStock).replace(',', '.'))) ? 5 : parseFloat(String(minStock).replace(',', '.'));
+
     if (isAddingProduct) return;
     setIsAddingProduct(true);
     try {
       await api.addProduct({
         name: name.trim(),
         price: parsedPrice,
-        costPrice: parseFloat(costPrice) || 0,
-        qty: qty === '' || isNaN(parseFloat(qty)) ? 0 : parseFloat(qty),
-        minStock: minStock === '' || isNaN(parseFloat(minStock)) ? 5 : parseFloat(minStock),
+        costPrice: parsedCost,
+        qty: parsedQty,
+        minStock: parsedMinStock,
         barcode: barcode?.trim() || null,
         categoryId: categoryId || null,
         supplier: supplier || null,
@@ -419,16 +430,48 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct || isUpdatingProduct) return;
+
+    if (!editForm.name || !editForm.name.trim()) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال اسم المنتج." : language === 'fr' ? "Veuillez saisir le nom du produit." : "Please enter product name.", 
+        type: 'error' 
+      });
+      return;
+    }
+
+    const parsedPrice = parseFloat(String(editForm.price ?? '').replace(',', '.'));
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال سعر بيع صحيح أكبر من أو يساوي 0." : language === 'fr' ? "Veuillez saisir un prix de vente valide (≥ 0)." : "Please enter a valid selling price (≥ 0).", 
+        type: 'error' 
+      });
+      return;
+    }
+
+    const parsedCost = editForm.costPrice !== undefined && editForm.costPrice !== ''
+      ? parseFloat(String(editForm.costPrice).replace(',', '.'))
+      : 0;
+    if (isNaN(parsedCost) || parsedCost < 0) {
+      setMessage({ 
+        text: language === 'ar' ? "يرجى إدخال سعر شراء صحيح أكبر من أو يساوي 0." : language === 'fr' ? "Veuillez saisir un prix d'achat valide (≥ 0)." : "Please enter a valid cost price (≥ 0).", 
+        type: 'error' 
+      });
+      return;
+    }
+
+    const parsedQty = parseFloat(String(editForm.qty ?? '0').replace(',', '.'));
+    const parsedMinStock = parseFloat(String(editForm.minStock ?? '5').replace(',', '.'));
+
     setIsUpdatingProduct(true);
     try {
       await api.updateProduct(editingProduct.id, {
         ...editingProduct,
-        name: editForm.name,
-        price: parseFloat(editForm.price),
-        costPrice: parseFloat(editForm.costPrice) || 0,
-        qty: isAdmin ? (parseFloat(editForm.qty) || 0) : (editingProduct.qty || 0),
-        minStock: parseFloat(editForm.minStock) || 0,
-        barcode: editForm.barcode || null,
+        name: editForm.name.trim(),
+        price: parsedPrice,
+        costPrice: parsedCost,
+        qty: isAdmin ? (isNaN(parsedQty) ? 0 : parsedQty) : (editingProduct.qty || 0),
+        minStock: isNaN(parsedMinStock) ? 5 : parsedMinStock,
+        barcode: editForm.barcode?.trim() || null,
         categoryId: editForm.categoryId || null,
         supplier: editForm.supplier || null,
         supplierId: suppliers.find(s => s.name === editForm.supplier)?.id || null,
@@ -443,17 +486,20 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       setMessage({ text: language === 'ar' ? "تم تحديث المنتج." : language === 'fr' ? "Produit mis à jour." : "Product updated.", type: 'success' });
       onRefresh();
     } catch (err: any) {
-      setMessage({ text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message}`, type: 'error' });
+      setMessage({ text: `${language === 'ar' ? 'فشل' : language === 'fr' ? 'Échec' : 'Failed'}: ${err.message || 'Erreur'}`, type: 'error' });
+    } finally {
+      setIsUpdatingProduct(false);
     }
   };
 
   const startEditing = (p: Product) => {
+    setIsUpdatingProduct(false);
     setEditingProduct(p);
     setEditForm({
-      name: p.name,
-      price: p.price.toString(),
-      costPrice: (p.costPrice || 0).toString(),
-      qty: p.qty.toString(),
+      name: p.name || '',
+      price: (p.price ?? '').toString(),
+      costPrice: (p.costPrice ?? 0).toString(),
+      qty: (p.qty ?? 0).toString(),
       minStock: (p.minStock ?? 5).toString(),
       barcode: p.barcode || '',
       categoryId: p.categoryId || '',
@@ -475,13 +521,15 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
       const finalReason = adjType === 'out' && adjOutReason === 'damage' ? `[DAMAGE] ${adjReason}` : adjReason;
 
+      const parsedAdjCost = adjCostPrice ? parseFloat(String(adjCostPrice).replace(',', '.')) : undefined;
+
       await api.adjustStock(adjProduct.id, {
         type: adjType,
-        quantity: parseFloat(adjQty),
+        quantity: parseFloat(String(adjQty).replace(',', '.')),
         reason: finalReason,
         actor: actor,
         supplierId: finalSupplierId || null,
-        costPrice: adjCostPrice ? parseFloat(adjCostPrice) : undefined
+        costPrice: parsedAdjCost
       });
       setShowAdjModal(false);
       if (adjProduct?.name) {
@@ -1481,7 +1529,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                         <div className="relative">
                           <input
                             type="number"
-                            step="0.01"
+                            step="any"
                             min="0"
                             placeholder="0.00"
                             value={costPrice}
@@ -1503,8 +1551,8 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                         <div className="relative">
                           <input
                             type="number"
-                            step="0.01"
-                            min="0.01"
+                            step="any"
+                            min="0"
                             required
                             placeholder="0.00"
                             value={price}
@@ -1757,7 +1805,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-card border border-border-subtle rounded-3xl p-8 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-text-main tracking-tight">{language === 'ar' ? "تعديل المنتج" : language === 'fr' ? "Modifier le Produit" : "Edit Product"}</h3>
-                <button onClick={() => setEditingProduct(null)} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
+                <button onClick={() => { setEditingProduct(null); setIsUpdatingProduct(false); }} className="p-2 hover:bg-bg-base rounded-full transition-colors"><X className="w-5 h-5 text-text-secondary" /></button>
               </div>
               <form onSubmit={handleUpdateProduct} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
@@ -1767,12 +1815,12 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.price}</label>
-                    <input required type="number" step="0.01" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} />
+                    <input required type="number" step="any" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent" value={editForm.price ?? ''} onChange={e => setEditForm({...editForm, price: e.target.value})} />
                   </div>
                   {permissions.viewCostPrice && (
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest px-1">{t.costPrice}</label>
-                      <input type="number" step="0.01" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent" value={editForm.costPrice || ''} onChange={e => setEditForm({...editForm, costPrice: e.target.value})} />
+                      <input type="number" step="any" className="w-full bg-bg-base border border-border-subtle rounded-xl py-3 px-4 text-text-main font-bold outline-none focus:border-accent" value={editForm.costPrice ?? ''} onChange={e => setEditForm({...editForm, costPrice: e.target.value})} />
                     </div>
                   )}
                   <div className="space-y-1.5">

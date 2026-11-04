@@ -1,15 +1,27 @@
 import { z } from 'zod';
 
+const parseNumber = (val: unknown, fallback: number = 0) => {
+  if (typeof val === 'number') return isNaN(val) ? fallback : val;
+  if (typeof val === 'string') {
+    const cleaned = val.replace(',', '.').trim();
+    if (!cleaned) return fallback;
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? fallback : num;
+  }
+  return fallback;
+};
+
 export const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  price: z.number().min(0, "Price must be positive"),
-  costPrice: z.number().min(0, "Cost price must be positive"),
-  qty: z.number(),
-  minStock: z.number().min(0),
+  price: z.preprocess((val) => parseNumber(val, NaN), z.number().min(0, "Price must be positive")),
+  costPrice: z.preprocess((val) => parseNumber(val, 0), z.number().min(0, "Cost price must be positive")).optional().default(0),
+  qty: z.preprocess((val) => parseNumber(val, 0), z.number()).optional().default(0),
+  minStock: z.preprocess((val) => parseNumber(val, 5), z.number().min(0)).optional().default(5),
   barcode: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable(),
   supplier: z.string().optional().nullable(),
   supplierId: z.string().optional().nullable(),
+  actor: z.string().optional().nullable(),
 });
 
 export const saleSchema = z.object({

@@ -956,6 +956,9 @@ async function startServer() {
       const activeLots = await db.prepare('SELECT id, qty, cost_price FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(id);
       if (activeLots.length === 1) {
         await db.prepare('UPDATE product_lots SET cost_price = ?, qty = ? WHERE id = ?').run(costPrice || 0, finalQty, activeLots[0].id);
+      } else if (activeLots.length > 1) {
+        // Update the latest active lot's cost_price so that currentCostPrice reflects the updated costPrice
+        await db.prepare('UPDATE product_lots SET cost_price = ? WHERE id = ?').run(costPrice || 0, activeLots[activeLots.length - 1].id);
       } else if (activeLots.length === 0 && finalQty > 0) {
         await db.prepare(`
           INSERT INTO product_lots (id, product_id, qty, cost_price, supplier, supplier_id)
