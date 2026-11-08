@@ -22,6 +22,7 @@ export const productSchema = z.object({
   supplier: z.string().optional().nullable(),
   supplierId: z.string().optional().nullable(),
   actor: z.string().optional().nullable(),
+  isArchived: z.boolean().optional().default(false),
 });
 
 export const saleSchema = z.object({

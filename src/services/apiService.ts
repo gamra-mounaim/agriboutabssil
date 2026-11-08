@@ -100,6 +100,7 @@ export const api = {
   adjustStock: async (id, data) => post(`${API_URL}/products/${id}/adjust`, data),
   deleteProduct: async (id) => del(`${API_URL}/products/${id}`),
   getProductHistory: async (id) => get(`${API_URL}/products/${id}/history`),
+  archiveProduct: async (id: string, isArchived: boolean = true) => put(`${API_URL}/products/${id}/archive`, { isArchived }),
 
   // Categories
   getCategories: async () => get(`${API_URL}/categories`),

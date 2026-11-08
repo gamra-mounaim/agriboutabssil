@@ -22,6 +22,7 @@ export interface Product {
   updatedAt?: any;
   soldQty?: number;
   lots?: ProductLot[];
+  isArchived?: boolean;
 }
 
 export interface Category {

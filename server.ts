@@ -892,7 +892,7 @@ async function startServer() {
   });
 
   app.post("/api/products", validate(schemas.productSchema), async (req, res) => {
-    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor } = req.body;
+    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor, isArchived } = req.body;
     const id = uuidv4();
     try {
       await db.prepare(`
@@ -938,6 +938,12 @@ async function startServer() {
       const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
       
       let finalQty = qty;
+      if (Boolean(isArchived) && Number(finalQty) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible d'archiver un produit ayant encore du stock (> 0). La quantité doit être 0." 
+        });
+      }
       const reqActorId = (req.headers['x-actor-id'] as string) || '';
       if (reqActorId && reqActorId !== 'admin') {
         const u = await db.prepare('SELECT role FROM users WHERE id = ?').get(reqActorId) as any;
@@ -948,9 +954,9 @@ async function startServer() {
 
       await db.prepare(`
         UPDATE products 
-        SET name = ?, price = ?, cost_price = ?, qty = ?, min_stock = ?, barcode = ?, category_id = ?, supplier = ?, supplier_id = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, price = ?, cost_price = ?, qty = ?, min_stock = ?, barcode = ?, category_id = ?, supplier = ?, supplier_id = ?, is_archived = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(name, price, costPrice, finalQty, minStock, barcode, categoryId, supplier, supplierId, id);
+      `).run(name, price, costPrice, finalQty, minStock, barcode, categoryId, supplier, supplierId, isArchived !== undefined ? Boolean(isArchived) : Boolean(oldProduct?.is_archived), id);
 
       // Keep product lots synchronized with cost_price and quantity
       const activeLots = await db.prepare('SELECT id, qty, cost_price FROM product_lots WHERE product_id = ? AND qty > 0 ORDER BY created_at ASC').all(id);
@@ -999,6 +1005,44 @@ async function startServer() {
 
       res.json({ status: "success" });
     } catch (error) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  });
+
+  
+  app.put("/api/products/:id/archive", async (req, res) => {
+    const { id } = req.params;
+    const { isArchived } = req.body;
+    try {
+      const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
+      if (!oldProduct) {
+        return res.status(404).json({ status: "error", message: "Product not found" });
+      }
+
+      const archivedBool = Boolean(isArchived !== false);
+      if (archivedBool && Number(oldProduct.qty) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: "Impossible d'archiver un produit ayant encore du stock (> 0). La quantité doit être 0." 
+        });
+      }
+      await db.prepare('UPDATE products SET is_archived = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(archivedBool, id);
+
+      if (archivedBool) {
+        await resolveStockNotification(oldProduct.name);
+        logActivity(req, 'PRODUCT', 'archive', `Produit archivé : ${oldProduct.name}`, 'system', 'System');
+      } else {
+        logActivity(req, 'PRODUCT', 'unarchive', `Produit restauré depuis les archives : ${oldProduct.name}`, 'system', 'System');
+        if (oldProduct.qty <= (oldProduct.min_stock || 5)) {
+          await createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
+            `${oldProduct.name}: Current quantity is ${oldProduct.qty}`);
+        }
+      }
+
+      res.json({ status: "success", isArchived: archivedBool });
+    } catch (error: any) {
+      console.error("Error in archiving product:", error);
       res.status(500).json({ status: "error", message: error.message });
     }
   });
@@ -1156,7 +1200,7 @@ async function startServer() {
     const movementId = uuidv4();
 
     const transaction = async () => {
-      const product = (await db.prepare('SELECT name, qty, cost_price, min_stock FROM products WHERE id = ?').get(id)) as any;
+      const product = (await db.prepare('SELECT name, qty, cost_price, min_stock, is_archived FROM products WHERE id = ?').get(id)) as any;
       if (!product) throw new Error("Product not found");
 
       const newQty = type === 'in' ? product.qty + quantity : product.qty - quantity;
@@ -1190,7 +1234,7 @@ async function startServer() {
       `).run(movementId, id, product.name, type, quantity, reason, actor, unitCost);
 
       // Check for low stock alert or resolution
-      if (newQty <= (product.min_stock || 5)) {
+      if (newQty <= (product.min_stock || 5) && !product.is_archived) {
         await createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
           `${product.name}: Current quantity is ${newQty}`);
       } else {
@@ -2274,8 +2318,8 @@ async function startServer() {
         `).run(saleId, item.productId, item.name, item.price, item.qty, avgUnitCost);
 
         // Check for low stock alert
-        const updatedProduct = (await db.prepare('SELECT name, qty, min_stock FROM products WHERE id = ?').get(item.productId)) as any;
-        if (updatedProduct && updatedProduct.qty <= (updatedProduct.min_stock || 5)) {
+        const updatedProduct = (await db.prepare('SELECT name, qty, min_stock, is_archived FROM products WHERE id = ?').get(item.productId)) as any;
+        if (updatedProduct && !updatedProduct.is_archived && updatedProduct.qty <= (updatedProduct.min_stock || 5)) {
           createNotification('STOCK', 'تنبيه مخزون منخفض / Low Stock Alert', 
             `${updatedProduct.name}: Current quantity is ${updatedProduct.qty}`);
         }

@@ -123,7 +123,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     }
   };
 
-  const lowStock = products.filter(p => p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
+  const lowStock = products.filter(p => !p.isArchived && p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
   const topProductsList = stats?.topProductsList || [];
   const dormantStockList = stats?.dormantStockList || [];
   const topDebtorsList = useMemo(() => {

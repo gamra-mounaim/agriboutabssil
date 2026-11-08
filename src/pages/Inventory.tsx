@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Search, Archive, ArrowRightLeft, FolderOpen, Plus, Minus, Edit2, Trash2, 
+  Search, Archive, ArchiveRestore, ArrowRightLeft, FolderOpen, Plus, Minus, Edit2, Trash2, 
   AlertTriangle, Store, X, Package, LayoutGrid, Save, Download, Upload, ArrowUpDown, ChevronDown,
   History, Lock, Sparkles, TrendingUp, Filter, CheckCircle2, ChevronUp, Printer, 
   BarChart3, Boxes, AlertCircle, Coins, ArrowUpRight, Tag, Info
@@ -119,7 +119,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   // --- View Controls ---
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [filterStockStatus, setFilterStockStatus] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all');
+  const [filterStockStatus, setFilterStockStatus] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock' | 'archived'>('all');
   const [showGrouped, setShowGrouped] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
@@ -140,7 +140,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   // --- Edit Modal State ---
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editForm, setEditForm] = useState({
-    name: '', price: '', costPrice: '', qty: '', minStock: '', barcode: '', categoryId: '', supplier: ''
+    name: '', price: '', costPrice: '', qty: '', minStock: '', barcode: '', categoryId: '', supplier: '', isArchived: false
   });
 
   // --- Product History State ---
@@ -162,8 +162,16 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const [alertSearch, setAlertSearch] = useState('');
   const [alertFilter, setAlertFilter] = useState<'all' | 'zero' | 'low'>('all');
 
+  const activeProducts = useMemo(() => {
+    return products.filter(p => !p.isArchived);
+  }, [products]);
+
+  const archivedProducts = useMemo(() => {
+    return products.filter(p => Boolean(p.isArchived));
+  }, [products]);
+
   const lowStockProductsAlert = useMemo(() => {
-    return products.filter(p => p.qty <= (p.minStock ?? 5));
+    return products.filter(p => !p.isArchived && p.qty <= (p.minStock ?? 5));
   }, [products]);
 
   const zeroStockProducts = useMemo(() => {
@@ -194,19 +202,20 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
 
   // Stock KPI Stats
   const stockStats = useMemo(() => {
-    const totalRefs = products.length;
-    const totalUnits = products.reduce((acc, p) => acc + (Number(p.qty) || 0), 0);
-    const totalRetailValue = products.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.price) || 0)), 0);
-    const totalCostValue = products.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.costPrice) || 0)), 0);
+    const totalRefs = activeProducts.length;
+    const totalUnits = activeProducts.reduce((acc, p) => acc + (Number(p.qty) || 0), 0);
+    const totalRetailValue = activeProducts.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.price) || 0)), 0);
+    const totalCostValue = activeProducts.reduce((acc, p) => acc + ((Number(p.qty) || 0) * (Number(p.costPrice) || 0)), 0);
     return {
       totalRefs,
       totalUnits,
       totalRetailValue,
       totalCostValue,
       outOfStockCount: zeroStockProducts.length,
-      lowStockCount: criticalStockProducts.length
+      lowStockCount: criticalStockProducts.length,
+      archivedCount: archivedProducts.length
     };
-  }, [products, zeroStockProducts, criticalStockProducts]);
+  }, [activeProducts, zeroStockProducts, criticalStockProducts, archivedProducts]);
 
   const exportLowStockCSV = () => {
     const headers = language === 'ar'
@@ -448,6 +457,16 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       return;
     }
 
+    if (Boolean(editForm.isArchived) && !editingProduct?.isArchived && (Number(editForm.qty) > 0 || Number(editingProduct?.qty) > 0)) {
+      setMessage({
+        text: language === 'ar'
+          ? "لا يمكن أرشفة هذا المنتج لأن كميته في المخزون أكبر من 0 (يجب أن تكون 0)."
+          : "Impossible d'archiver ce produit car la quantité en stock est supérieure à 0 (doit être 0).",
+        type: 'error'
+      });
+      return;
+    }
+
     const parsedCost = editForm.costPrice !== undefined && editForm.costPrice !== ''
       ? parseFloat(String(editForm.costPrice).replace(',', '.'))
       : 0;
@@ -475,7 +494,8 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         categoryId: editForm.categoryId || null,
         supplier: editForm.supplier || null,
         supplierId: suppliers.find(s => s.name === editForm.supplier)?.id || null,
-        actor: user?.username || 'system'
+        actor: user?.username || 'system',
+        isArchived: Boolean(editForm.isArchived)
       });
       setEditingProduct(null);
       if (editForm?.name) {
@@ -503,8 +523,45 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
       minStock: (p.minStock ?? 5).toString(),
       barcode: p.barcode || '',
       categoryId: p.categoryId || '',
-      supplier: p.supplier || ''
+      supplier: p.supplier || '',
+      isArchived: Boolean(p.isArchived)
     });
+  };
+
+  
+  const toggleArchive = async (p: Product) => {
+    const isCurrentlyArchived = Boolean(p.isArchived);
+
+    if (!isCurrentlyArchived && Number(p.qty) > 0) {
+      setMessage({
+        text: language === 'ar'
+          ? `لا يمكن أرشفة "${p.name}" لأن المخزون ما زال به ${formatNumber(p.qty)} قطعة. يجب أن تكون الكمية 0 للأرشفة.`
+          : `Impossible d'archiver "${p.name}" car il reste ${formatNumber(p.qty)} unité(s) en stock. La quantité doit être 0.`,
+        type: 'error'
+      });
+      return;
+    }
+    const confirmMsg = isCurrentlyArchived
+      ? (language === 'ar' ? `هل تريد استرجاع "${p.name}" من الأرشيف إلى قائمة المنتجات النشطة؟` : `Désarchiver "${p.name}" et le réintégrer dans le catalogue actif ?`)
+      : (language === 'ar' ? `هل تريد نقل "${p.name}" إلى الأرشيف؟ (لن يظهر في تنبيهات نقص المخزون ولا في شاشة البيع)` : `Archiver "${p.name}" ? Il ne sera plus affiché dans les alertes de stock ni dans la caisse.`);
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await api.archiveProduct(p.id, !isCurrentlyArchived);
+      setMessage({
+        text: isCurrentlyArchived
+          ? (language === 'ar' ? "تم استرجاع المنتج بنجاح." : "Produit désarchivé et réactivé.")
+          : (language === 'ar' ? "تم نقل المنتج إلى الأرشيف بنجاح." : "Produit archivé avec succès."),
+        type: 'success'
+      });
+      onRefresh();
+    } catch (err: any) {
+      setMessage({
+        text: `${language === 'ar' ? 'فشل' : 'Échec'}: ${err.message || 'Erreur'}`,
+        type: 'error'
+      });
+    }
   };
 
   const handleStockAdjust = async (e: React.FormEvent) => {
@@ -667,8 +724,14 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const processedProducts = useMemo(() => {
     let result = products;
 
-    // 1. Filter Category & Stock Status
+    // 1. Filter Category & Stock Status (Active vs Archived)
     result = result.filter(p => {
+      if (filterStockStatus === 'archived') {
+        if (!p.isArchived) return false;
+      } else {
+        if (p.isArchived) return false;
+      }
+
       const matchesCategory = !filterCategoryId || (filterCategoryId === 'none' ? !p.categoryId : p.categoryId === filterCategoryId);
       let matchesStockStatus = true;
       if (filterStockStatus === 'inStock') matchesStockStatus = p.qty > 0;
@@ -1024,21 +1087,26 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
           {/* Status Segmented Filter */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex p-1 bg-bg-base rounded-xl border border-border-subtle">
-              {(['all', 'inStock', 'lowStock', 'outOfStock'] as const).map(status => {
+              {(['all', 'inStock', 'lowStock', 'outOfStock', 'archived'] as const).map(status => {
+                const isArchivedTab = status === 'archived';
                 const label = status === 'all' 
                   ? (language === 'ar' ? 'الكل' : 'Tous') 
                   : status === 'inStock' 
                     ? t.inStock 
                     : status === 'lowStock' 
                       ? t.lowStock 
-                      : t.outOfStock;
+                      : status === 'outOfStock'
+                        ? t.outOfStock
+                        : (language === 'ar' ? 'الأرشيف' : 'Archivés');
                 const count = status === 'all' 
-                  ? products.length 
+                  ? activeProducts.length 
                   : status === 'inStock' 
-                    ? products.filter(p => p.qty > (p.minStock ?? 5)).length 
+                    ? activeProducts.filter(p => p.qty > (p.minStock ?? 5)).length 
                     : status === 'lowStock' 
                       ? criticalStockProducts.length 
-                      : zeroStockProducts.length;
+                      : status === 'outOfStock'
+                        ? zeroStockProducts.length
+                        : archivedProducts.length;
                 return (
                   <button
                     key={status}
@@ -1156,7 +1224,29 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
         ) : (
           /* TABLE VIEW */
           <div className="section-container bg-card border border-border-subtle rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            {filterStockStatus === 'archived' && (
+            <div className="mb-4 bg-purple-500/10 border-2 border-purple-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xs">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                  <Archive className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-purple-900 dark:text-purple-200 uppercase tracking-wide">
+                    {language === 'ar' ? 'مستودع المنتجات المؤرشفة' : 'Produits Archivés (Catalogue Hors-Service)'}
+                  </h4>
+                  <p className="text-xs text-purple-700/80 dark:text-purple-300/80 mt-0.5">
+                    {language === 'ar'
+                      ? 'هذه المنتجات مخفية من تنبيهات نقص المخزون ومن شاشة البيع، وتبقى محفوظة هنا للرجوع إليها أو استرجاعها في أي وقت.'
+                      : 'Ces produits sont temporairement ou définitivement retirés des alertes de rupture et du terminal de vente. Vous pouvez les restaurer à tout moment.'}
+                  </p>
+                </div>
+              </div>
+              <span className="font-mono text-xs font-black bg-purple-500/20 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded-xl border border-purple-500/30 shrink-0">
+                {archivedProducts.length} {language === 'ar' ? 'مؤرشف' : 'archivé(s)'}
+              </span>
+            </div>
+          )}
+          <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-[#fafafa] dark:bg-slate-800/50 border-b border-border-subtle">
@@ -1323,6 +1413,28 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                               title={language === 'ar' ? 'تعديل المنتج' : 'Modifier'}
                             >
                               <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => toggleArchive(p)}
+                              className={cn(
+                                "p-2 rounded-xl transition-all cursor-pointer",
+                                p.isArchived
+                                  ? "text-purple-600 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 shadow-xs"
+                                  : "text-text-secondary hover:bg-purple-500/10 hover:text-purple-600"
+                              )}
+                              title={
+                                p.isArchived
+                                  ? (language === 'ar' ? 'استرجاع هذا المنتج من الأرشيف' : 'Désarchiver le produit')
+                                  : p.qty > 0
+                                    ? (language === 'ar' ? `لا يمكن الأرشفة: المخزون به ${formatNumber(p.qty)} قطعة (يجب أن يكون 0)` : `Archivage impossible: stock à ${formatNumber(p.qty)} (doit être 0)`)
+                                    : (language === 'ar' ? 'أرشفة المنتج (إخفاء من تنبيهات النقص والبيع)' : 'Archiver ce produit')
+                              }
+                            >
+                              {p.isArchived ? (
+                                <ArchiveRestore className="w-4 h-4" />
+                              ) : (
+                                <Archive className="w-4 h-4" />
+                              )}
                             </button>
                             <button 
                               onClick={async () => {
@@ -1873,6 +1985,43 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                       <option value="">{language === 'ar' ? "اختر مورد" : language === 'fr' ? "Sélectionner Fournisseur" : "Select Supplier"}</option>
                       {(suppliers || []).map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
+                  </div>
+                  <div className="space-y-1.5 col-span-2 pt-2">
+                    <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border-subtle bg-bg-base/60 hover:bg-bg-base cursor-pointer transition-colors shadow-2xs">
+                      <input 
+                        type="checkbox" 
+                        disabled={Number(editForm.qty ?? editingProduct?.qty ?? 0) > 0 && !editingProduct?.isArchived} 
+                        checked={Boolean(editForm.isArchived)} 
+                        onChange={e => {
+                          if (e.target.checked && Number(editForm.qty ?? editingProduct?.qty ?? 0) > 0) {
+                            setMessage({
+                              text: language === 'ar'
+                                ? "لا يمكن أرشفة منتج ما زال به مخزون (الكمية يجب أن تكون 0)."
+                                : "Impossible d'archiver un produit ayant encore du stock (la quantité doit être 0).",
+                              type: 'error'
+                            });
+                            return;
+                          }
+                          setEditForm({...editForm, isArchived: e.target.checked});
+                        }}
+                        className="w-4 h-4 text-purple-600 rounded border-border-subtle focus:ring-purple-500 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <div className="text-xs">
+                        <span className="font-black text-text-main flex items-center gap-1.5">
+                          <Archive className="w-3.5 h-3.5 text-purple-600" />
+                          {language === 'ar' ? 'أرشفة هذا المنتج في مستودع الأرشيف' : 'Archiver ce produit'}
+                        </span>
+                        <span className="text-[10px] text-text-secondary block mt-0.5">
+                          {(Number(editForm.qty ?? editingProduct?.qty ?? 0) > 0 && !editingProduct?.isArchived)
+                            ? (language === 'ar'
+                                ? `⚠️ لا يمكن الأرشفة: المخزون يحتوي على ${formatNumber(Number(editForm.qty ?? editingProduct?.qty ?? 0))} قطعة (يجب أن يكون 0).`
+                                : `⚠️ Archivage impossible : le stock contient encore ${formatNumber(Number(editForm.qty ?? editingProduct?.qty ?? 0))} unité(s) (doit être 0).`)
+                            : (language === 'ar' 
+                                ? 'المنتج لن يظهر في تنبيهات النقص أو شاشة البيع، ويبقى محفوظاً للاسترجاع لاحقاً' 
+                                : 'Masqué des ruptures de stock et du terminal de vente sans le supprimer')}
+                        </span>
+                      </div>
+                    </label>
                   </div>
                 </div>
                 <button type="submit" disabled={isUpdatingProduct} className="w-full py-4 bg-accent text-white rounded-2xl font-black shadow-xl shadow-accent/20 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-widest text-sm mt-4 flex items-center justify-center gap-2">

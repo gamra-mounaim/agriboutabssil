@@ -91,6 +91,7 @@ export default function POS() {
 
   const filteredProducts = useMemo(() => {
     const filtered = (products || []).filter(p => {
+      if (p.isArchived) return false;
       const matchesCategory = !selectedCategoryId || p.categoryId === selectedCategoryId;
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                            (p.barcode && p.barcode.includes(search));

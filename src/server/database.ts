@@ -110,6 +110,7 @@ export async function initDb() {
       category_id TEXT,
       supplier TEXT,
       supplier_id TEXT,
+      is_archived BOOLEAN DEFAULT FALSE,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL,
