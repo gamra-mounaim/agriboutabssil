@@ -1050,6 +1050,49 @@ async function startServer() {
   app.delete("/api/products/:id", async (req, res) => {
     try {
       const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id) as any;
+      if (!oldProduct) {
+        return res.status(404).json({ status: "error", message: "Produit introuvable" });
+      }
+
+      // Security Check: Only Admin (gamra) is allowed to delete products
+      let callerId = (req.headers['x-actor-id'] as string) || '';
+      let callerName = (req.headers['x-actor-name'] as string) || '';
+      if (callerName) {
+        try { callerName = decodeURIComponent(callerName); } catch {}
+      }
+      if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
+        try {
+          const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
+          callerId = decoded?.userId;
+          callerName = decoded?.username;
+        } catch {}
+      }
+
+      let isGamraAdmin = false;
+      if (callerId === 'admin' || callerName?.toLowerCase() === 'gamra' || callerId?.toLowerCase() === 'gamra') {
+        isGamraAdmin = true;
+      } else if (callerId) {
+        const caller = await db.prepare('SELECT id, username, role FROM users WHERE id = ? OR username = ?').get(callerId, callerId) as any;
+        if (caller && (caller.role === 'admin' || caller.username?.toLowerCase() === 'gamra' || caller.id === 'admin')) {
+          isGamraAdmin = true;
+        }
+      }
+
+      if (!isGamraAdmin) {
+        return res.status(403).json({ 
+          status: "error", 
+          message: "Accès refusé : Seul l'administrateur (gamra) est autorisé à supprimer des produits du système." 
+        });
+      }
+
+      // Stock Check: Product stock must be 0 to allow deletion
+      if (Number(oldProduct.qty) > 0) {
+        return res.status(400).json({ 
+          status: "error", 
+          message: `Impossible de supprimer le produit "${oldProduct.name}" car le stock n'est pas à 0 (quantité restante: ${oldProduct.qty}).` 
+        });
+      }
+
       if (oldProduct && oldProduct.supplier_id && oldProduct.qty > 0 && oldProduct.cost_price > 0) {
         const costAmount = oldProduct.qty * oldProduct.cost_price;
         await db.prepare('UPDATE suppliers SET debt = debt - ? WHERE id = ?').run(costAmount, oldProduct.supplier_id);
@@ -1064,8 +1107,9 @@ async function startServer() {
       }
 
       await db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+      logActivity(req, 'PRODUCT', 'delete', `Produit supprimé par l'admin : ${oldProduct.name}`, callerId || 'admin', callerName || 'gamra');
       res.json({ status: "success" });
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
     }
   });

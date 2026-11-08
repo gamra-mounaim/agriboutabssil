@@ -99,6 +99,7 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
   const { language, user } = useAuthStore();
   const profile = appUsers?.find((u: any) => u.id === (user?.id || (user as any)?.uid));
   const isAdmin = user?.role === 'admin' || user?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'manager';
+  const isGamraAdmin = user?.username?.toLowerCase() === 'gamra' || user?.id === 'admin' || profile?.username?.toLowerCase() === 'gamra' || profile?.id === 'admin' || user?.role === 'admin' || profile?.role === 'admin';
   const t = translations[language];
 
   // --- Add/Edit Product State ---
@@ -559,6 +560,46 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
     } catch (err: any) {
       setMessage({
         text: `${language === 'ar' ? 'فشل' : 'Échec'}: ${err.message || 'Erreur'}`,
+        type: 'error'
+      });
+    }
+  };
+
+  const handleDeleteProduct = async (p: Product) => {
+    if (!isGamraAdmin) {
+      setMessage({
+        text: language === 'ar'
+          ? "غير مسموح: المسؤول (gamra) هو الوحيد المخوّل له بحذف المنتجات من النظام."
+          : "Action refusée : Seul l'administrateur (gamra) a l'autorisation de supprimer des produits.",
+        type: 'error'
+      });
+      return;
+    }
+
+    if (Number(p.qty) > 0) {
+      setMessage({
+        text: language === 'ar'
+          ? `لا يمكن حذف "${p.name}" لأن المخزون ما زال به ${formatNumber(p.qty)} قطعة. يجب أن تكون الكمية 0 للحذف.`
+          : `Impossible de supprimer "${p.name}" car le stock contient encore ${formatNumber(p.qty)} unité(s). La quantité doit être 0.`,
+        type: 'error'
+      });
+      return;
+    }
+
+    if (!window.confirm(language === 'ar' ? `هل أنت متأكد من حذف المنتج "${p.name}" نهائياً من النظام؟` : `Supprimer définitivement le produit "${p.name}" du système ?`)) {
+      return;
+    }
+
+    try {
+      await api.deleteProduct(p.id);
+      setMessage({
+        text: language === 'ar' ? "تم حذف المنتج بنجاح." : "Produit supprimé avec succès.",
+        type: 'success'
+      });
+      onRefresh();
+    } catch (err: any) {
+      setMessage({
+        text: `${language === 'ar' ? 'فشل الحذف' : 'Échec de la suppression'}: ${err.message || 'Erreur'}`,
         type: 'error'
       });
     }
@@ -1436,18 +1477,24 @@ export default function Inventory({ permissions, initialTarget, onClearTarget }:
                                 <Archive className="w-4 h-4" />
                               )}
                             </button>
-                            <button 
-                              onClick={async () => {
-                                if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف المنتج؟' : language === 'fr' ? 'Supprimer ce produit du stock ?' : 'Remove product from inventory?')) {
-                                  try { await api.deleteProduct(p.id); setMessage({ text: language === 'ar' ? "تم الحذف." : "Product removed.", type: 'success' }); onRefresh(); } 
-                                  catch (err) { setMessage({ text: language === 'ar' ? "فشل الحذف." : "Delete failed.", type: 'error' }); }
+                            {isGamraAdmin && (
+                              <button 
+                                onClick={() => handleDeleteProduct(p)} 
+                                className={cn(
+                                  "p-2 rounded-xl transition-all cursor-pointer",
+                                  p.qty > 0 
+                                    ? "text-text-secondary/40 hover:text-danger hover:bg-danger/5" 
+                                    : "text-text-secondary hover:bg-danger/10 hover:text-danger"
+                                )} 
+                                title={
+                                  p.qty > 0
+                                    ? (language === 'ar' ? `لا يمكن الحذف: المخزون به ${formatNumber(p.qty)} قطعة (يجب أن يكون 0)` : `Suppression impossible: stock à ${formatNumber(p.qty)} (doit être 0)`)
+                                    : (language === 'ar' ? 'حذف المنتج نهائياً (خاص بالمسؤول gamra)' : 'Supprimer définitivement ce produit (Admin gamra)')
                                 }
-                              }} 
-                              className="text-text-secondary hover:bg-danger/10 hover:text-danger p-2 rounded-xl transition-colors cursor-pointer" 
-                              title="Supprimer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
