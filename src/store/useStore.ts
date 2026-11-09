@@ -133,7 +133,8 @@ export const useStore = create<AppState>((set, get) => ({
   fetchActivitiesPage: async (page: number) => {
     try {
       const user = useAuthStore.getState().user;
-      const userId = user?.role !== 'admin' ? user?.id : undefined;
+      const isGamraOrAdmin = user?.role === 'admin' || user?.username?.toLowerCase() === 'gamra' || user?.id === 'admin';
+      const userId = !isGamraOrAdmin && user?.role !== 'admin' ? user?.id : undefined;
       const res = await api.getActivityLogs(page, 50, userId) as any;
       set({ activities: res.data || [], activitiesTotal: res.total || 0, activitiesPage: res.page || 1 });
     } catch (err) {
@@ -143,7 +144,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   fetchData: async () => {
     const user = useAuthStore.getState().user;
-    const userId = user?.role !== 'admin' ? user?.id : undefined;
+    const isGamraOrAdmin = user?.role === 'admin' || user?.username?.toLowerCase() === 'gamra' || user?.id === 'admin';
+      const userId = !isGamraOrAdmin && user?.role !== 'admin' ? user?.id : undefined;
     const fetchApi = async (fn: () => Promise<any>, fallback: any, name: string, retries = 3): Promise<any> => {
       try {
         return await fn();

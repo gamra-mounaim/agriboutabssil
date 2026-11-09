@@ -2831,9 +2831,16 @@ async function startServer() {
       conditions.push("actor_id NOT IN ('admin', 'gamra') AND (actor_name IS NULL OR LOWER(actor_name) NOT LIKE '%gamra%') AND (details IS NULL OR LOWER(details) NOT LIKE '%gamra%')");
     }
 
-    if (userId) {
-      conditions.push("actor_id = ?");
-      params.push(userId);
+    if (isGamraCaller) {
+      if (userId && userId !== 'admin' && userId !== 'gamra' && userId !== 'all') {
+        conditions.push("actor_id = ?");
+        params.push(userId);
+      }
+    } else {
+      if (userId) {
+        conditions.push("actor_id = ?");
+        params.push(userId);
+      }
     }
 
     const whereClause = conditions.length > 0 ? " WHERE " + conditions.join(" AND ") : "";

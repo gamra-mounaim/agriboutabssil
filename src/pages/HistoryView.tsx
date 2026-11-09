@@ -325,7 +325,8 @@ export default function HistoryView({
   const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.history;
+  const isGamraAdmin = isViewingAsGamra || currentUserRole === 'admin' || currentUser?.role === 'admin' || currentUser?.username?.toLowerCase() === 'gamra' || currentUser?.id === 'admin';
+  const canViewAll = isGamraAdmin || currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.history !== false;
 
   // Print Invoice helper
   const printInvoice = (sale: Sale) => {
