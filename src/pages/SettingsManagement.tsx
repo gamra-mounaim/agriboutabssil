@@ -39,7 +39,8 @@ export default function SettingsManagement({
 
   const t = translations[language];
   const loggedInProfile = users.find(u => u.id === (currentUser?.id || currentUser?.uid));
-  const canManageStaff = loggedInProfile?.role === 'admin';
+  const isGamraAdmin = currentUser?.username?.toLowerCase() === 'gamra' || currentUser?.id === 'admin' || loggedInProfile?.username?.toLowerCase() === 'gamra' || loggedInProfile?.id === 'admin' || loggedInProfile?.role === 'admin' || currentUser?.role === 'admin';
+  const canManageStaff = isGamraAdmin || loggedInProfile?.role === 'admin';
   const [tab, setTab] = useState<'shop' | 'users' | 'backup'>('shop');
   
   // Shop details form state

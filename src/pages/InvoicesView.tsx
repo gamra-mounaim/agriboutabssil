@@ -76,11 +76,12 @@ export default function InvoicesView({ permissions, currentUserRole }: { permiss
   }, [searchQuery, fetchSalesPage]);
 
   // Permissions
-  const canViewAll = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
-  const canEditDiscount = currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices;
-  const isAdmin = currentUserRole === 'admin' || currentUser?.role === 'admin';
-  const canDeleteSale = isAdmin || permissions?.cancelInvoices === true;
-  const canViewProfits = currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.profits !== false;
+  const isGamraAdmin = currentUser?.username?.toLowerCase() === 'gamra' || currentUser?.id === 'admin' || currentUserRole === 'admin' || currentUser?.role === 'admin';
+  const canViewAll = isGamraAdmin || currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices || permissions?.history;
+  const canEditDiscount = isGamraAdmin || currentUserRole === 'admin' || currentUserRole === 'manager' || permissions?.manageInvoices;
+  const isAdmin = isGamraAdmin || currentUserRole === 'admin' || currentUser?.role === 'admin';
+  const canDeleteSale = isGamraAdmin || isAdmin || permissions?.cancelInvoices === true;
+  const canViewProfits = isGamraAdmin || currentUserRole === 'admin' || currentUserRole === 'manager' || currentUser?.role === 'admin' || currentUser?.role === 'manager' || permissions?.profits !== false;
 
   const [isDeletingSale, setIsDeletingSale] = useState(false);
   const [toast, setToast] = useState<{ text: string, type: 'success' | 'error' } | null>(null);

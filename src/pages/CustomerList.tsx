@@ -24,7 +24,8 @@ export default function CustomerList() {
   const { language, user } = useAuthStore();
 
   const profile = appUsers?.find((u: any) => u.id === (user?.id || (user as any)?.uid));
-  const canViewProfits = profile?.role === 'admin' || profile?.role === 'manager' || profile?.permissions?.profits !== false;
+  const isGamraAdmin = user?.username?.toLowerCase() === 'gamra' || user?.id === 'admin' || profile?.username?.toLowerCase() === 'gamra' || profile?.id === 'admin' || user?.role === 'admin' || profile?.role === 'admin';
+  const canViewProfits = isGamraAdmin || profile?.role === 'admin' || profile?.role === 'manager' || profile?.permissions?.profits !== false;
 
   useEffect(() => {
     onRefresh();

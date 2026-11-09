@@ -141,15 +141,6 @@ export default function App() {
   const t = translations[language];
 
   const profile = appUsers.find(u => u.id === (user?.id || user?.uid));
-  const defaultAdminPerms = { stock: true, customers: true, history: true, profits: true, viewCostPrice: true, editStock: true, supplierDebt: true, financials: true, financialsSales: true, financialsDebts: true, financialsProfits: true, financialsInventory: true, viewSupplierDebtAmount: true, financialsRestricted: true, financialsPaymentMethods: true, financialsTopProducts: true, financialsTopDebtors: true, manageInvoices: true };
-  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false, manageInvoices: false };
-
-  const userPermissions = profile?.permissions 
-    ? { 
-        ...((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms), 
-        ...profile.permissions 
-      }
-    : ((profile?.role === 'admin' || profile?.role === 'manager') ? defaultAdminPerms : defaultStaffPerms);
 
   const isGamraSuperAdmin = (u?: any, prof?: any) => {
     const uname = (prof?.username || u?.username || '').toLowerCase();
@@ -158,10 +149,51 @@ export default function App() {
     return uname === 'gamra' || uid === 'admin' || name.includes('gamra');
   };
 
+  const isSuper = isGamraSuperAdmin(user, profile) || profile?.role === 'admin' || user?.role === 'admin';
+
+  const defaultAdminPerms = { 
+    stock: true, 
+    customers: true, 
+    history: true, 
+    profits: true, 
+    viewCostPrice: true, 
+    editStock: true, 
+    supplierDebt: true, 
+    financials: true, 
+    financialsSales: true, 
+    financialsDebts: true, 
+    financialsProfits: true, 
+    financialsInventory: true, 
+    viewSupplierDebtAmount: true, 
+    financialsRestricted: true, 
+    financialsPaymentMethods: true, 
+    financialsTopProducts: true, 
+    financialsTopDebtors: true, 
+    manageInvoices: true,
+    cancelInvoices: true,
+    manageStaff: true,
+    settings: true,
+    damages: true,
+    deleteProducts: true,
+    reports: true
+  };
+  const defaultStaffPerms = { stock: true, customers: false, history: false, profits: false, viewCostPrice: false, editStock: false, supplierDebt: false, financials: false, financialsSales: false, financialsDebts: false, financialsProfits: false, financialsInventory: false, viewSupplierDebtAmount: false, financialsRestricted: false, financialsPaymentMethods: false, financialsTopProducts: false, financialsTopDebtors: false, manageInvoices: false };
+
+  const userPermissions = isSuper
+    ? { ...defaultAdminPerms, ...(profile?.permissions || {}) }
+    : (profile?.permissions 
+        ? { 
+            ...(profile?.role === 'manager' ? defaultAdminPerms : defaultStaffPerms), 
+            ...profile.permissions 
+          }
+        : (profile?.role === 'manager' ? defaultAdminPerms : defaultStaffPerms));
+
   const canAccess = (targetView: View) => {
-    // Only Gamra primary owner can access staff management (users) and system settings
+    // Gamra admin has full access to absolutely everything without exception!
+    if (isSuper) return true;
+
     if (targetView === 'settings' || targetView === 'users') {
-      return isGamraSuperAdmin(user, profile);
+      return false;
     }
 
     if (targetView === 'pos') return true;
@@ -336,7 +368,7 @@ export default function App() {
                 authLogout();
               } else {
                 setUser(u);
-                setCurrentUserRole(u.role || 'staff');
+                setCurrentUserRole((isGamraSuperAdmin(u, null) || u.role === 'admin') ? 'admin' : (u.role || 'staff'));
                 setAuth(u, u.token || '');
                 setProfileReady(true);
               }
@@ -405,7 +437,7 @@ export default function App() {
         };
         localStorage.setItem('pos_user', JSON.stringify(sessionData));
         setUser(userData);
-        setCurrentUserRole(userData.role);
+        setCurrentUserRole((isGamraSuperAdmin(userData, null) || userData.role === 'admin') ? 'admin' : (userData.role || 'staff'));
         setAuth(userData, result.user.token || '');
         setProfileReady(true);
         setMessage({ text: t.loginSuccess, type: 'success' });
@@ -916,7 +948,7 @@ export default function App() {
                   {profile?.name || user?.name || 'Mounaim Gamra'}
                 </div>
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold leading-tight">
-                  {profile?.role === 'admin' ? (language === 'ar' ? 'مدير عام' : 'Administrateur') : (language === 'ar' ? 'مستخدم' : 'Utilisateur')}
+                  {isSuper ? (language === 'ar' ? 'مدير عام (Gamra Admin)' : 'Administrateur Principal') : (profile?.role === 'admin' ? (language === 'ar' ? 'مدير عام' : 'Administrateur') : (language === 'ar' ? 'مستخدم' : 'Utilisateur'))}
                 </div>
               </div>
             </div>
