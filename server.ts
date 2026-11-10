@@ -936,7 +936,7 @@ async function startServer() {
 
   app.put("/api/products/:id", validate(schemas.productSchema), async (req, res) => {
     const { id } = req.params;
-    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor } = req.body;
+    const { name, price, costPrice, qty, minStock, barcode, categoryId, supplier, supplierId, actor, isArchived } = req.body;
     try {
       const oldProduct = await db.prepare('SELECT * FROM products WHERE id = ?').get(id) as any;
       
