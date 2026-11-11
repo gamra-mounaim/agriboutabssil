@@ -1,7 +1,8 @@
+require('dotenv').config();
 const { Client } = require('pg');
 
 const client = new Client({
-  connectionString: 'postgresql://neondb_owner:npg_aeIKni3VbrU9@ep-round-fog-abjgsrd3-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.DATABASE_URL,
 });
 
 async function run() {

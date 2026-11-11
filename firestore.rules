@@ -24,44 +24,44 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if true;
-      allow create: if true; 
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
       allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /products/{productId} {
-      allow read: if true;
-      allow create, update: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
     match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /sales/{saleId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     match /customers/{customerId} {
-      allow read: if true;
-      allow create, update: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
     
     match /payments/{paymentId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
     match /charges/{chargeId} {
-      allow read: if true;
-      allow create: if true;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
   }

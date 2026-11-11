@@ -603,7 +603,7 @@ export default function App() {
         <div className="absolute bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] bg-blue-500/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 pointer-events-none"></div>
         
         <div className="w-full max-w-md space-y-8 bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl p-10 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.4)] relative z-10 group">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-accent opacity-70 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2.5rem]" />
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 opacity-70 group-hover:opacity-100 transition-opacity duration-500 rounded-t-[2.5rem]" />
           
           <div className="text-center space-y-4">
             <div className="inline-flex p-3 rounded-2xl bg-white border border-border-subtle mb-2 overflow-hidden w-48 h-20 items-center justify-center shadow-xl mx-auto group-hover:scale-105 transition-transform duration-500 ease-out">
@@ -648,7 +648,7 @@ export default function App() {
             <button
               type="submit"
               disabled={signingIn}
-              className="w-full bg-accent hover:bg-accent/90 text-white font-black py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-[11px] tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_30px_rgba(79,70,229,0.5)] mt-4"
+              className="w-full bg-accent hover:bg-accent-hover text-white font-black py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-[11px] tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] mt-4"
             >
               {signingIn ? '...' : (t as any).accessTerminal}
             </button>
@@ -665,7 +665,7 @@ export default function App() {
     <div className="h-screen w-screen bg-bg-base text-text-main flex overflow-hidden relative">
       {/* Crisp Professional Farm & Equipment Background Watermark */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.16] dark:opacity-[0.20] pointer-events-none filter brightness-95 contrast-110 z-0"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.07] dark:opacity-[0.09] pointer-events-none filter brightness-95 contrast-110 z-0"
         style={{ backgroundImage: `url('/agri-bg-ambient.jpg')` }}
       />
       {/* Ambient Glassmorphism Background Orbs */}
@@ -726,15 +726,11 @@ export default function App() {
 
               {canAccess('financials') && (
                 <NavItem 
-                  icon={<TrendingUp className="w-4 h-4 text-white" />} 
+                  icon={<TrendingUp className="w-4 h-4" />} 
                   label={language === 'ar' ? 'لوحة القيادة المالية' : language === 'fr' ? 'Tableau de Bord' : 'Financial Dashboard'} 
                   active={view === 'financials'} 
                   onClick={() => setView('financials')} 
-                  badge={
-                    <span className="px-2 py-0.5 rounded-lg bg-black/20 text-[10px] font-extrabold text-emerald-100 border border-white/20">
-                      +28.9k
-                    </span>
-                  }
+                  iconBgClass="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400"
                 />
               )}
 
@@ -995,8 +991,8 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className={cn(
-                "absolute bottom-8 right-8 z-50 px-6 py-3 rounded-xl border text-sm font-semibold shadow-xl",
-                message.type === 'success' ? "bg-white border-success text-success" : "bg-white border-danger text-danger"
+                "absolute bottom-8 right-8 z-50 px-6 py-3 rounded-xl border text-sm font-semibold shadow-xl bg-card",
+                message.type === 'success' ? "border-success text-success" : "border-danger text-danger"
               )}
             >
               {message.text}
@@ -1037,7 +1033,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     className={cn(
-                      "absolute z-50 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-border-subtle overflow-hidden",
+                      "absolute z-50 top-full mt-2 w-72 bg-card rounded-2xl shadow-2xl border border-border-subtle overflow-hidden",
                       language === 'ar' ? "left-0" : "right-0"
                     )}
                   >
@@ -1193,7 +1189,17 @@ export default function App() {
                   {view === 'suppliers' && <SupplierList permissions={userPermissions} />}
                   {view === 'history' && <HistoryView permissions={userPermissions} currentUserRole={currentUserRole} />}
                   {view === 'invoices' && <InvoicesView permissions={userPermissions} currentUserRole={currentUserRole} />}
-                  {view === 'financials' && <FinancialDashboardView permissions={userPermissions} currency={t.currency} />}
+                  {view === 'financials' && (
+                    <FinancialDashboardView 
+                      permissions={userPermissions} 
+                      currency={t.currency} 
+                      onNavigate={(targetView: any) => setView(targetView)}
+                      onInspectProduct={(prod: any) => {
+                        setInventoryTarget({ searchQuery: prod.name, productId: prod.id, autoOpenAdjustment: true });
+                        setView('inventory');
+                      }}
+                    />
+                  )}
                   {view === 'checks' && <CheckListView />}
                   {view === 'damages' && <DamagesView />}
                   {view === 'users' && <StaffManagement 
@@ -1313,7 +1319,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={changingPassword}
-                    className="flex-1 bg-accent hover:bg-accent/90 text-white font-black py-3 rounded-2xl active:scale-[0.98] transition-all text-[11px] tracking-wider uppercase shadow-[0_0_15px_rgba(79,70,229,0.2)] disabled:opacity-75 cursor-pointer"
+                    className="flex-1 bg-accent hover:bg-accent-hover text-white font-black py-3 rounded-2xl active:scale-[0.98] transition-all text-[11px] tracking-wider uppercase shadow-[0_0_15px_rgba(16,185,129,0.25)] disabled:opacity-75 cursor-pointer"
                   >
                     {changingPassword ? '...' : t.saveChanges}
                   </button>

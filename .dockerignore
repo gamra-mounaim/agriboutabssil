@@ -6,3 +6,12 @@ shop.db
 backups
 .git
 .firebase
+scratch_*.cjs
+query_*.cjs
+get_check_status.cjs
+fix_*.cjs
+inspect_*.cjs
+run_migration.cjs
+export_*.cjs
+import_*.cjs
+scratch/

@@ -1089,5 +1089,156 @@ export const generateDamagesReportPDF = (data: any[], totalValue: number, langua
   doc.save(`Damaged_Goods_Report_${Date.now()}.pdf`);
 };
 
+export const generateFinancialDashboardPDF = (data: {
+  shopName?: string;
+  totalRevenue: number;
+  transactionsCount: number;
+  totalRealizedProfit: number;
+  expectedProfit: number;
+  inventoryValue: number;
+  totalCustomerDebt: number;
+  totalSupplierDebt: number;
+  pendingChecksTotal: number;
+  totalDamagesLoss: number;
+  dailyProfit: number;
+  weeklyProfit: number;
+  monthlyProfit: number;
+  yearlyProfit: number;
+  netCashToday: number;
+  topDebtors: any[];
+  topProducts: any[];
+  language?: string;
+}) => {
+  const {
+    shopName = SHOP_DETAILS.name,
+    totalRevenue = 0,
+    transactionsCount = 0,
+    totalRealizedProfit = 0,
+    expectedProfit = 0,
+    inventoryValue = 0,
+    totalCustomerDebt = 0,
+    totalSupplierDebt = 0,
+    pendingChecksTotal = 0,
+    totalDamagesLoss = 0,
+    dailyProfit = 0,
+    weeklyProfit = 0,
+    monthlyProfit = 0,
+    yearlyProfit = 0,
+    netCashToday = 0,
+    topDebtors = [],
+    topProducts = [],
+    language = 'fr'
+  } = data;
+
+  const isAr = language === 'ar';
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header Banner
+  doc.setFillColor(5, 150, 105); // Emerald 600
+  doc.rect(0, 0, pageWidth, 32, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(shopName || 'AGRI BOUTABSSIL', 15, 14);
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('SYNTHESE FINANCIERE & TRESORERIE', 15, 23);
+
+  doc.setFontSize(9);
+  doc.text(`Date : ${new Date().toLocaleString('fr-FR')}`, pageWidth - 15, 19, { align: 'right' });
+
+  // Section 1: Global Indicators Table
+  autoTable(doc, {
+    startY: 40,
+    head: [[isAr ? 'المؤشر المالي' : 'Indicateur Financier', isAr ? 'القيمة (درهم)' : 'Montant / Valeur']],
+    body: [
+      [isAr ? 'إجمالي المبيعات (Chiffre d\'Affaires)' : 'Chiffre d\'Affaires Global (Net)', `${formatNumber(totalRevenue)} DH (${transactionsCount} ventes)`],
+      [isAr ? 'الربح الصافي المحقق' : 'Bénéfice Net Réalisé (Cumulé)', `${formatNumber(totalRealizedProfit)} DH`],
+      [isAr ? 'سيولة الصندوق اليوم (Caisse du Jour)' : 'Trésorerie / Caisse Nette Aujourd\'hui', `${formatNumber(netCashToday)} DH`],
+      [isAr ? 'قيمة المخزون الحالية (بسعر التكلفة)' : 'Valeur du Stock Actuel (Coût d\'achat)', `${formatNumber(inventoryValue)} DH`],
+      [isAr ? 'الربح المتوقع من المخزون' : 'Marge Prévisionnelle sur Stock', `${formatNumber(expectedProfit)} DH`],
+      [isAr ? 'إجمالي ديون الزبائن (Créances Clients)' : 'Créances Clients (Dettes à recouvrer)', `${formatNumber(totalCustomerDebt)} DH`],
+      [isAr ? 'شيكات وكمبيالات في المحفظة' : 'Chèques Clients en Portefeuille (En attente)', `${formatNumber(pendingChecksTotal)} DH`],
+      [isAr ? 'ديون الموردين (Dettes Fournisseurs)' : 'Dettes Fournisseurs', `${formatNumber(totalSupplierDebt)} DH`],
+      [isAr ? 'إجمالي الخسائر والتلف' : 'Pertes & Marchandises Endommagées', `${formatNumber(totalDamagesLoss)} DH`],
+    ],
+    theme: 'striped',
+    headStyles: { fillColor: [5, 150, 105], fontSize: 10 },
+    styles: { fontSize: 9.5, cellPadding: 3.5 },
+    columnStyles: {
+      1: { halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (cellData: any) => prepareArabicCell(cellData),
+    didDrawCell: (cellData: any) => drawArabicCell(doc, cellData)
+  });
+
+  // Section 2: Period Profits Table
+  const startY2 = (doc as any).lastAutoTable.finalY + 10;
+  autoTable(doc, {
+    startY: startY2,
+    head: [[
+      isAr ? 'ربح اليوم' : 'Bénéfice Aujourd\'hui',
+      isAr ? 'ربح الأسبوع' : 'Bénéfice Semaine',
+      isAr ? 'ربح الشهر' : 'Bénéfice Ce Mois',
+      isAr ? 'ربح السنة' : 'Bénéfice Cette Année'
+    ]],
+    body: [[
+      `${formatNumber(dailyProfit)} DH`,
+      `${formatNumber(weeklyProfit)} DH`,
+      `${formatNumber(monthlyProfit)} DH`,
+      `${formatNumber(yearlyProfit)} DH`
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 9.5 },
+    bodyStyles: { halign: 'center', fontStyle: 'bold', fontSize: 10.5, textColor: [5, 150, 105] },
+    didParseCell: (cellData: any) => prepareArabicCell(cellData),
+    didDrawCell: (cellData: any) => drawArabicCell(doc, cellData)
+  });
+
+  // Section 3: Top Products & Top Debtors
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
+  if (topProducts.length > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      head: [[isAr ? 'أكثر المنتجات مبيعاً' : 'Top Produits Vendus', isAr ? 'الكمية المباعة' : 'Qté Vendue', isAr ? 'المداخيل' : 'Chiffre d\'Affaires']],
+      body: topProducts.slice(0, 5).map((p: any) => [
+        p.name || '-',
+        String(p.qty || 0),
+        `${formatNumber(p.totalRevenue || p.total_revenue || (p.price * p.qty))} DH`
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [16, 185, 129], fontSize: 9.5 },
+      styles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right', fontStyle: 'bold' } },
+      didParseCell: (cellData: any) => prepareArabicCell(cellData),
+      didDrawCell: (cellData: any) => drawArabicCell(doc, cellData)
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  if (topDebtors.length > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      head: [[isAr ? 'أكبر المدينين (الزبائن)' : 'Principaux Clients Débiteurs', isAr ? 'الهاتف' : 'Téléphone', isAr ? 'الدين المتبقي' : 'Dette Actuelle']],
+      body: topDebtors.slice(0, 5).map((c: any) => [
+        c.name || '-',
+        c.phone || '-',
+        `${formatNumber(c.debt || 0)} DH`
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [220, 38, 38], fontSize: 9.5 },
+      styles: { fontSize: 9 },
+      columnStyles: { 2: { halign: 'right', fontStyle: 'bold', textColor: [220, 38, 38] } },
+      didParseCell: (cellData: any) => prepareArabicCell(cellData),
+      didDrawCell: (cellData: any) => drawArabicCell(doc, cellData)
+    });
+  }
+
+  doc.save(`Synthese_Financiere_${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
 
 

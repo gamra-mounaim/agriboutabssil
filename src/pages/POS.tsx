@@ -792,7 +792,7 @@ export default function POS() {
                 }}
                 className={cn(
                   "px-2.5 py-1.5 border rounded-lg transition-all flex items-center gap-1.5 text-xs shadow-xs",
-                  isFlahActive ? "bg-accent text-white border-accent shadow-accent/20" : "bg-white text-text-secondary border-border-subtle hover:bg-bg-base"
+                  isFlahActive ? "bg-accent text-white border-accent shadow-accent/20" : "bg-card text-text-secondary border-border-subtle hover:bg-bg-base"
                 )}
              >
                <Sparkles className="w-3.5 h-3.5" />
@@ -812,7 +812,7 @@ export default function POS() {
                 initial={{ x: 15, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -15, opacity: 0 }}
-                className="group flex items-center justify-between p-2.5 rounded-xl bg-bg-base/40 hover:bg-white hover:shadow-xs transition-all border border-border-subtle/50 hover:border-accent/40 gap-2"
+                className="group flex items-center justify-between p-2.5 rounded-xl bg-bg-base/40 hover:bg-card hover:shadow-xs transition-all border border-border-subtle/50 hover:border-accent/40 gap-2"
               >
                 {/* Product Name & Unit Price */}
                 <div className={cn("flex-1 min-w-0 flex flex-col", language === 'ar' ? "text-right" : "text-left")}>
@@ -824,7 +824,7 @@ export default function POS() {
                       const prod = products.find(p => p.id === item.productId);
                       if (prod && prod.costPrice > 0 && item.price < prod.costPrice) {
                         return (
-                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 shrink-0">
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 shrink-0">
                             ⚠️ {t.sellingAtLossBadge || "Vente à perte"}
                           </span>
                         );
@@ -838,7 +838,7 @@ export default function POS() {
                 </div>
                 
                 {/* Quantity Controls */}
-                <div className="flex items-center gap-0.5 bg-white border border-border-subtle rounded-lg p-0.5 shadow-2xs shrink-0">
+                <div className="flex items-center gap-0.5 bg-card border border-border-subtle rounded-lg p-0.5 shadow-2xs shrink-0">
                   <button 
                     onClick={() => updateCartQty(item.productId, item.qty - 1)}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-bg-base text-text-secondary text-xs font-bold transition-colors"
@@ -899,7 +899,7 @@ export default function POS() {
 
         <div className="px-5 py-4 border-t border-border-subtle bg-bg-base/40 space-y-3 rounded-b-2xl">
           {/* Payment Method Tabs */}
-          <div className="grid grid-cols-5 gap-1 bg-white p-1 rounded-2xl border border-border-subtle shadow-inner">
+          <div className="grid grid-cols-5 gap-1 bg-card p-1 rounded-2xl border border-border-subtle shadow-inner">
             {(['cash', 'card', 'debt', 'check', 'mixte'] as const).map(method => (
                <button
                 key={method}
@@ -937,7 +937,7 @@ export default function POS() {
                     <div className="space-y-1">
                       <input 
                         placeholder={t.customerName}
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
+                        className="w-full bg-card text-text-main border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
                         value={newCustomerDetail.name}
                         onChange={e => setNewCustomerDetail({...newCustomerDetail, name: e.target.value})}
                       />
@@ -945,7 +945,7 @@ export default function POS() {
                     <div className="space-y-1">
                       <input 
                         placeholder={language === 'ar' ? "رقم الهاتف" : language === 'fr' ? "Téléphone" : "Phone"}
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
+                        className="w-full bg-card text-text-main border border-border-subtle rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-accent"
                         value={newCustomerDetail.phone}
                         onChange={e => setNewCustomerDetail({...newCustomerDetail, phone: e.target.value})}
                       />
@@ -968,7 +968,7 @@ export default function POS() {
                       
                       <div 
                         className={cn(
-                          "w-full bg-white border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 outline-none transition-all shadow-sm cursor-text relative flex items-center",
+                          "w-full bg-card border border-border-subtle rounded-2xl py-3 px-10 text-xs font-bold text-text-main focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 outline-none transition-all shadow-sm cursor-text relative flex items-center",
                           language === 'ar' && "text-right"
                         )}
                       >
@@ -1007,7 +1007,7 @@ export default function POS() {
                               if (!selectedCustomerId) setCustomerSearchQuery('');
                             }}
                           />
-                          <div className="absolute top-full mt-2 w-full bg-white border border-border-subtle rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto overflow-x-hidden">
+                          <div className="absolute top-full mt-2 w-full bg-card border border-border-subtle rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto overflow-x-hidden">
                             {customers.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).map(c => (
                               <button
                                 key={c.id}
@@ -1041,7 +1041,7 @@ export default function POS() {
                         <User className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary opacity-50 transition-colors group-focus-within:text-accent", language === 'ar' ? "right-3.5" : "left-3.5")} />
                         <input 
                           placeholder={t.walkingCustomer}
-                          className={cn("w-full bg-white border border-border-subtle rounded-xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent outline-none shadow-sm", language === 'ar' && "text-right")}
+                          className={cn("w-full bg-card border border-border-subtle rounded-xl py-3 px-10 text-xs font-bold text-text-main focus:border-accent outline-none shadow-sm", language === 'ar' && "text-right")}
                           value={customerName}
                           onChange={e => setCustomerName(e.target.value)}
                         />
@@ -1058,13 +1058,13 @@ export default function POS() {
                     <input 
                       type="number"
                       placeholder="0.00"
-                      className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                      className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                       value={receivedAmount || ''} onChange={e => setReceivedAmount(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.change}</label>
-                    <div className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-accent shadow-inner text-center">
+                    <div className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-accent shadow-inner text-center">
                       {formatNumber(change)}
                     </div>
                   </div>
@@ -1072,7 +1072,7 @@ export default function POS() {
              )}
 
              {paymentMethod === 'mixte' && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-white/80 p-3 rounded-2xl border border-border-subtle">
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-card/90 p-3 rounded-2xl border border-border-subtle">
                   <div className="text-[10px] font-black uppercase text-text-secondary tracking-widest px-1 flex items-center justify-between">
                     <span>{language === 'ar' ? 'تفاصيل الدفع المختلط' : 'Détail Paiement Mixte'}</span>
                     <span className="text-accent">{formatNumber(total)} {t.currency}</span>
@@ -1086,7 +1086,7 @@ export default function POS() {
                       <input 
                         type="number"
                         placeholder="0.00"
-                        className="w-full bg-white border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
+                        className="w-full bg-bg-base border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
                         value={mixteCash || ''} 
                         onChange={e => setMixteCash(e.target.value)}
                       />
@@ -1098,7 +1098,7 @@ export default function POS() {
                       <input 
                         type="number"
                         placeholder="0.00"
-                        className="w-full bg-white border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
+                        className="w-full bg-bg-base border border-border-subtle rounded-xl px-3 py-2 text-xs font-black text-text-main focus:border-accent outline-none shadow-xs"
                         value={mixteCheck || ''} 
                         onChange={e => setMixteCheck(e.target.value)}
                       />
@@ -1110,7 +1110,7 @@ export default function POS() {
                       <div className="space-y-1">
                         <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'البنك' : 'Banque'}</label>
                         <select 
-                          className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                          className="w-full bg-card border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
                           value={checkBank || ''} onChange={e => setCheckBank(e.target.value)}
                         >
                           <option value="">{language === 'ar' ? 'اختر البنك' : 'Choisir la banque'}</option>
@@ -1122,7 +1122,7 @@ export default function POS() {
                           <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkNumber}</label>
                           <input 
                             placeholder="N° Chèque"
-                            className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                            className="w-full bg-card border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
                             value={checkNumber || ''} onChange={e => setCheckNumber(e.target.value)}
                           />
                         </div>
@@ -1130,7 +1130,7 @@ export default function POS() {
                           <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الاستحقاق' : 'Échéance'}</label>
                           <input 
                             type="date"
-                            className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                            className="w-full bg-card border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
                             value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
                           />
                         </div>
@@ -1139,18 +1139,18 @@ export default function POS() {
                         <label className="text-[8px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkOwner}</label>
                         <input 
                           placeholder={t.customerName}
-                          className="w-full bg-white border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
+                          className="w-full bg-card border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs font-bold text-text-main focus:border-accent outline-none"
                           value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
                         />
                       </div>
                     </div>
                   )}
 
-                  <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between text-xs font-bold">
-                    <span className="text-[9px] uppercase tracking-wider text-orange-800">
+                  <div className="p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between text-xs font-bold">
+                    <span className="text-[9px] uppercase tracking-wider text-orange-800 dark:text-orange-300">
                       📝 {t.mixteDebt || "Reste à Crédit (Dette)"} :
                     </span>
-                    <span className="font-black text-orange-900 text-sm">
+                    <span className="font-black text-orange-900 dark:text-orange-200 text-sm">
                       {formatNumber(mixteDebtVal)} {t.currency}
                     </span>
                   </div>
@@ -1168,7 +1168,7 @@ export default function POS() {
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'البنك' : 'Bank'}</label>
                     <select 
-                      className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                      className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                       value={checkBank || ''} onChange={e => setCheckBank(e.target.value)}
                     >
                       <option value="">{language === 'ar' ? 'اختر البنك' : 'Select Bank'}</option>
@@ -1180,7 +1180,7 @@ export default function POS() {
                       <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkNumber}</label>
                       <input 
                         placeholder="XXXX-XXXX"
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                         value={checkNumber || ''} onChange={e => setCheckNumber(e.target.value)}
                       />
                     </div>
@@ -1188,7 +1188,7 @@ export default function POS() {
                       <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{t.checkOwner}</label>
                       <input 
                         placeholder={t.customerName}
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                         value={checkOwner || ''} onChange={e => setCheckOwner(e.target.value)}
                       />
                     </div>
@@ -1199,7 +1199,7 @@ export default function POS() {
                       <input 
                         type="number"
                         placeholder={total.toString()}
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                         value={checkAmount || ''} onChange={e => setCheckAmount(e.target.value)}
                       />
                     </div>
@@ -1207,7 +1207,7 @@ export default function POS() {
                       <label className="text-[9px] font-black uppercase text-text-secondary tracking-widest px-1">{language === 'ar' ? 'تاريخ الدفع' : 'Due Date'}</label>
                       <input 
                         type="date"
-                        className="w-full bg-white border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
+                        className="w-full bg-card border border-border-subtle rounded-xl px-4 py-2.5 text-xs font-black text-text-main focus:border-accent outline-none shadow-sm"
                         value={checkDueDate || ''} onChange={e => setCheckDueDate(e.target.value)}
                       />
                     </div>
@@ -1228,7 +1228,7 @@ export default function POS() {
                <div className="flex items-center gap-1">
                  <input 
                     type="number" 
-                    className="w-16 bg-white border border-border-subtle rounded-md px-1.5 py-0.5 text-right text-xs font-black text-danger outline-none focus:border-danger"
+                    className="w-16 bg-card border border-border-subtle rounded-md px-1.5 py-0.5 text-right text-xs font-black text-danger outline-none focus:border-danger"
                     value={discount || ''} onChange={e => setDiscount(e.target.value)}
                   />
                  <span className="text-[10px] font-bold text-text-secondary">{t.currency}</span>
@@ -1236,7 +1236,7 @@ export default function POS() {
             </div>
 
             {isSellingAtLoss && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-2 flex items-center justify-between text-red-700 animate-pulse">
+              <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 rounded-xl p-2 flex items-center justify-between text-red-700 dark:text-red-400 animate-pulse">
                 <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   {language === 'ar' ? 'تنبيه : بيع بالخسارة' : 'Alerte : Vente à perte'}
@@ -1257,7 +1257,7 @@ export default function POS() {
                  <button 
                   disabled={cart.length === 0}
                   onClick={handlePrintProforma}
-                  className="bg-white border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-accent hover:text-white hover:border-accent transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
+                  className="bg-card border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-accent hover:text-white hover:border-accent transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   {language === 'ar' ? 'وصل تحضير' : 'Devis'}
@@ -1265,7 +1265,7 @@ export default function POS() {
                  <button 
                   disabled={cart.length === 0}
                   onClick={handleHoldCart}
-                  className="bg-white border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-warning hover:text-white hover:border-warning transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
+                  className="bg-card border border-border-subtle text-text-main font-black text-[9px] uppercase tracking-wider py-2 px-2 rounded-lg hover:bg-warning hover:text-white hover:border-warning transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-2xs"
                 >
                   <CalendarClock className="w-3.5 h-3.5" />
                   {language === 'ar' ? 'في الانتظار' : 'Attente'}
@@ -1274,7 +1274,7 @@ export default function POS() {
               <div className="flex gap-1.5">
                  <button 
                   onClick={() => { setCart([]); setDiscount('0'); setReceivedAmount(''); setSelectedCustomerId(''); setCustomerSearchQuery(''); }}
-                  className="bg-white border border-border-subtle text-text-secondary font-black text-[9px] uppercase tracking-wider py-2.5 px-3 rounded-lg hover:bg-danger hover:text-white hover:border-danger transition-all w-20 shadow-2xs"
+                  className="bg-card border border-border-subtle text-text-secondary font-black text-[9px] uppercase tracking-wider py-2.5 px-3 rounded-lg hover:bg-danger hover:text-white hover:border-danger transition-all w-20 shadow-2xs"
                 >
                   {t.clear || 'Clear'}
                 </button>
@@ -1365,7 +1365,7 @@ export default function POS() {
               <div className="p-4 bg-bg-base/40 border-t border-border-subtle flex gap-3">
                 <button
                   onClick={() => setShowLossModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-border-subtle bg-white hover:bg-bg-base text-text-main font-black text-xs uppercase tracking-wider transition-all"
+                  className="flex-1 py-3 rounded-xl border border-border-subtle bg-card hover:bg-bg-base text-text-main font-black text-xs uppercase tracking-wider transition-all"
                 >
                   {t.cancelLossSale || "Annuler & Modifier"}
                 </button>

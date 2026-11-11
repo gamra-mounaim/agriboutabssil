@@ -379,7 +379,7 @@ export default function SettingsManagement({
 
       {tab === 'backup' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
-          <div className="bg-white border-2 border-border-subtle rounded-3xl p-8 shadow-sm relative overflow-hidden">
+          <div className="bg-card border-2 border-border-subtle rounded-3xl p-8 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16" />
             <div className={cn("relative flex flex-col md:flex-row items-center justify-between gap-6", language === 'ar' && "md:flex-row-reverse")}>
               <div className={cn("space-y-1 text-center md:text-left", language === 'ar' && "md:text-right")}>
@@ -405,7 +405,7 @@ export default function SettingsManagement({
                   {t.exportBackup}
                 </button>
                 
-                <label className="px-6 py-3 bg-bg-base border-2 border-border-subtle text-text-main font-black rounded-xl hover:bg-white cursor-pointer active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest">
+                <label className="px-6 py-3 bg-bg-base border-2 border-border-subtle text-text-main font-black rounded-xl hover:bg-card cursor-pointer active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest">
                   <Archive className="w-4 h-4 text-text-secondary" />
                   {t.importBackup}
                   <input 
@@ -424,7 +424,7 @@ export default function SettingsManagement({
                       onClick={handleDriveBackup}
                       disabled={backingUpToDrive}
                       className={cn(
-                        "px-6 py-3 bg-white border-2 border-[#4285F4] text-[#4285F4] font-black rounded-xl hover:bg-[#4285F4]/5 active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest",
+                        "px-6 py-3 bg-card border-2 border-[#4285F4] text-[#4285F4] font-black rounded-xl hover:bg-[#4285F4]/5 active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest",
                         backingUpToDrive && "opacity-50 cursor-wait"
                       )}
                     >
@@ -436,7 +436,7 @@ export default function SettingsManagement({
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={handleGoogleConnect}
-                      className="px-6 py-3 bg-white border-2 border-border-subtle text-[#4285F4] font-black rounded-xl hover:bg-white active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
+                      className="px-6 py-3 bg-card border-2 border-border-subtle text-[#4285F4] font-black rounded-xl hover:bg-bg-base active:scale-95 transition-all flex items-center gap-2 text-sm uppercase tracking-widest"
                     >
                       <GoogleDriveIcon />
                       {t.googleDriveConnect}

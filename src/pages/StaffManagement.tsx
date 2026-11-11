@@ -259,7 +259,7 @@ export default function StaffManagement({
       </div>
 
       {/* Register Form */}
-      <div className="bg-white border-2 border-border-subtle rounded-2xl p-6 shadow-sm overflow-hidden relative group">
+      <div className="bg-card border-2 border-border-subtle rounded-2xl p-6 shadow-sm overflow-hidden relative group">
         <div className="absolute top-0 left-0 w-1 h-full bg-accent opacity-0 group-hover:opacity-100 transition-opacity" />
         <h4 className={cn("font-bold text-sm mb-6 flex items-center gap-2", language === 'ar' && "flex-row-reverse")}>
           <UserPlus className="w-4 h-4 text-accent" />
@@ -434,7 +434,7 @@ export default function StaffManagement({
       <div className="section-container bg-card border border-border-subtle rounded-xl overflow-hidden shadow-sm">
         <table className="w-full text-left">
           <thead>
-            <tr className="bg-[#fafafa] border-b border-border-subtle">
+            <tr className="bg-bg-base/70 dark:bg-slate-800/60 border-b border-border-subtle">
               <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest">{language === 'ar' ? "الهوية" : language === 'fr' ? "IDENTITÉ" : "IDENTITY"}</th>
               <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "الدور" : language === 'fr' ? "RÔLE" : "ACCESS ROLE"}</th>
               <th className="p-4 text-[11px] font-bold text-text-secondary uppercase tracking-widest text-center">{language === 'ar' ? "صلاحيات الوصول" : language === 'fr' ? "ACCÈS MODULES" : "MODULE ACCESS"}</th>
@@ -666,7 +666,7 @@ function PermissionBadge({ label, active, onClick, language }: { label: string, 
         "px-2 py-0.5 rounded text-[9px] font-bold transition-all border",
         active 
           ? "bg-success/10 border-success/30 text-success shadow-sm" 
-          : "bg-bg-base border-border-subtle text-text-secondary opacity-40 hover:opacity-100 hover:bg-white"
+          : "bg-bg-base border-border-subtle text-text-secondary opacity-40 hover:opacity-100 hover:bg-card"
       )}
     >
       {label}

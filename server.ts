@@ -17,9 +17,47 @@ import { z } from "zod";
 import * as schemas from "./src/server/schemas";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'gamra-super-secret-jwt-key-2024';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn("WARNING: JWT_SECRET environment variable is not set in production!");
+}
 
 const hashPassword = (password: string) => {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `scrypt$${salt}$${derivedKey}`;
+};
+
+const verifyPassword = (rawPassword: string, storedHash: string): { valid: boolean; needsUpgrade: boolean } => {
+  if (!storedHash || !rawPassword) return { valid: false, needsUpgrade: false };
+  const trimmed = rawPassword.trim();
+
+  if (storedHash.startsWith('scrypt$')) {
+    const parts = storedHash.split('$');
+    if (parts.length !== 3) return { valid: false, needsUpgrade: false };
+    const [, salt, keyHex] = parts;
+    try {
+      const derivedKey = crypto.scryptSync(trimmed, salt, 64);
+      const keyBuf = Buffer.from(keyHex, 'hex');
+      if (derivedKey.length !== keyBuf.length) return { valid: false, needsUpgrade: false };
+      return { valid: crypto.timingSafeEqual(derivedKey, keyBuf), needsUpgrade: false };
+    } catch {
+      return { valid: false, needsUpgrade: false };
+    }
+  }
+
+  // Legacy SHA-256 support (auto-upgraded on login)
+  const legacySha256 = crypto.createHash('sha256').update(trimmed).digest('hex');
+  if (storedHash.length === 64 && /^[0-9a-f]+$/i.test(storedHash)) {
+    try {
+      const a = Buffer.from(legacySha256, 'hex');
+      const b = Buffer.from(storedHash, 'hex');
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+        return { valid: true, needsUpgrade: true };
+      }
+    } catch {}
+  }
+
+  return { valid: false, needsUpgrade: false };
 };
 
 const recentTransactionRequests = new Map<string, number>();
@@ -78,11 +116,12 @@ async function startServer() {
     crossOriginEmbedderPolicy: false,
   }));
   app.use(cors({
-    origin: process.env.APP_URL || '*',
+    origin: process.env.APP_URL || true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Actor-Name', 'X-Actor-Id']
   }));
-  app.use(express.json({ limit: '50mb' }));
+  app.use('/api/backup/import', express.json({ limit: '50mb' }));
+  app.use(express.json({ limit: '5mb' }));
 
   const authMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -103,14 +142,8 @@ async function startServer() {
       if (!userId || !sessionVersion) {
         return res.status(401).json({ status: "error", message: "Unauthorized: Invalid token payload" });
       }
-
-      if (userId === 'admin') {
-         req.body.user = decoded;
-         next();
-         return;
-      }
       
-      const user = (await db.prepare('SELECT role, session_version FROM users WHERE id = $1').get(userId)) as any;
+      const user = (await db.prepare('SELECT id, username, role, permissions, session_version FROM users WHERE id = $1').get(userId)) as any;
       if (!user) {
         return res.status(401).json({ status: "error", message: "Unauthorized: User not found" });
       }
@@ -119,15 +152,58 @@ async function startServer() {
         return res.status(401).json({ status: "error", message: "Unauthorized: Session expired" });
       }
 
-      req.body.user = decoded;
+      let parsedPerms: any = {};
+      if (user.permissions) {
+        try {
+          parsedPerms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+        } catch {}
+      }
+
+      const effectiveRole = (user.id === 'admin' || user.username?.toLowerCase() === 'gamra') ? 'admin' : user.role;
+      const authUser = {
+        ...decoded,
+        userId: user.id,
+        id: user.id,
+        username: user.username,
+        role: effectiveRole,
+        permissions: parsedPerms,
+        sessionVersion: user.session_version || 1
+      };
+
+      (req as any).user = authUser;
+      if (req.body && typeof req.body === 'object') {
+        req.body.user = authUser;
+      }
       next();
     } catch (err) {
       res.status(401).json({ status: "error", message: "Unauthorized: Invalid or expired token" });
     }
   };
 
+  const isAdminUser = (req: express.Request): boolean => {
+    const u = (req as any).user || req.body?.user;
+    if (!u) return false;
+    return u.role === 'admin' || u.userId === 'admin' || u.username?.toLowerCase() === 'gamra';
+  };
+
+  const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!isAdminUser(req)) {
+      return res.status(403).json({ status: "error", message: "Accès refusé : Privilèges administrateur requis." });
+    }
+    next();
+  };
+
   app.get("/api/health", async (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // Protect all /api routes by default except public auth/health endpoints
+  const publicApiPaths = new Set(['/health', '/auth/login', '/auth/verify', '/auth/google/callback']);
+  app.use('/api', (req, res, next) => {
+    if (publicApiPaths.has(req.path)) {
+      return next();
+    }
+    return authMiddleware(req, res, next);
   });
 
   app.get("/api/test", async (req, res) => {
@@ -146,6 +222,9 @@ async function startServer() {
 
   // --- Utilities ---
   const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.createHash('sha256').update('gamra_fallback_secret_key_123').digest('hex');
+  if (!process.env.ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
+    console.warn("WARNING: ENCRYPTION_KEY environment variable is not set in production!");
+  }
   const encryptToken = (text: string) => {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
@@ -173,50 +252,23 @@ async function startServer() {
       let actorId = fallbackActorId;
       let actorName = fallbackActorName;
 
-      // 1. Try to read from explicit request headers
-      if (req && req.headers) {
-        if (req.headers['x-actor-name']) {
-          try {
-            actorName = decodeURIComponent(req.headers['x-actor-name']);
-          } catch {
-            actorName = req.headers['x-actor-name'];
-          }
-        }
-        if (req.headers['x-actor-id']) {
-          actorId = req.headers['x-actor-id'];
-        }
-
-        // 2. Try to parse Authorization header
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-          try {
-            const token = req.headers.authorization.split(' ')[1];
-            if (token) {
-              if (token.includes(':')) {
-                const parts = token.split(':');
-                if (parts[0] && (!actorId || actorId === 'system')) {
-                  actorId = parts[0];
-                }
-              } else {
-                const decoded = jwt.verify(token, JWT_SECRET) as any;
-                if (decoded && decoded.userId && (!actorId || actorId === 'system')) {
-                  actorId = decoded.userId;
-                }
-              }
+      // 1. Always prefer the verified authenticated user from JWT middleware
+      if (req && req.user) {
+        actorId = req.user.userId || req.user.id || actorId;
+        actorName = req.user.username || actorName;
+      } else if (req && req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          if (token && !token.includes(':')) {
+            const decoded = jwt.verify(token, JWT_SECRET) as any;
+            if (decoded && decoded.userId) {
+              actorId = decoded.userId;
             }
-          } catch (e) {}
-        }
+          }
+        } catch (e) {}
       }
 
-      // 3. Try to read from request body
-      if (req && req.body) {
-        const bodyActor = req.body.actor || req.body.actorName || req.body.employee_name || req.body.staffId;
-        if (bodyActor && typeof bodyActor === 'string' && bodyActor.trim() && bodyActor.toLowerCase() !== 'system') {
-          if (!actorId || actorId === 'system') actorId = bodyActor.trim();
-          if (!actorName || actorName === 'System' || actorName === 'Staff') actorName = bodyActor.trim();
-        }
-      }
-
-      // 4. Resolve username from database
+      // 2. Resolve username from database
       if (actorId && actorId !== 'system') {
         try {
           const user = await db.prepare('SELECT id, username FROM users WHERE id = ? OR username = ?').get(actorId, actorId) as any;
@@ -231,14 +283,6 @@ async function startServer() {
             actorName = actorId;
           }
         }
-      } else if (actorName && actorName !== 'System' && actorName !== 'Staff') {
-        try {
-          const user = await db.prepare('SELECT id, username FROM users WHERE username = ? OR id = ?').get(actorName, actorName) as any;
-          if (user) {
-            actorId = user.id;
-            actorName = user.username;
-          }
-        } catch (e) {}
       }
 
       await db.prepare(`
@@ -324,15 +368,11 @@ async function startServer() {
     }
 
     const usernameLower = username.trim().toLowerCase();
-    const hashedPassword = hashPassword(rawPassword.trim());
-    
-    // Hardcoded admin removed
 
     try {
       const user = (await db.prepare('SELECT * FROM users WHERE username = $1 OR lower(username) = $2').get(username, usernameLower)) as any;
 
       if (user) {
-        // Parse permissions if they are stored as a string
         if (typeof user.permissions === 'string') {
           try {
             user.permissions = JSON.parse(user.permissions);
@@ -342,7 +382,17 @@ async function startServer() {
           }
         }
 
-        if (user.password === hashedPassword || user.password === rawPassword.trim()) {
+        const { valid, needsUpgrade } = verifyPassword(rawPassword, user.password);
+        if (valid) {
+          if (needsUpgrade) {
+            try {
+              const upgradedHash = hashPassword(rawPassword.trim());
+              await db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(upgradedHash, user.id);
+            } catch (upgradeErr) {
+              console.warn("Password hash upgrade skipped:", upgradeErr);
+            }
+          }
+
           const { password: _p, ...userWithoutPassword } = user;
           if (userWithoutPassword.username?.toLowerCase() === 'gamra' || userWithoutPassword.id === 'admin') {
             userWithoutPassword.role = 'admin';
@@ -362,8 +412,6 @@ async function startServer() {
         }
       }
 
-      // Hardcoded admin logic removed
-
       res.status(401).json({ status: "error", message: "Invalid username or password" });
     } catch (error: any) {
       console.error("Login error:", error);
@@ -377,14 +425,28 @@ async function startServer() {
       return res.status(400).json({ status: "error", message: "User ID required" });
     }
 
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.json({ status: "invalid", message: "Missing authorization token" });
+    }
+    const token = authHeader.split(' ')[1];
+    if (!token || token.includes(':')) {
+      return res.json({ status: "invalid", message: "Legacy token format, please re-login" });
+    }
+
     try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      if (!decoded || decoded.userId !== userId) {
+        return res.json({ status: "invalid", message: "Token user mismatch" });
+      }
+
       const user = (await db.prepare('SELECT session_version FROM users WHERE id = $1').get(userId)) as any;
       if (!user) {
         return res.json({ status: "invalid", message: "User not found" });
       }
 
       const currentVersion = user.session_version || 1;
-      const clientVersion = sessionVersion !== undefined ? parseInt(sessionVersion) : undefined;
+      const clientVersion = sessionVersion !== undefined ? parseInt(sessionVersion) : decoded.sessionVersion;
 
       if (clientVersion !== undefined && clientVersion !== currentVersion) {
         return res.json({ status: "invalid", message: "Session expired or logged out from another device" });
@@ -392,20 +454,24 @@ async function startServer() {
 
       return res.json({ status: "valid" });
     } catch (error: any) {
-      console.error("Verification error:", error);
-      res.status(500).json({ status: "error", message: "Database error: " + error.message });
+      return res.json({ status: "invalid", message: "Invalid or expired token" });
     }
   });
 
-  app.post("/api/auth/logout-all", async (req, res) => {
+  app.post("/api/auth/logout-all", authMiddleware, async (req, res) => {
     const { userId } = req.body;
     if (!userId) {
       return res.status(400).json({ status: "error", message: "User ID required" });
     }
 
+    const caller = (req as any).user;
+    if (!isAdminUser(req) && caller?.userId !== userId) {
+      return res.status(403).json({ status: "error", message: "Forbidden" });
+    }
+
     try {
       await db.prepare('UPDATE users SET session_version = COALESCE(session_version, 1) + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1').run(userId);
-      logActivity(req, 'STAFF', 'login', `Déconnexion forcée de tous les appareils pour l'utilisateur : ${userId}`, userId, userId === 'admin' ? 'gamra' : userId);
+      logActivity(req, 'STAFF', 'login', `Déconnexion forcée de tous les appareils pour l'utilisateur : ${userId}`, caller?.userId || userId, caller?.username || userId);
       return res.json({ status: "success", message: "All sessions logged out successfully" });
     } catch (error: any) {
       console.error("Logout-all error:", error);
@@ -415,7 +481,7 @@ async function startServer() {
 
   app.post("/api/auth/change-password", authMiddleware, async (req, res) => {
     const { oldPassword, newPassword } = req.body;
-    const userId = req.body.user.userId;
+    const userId = (req as any).user?.userId || req.body.user?.userId;
 
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ status: "error", message: "Old and new passwords are required" });
@@ -427,8 +493,8 @@ async function startServer() {
         return res.status(404).json({ status: "error", message: "User not found" });
       }
 
-      const hashedOld = hashPassword(oldPassword.trim());
-      if (user.password !== hashedOld && user.password !== oldPassword.trim()) {
+      const { valid } = verifyPassword(oldPassword, user.password);
+      if (!valid) {
         return res.status(400).json({ status: "error", message: "Incorrect current password" });
       }
 
@@ -455,8 +521,11 @@ async function startServer() {
   });
 
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authMiddleware, requireAdmin, async (req, res) => {
     const { username, password: rawPassword, role, permissions } = req.body;
+    if (!username || !rawPassword) {
+      return res.status(400).json({ status: "error", message: "Username and password are required" });
+    }
     const usernameLower = username.trim().toLowerCase();
     const hashedPassword = hashPassword(rawPassword.trim());
     
@@ -469,7 +538,7 @@ async function startServer() {
       await db.prepare(`
         INSERT INTO users (id, username, password, role, permissions)
         VALUES (?, ?, ?, ?, ?)
-      `).run(usernameLower, usernameLower, hashedPassword, role, JSON.stringify(permissions));
+      `).run(usernameLower, usernameLower, hashedPassword, role || 'staff', JSON.stringify(permissions || {}));
       
       logActivity(req, 'STAFF', 'create', `Nouvel utilisateur créé : ${usernameLower} (${role})`, 'system', 'System');
       res.json({ status: "success" });
@@ -479,7 +548,7 @@ async function startServer() {
   });
 
   // --- Users API ---
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", authMiddleware, async (req, res) => {
     const users = await db.prepare('SELECT id, username, role, permissions, created_at FROM users').all();
     const formattedUsers = users.map((u: any) => ({
       ...toCamel(u),
@@ -488,7 +557,7 @@ async function startServer() {
     res.json(formattedUsers);
   });
 
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("/api/users/:id", authMiddleware, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { role, permissions, password } = req.body;
     try {
@@ -506,14 +575,18 @@ async function startServer() {
           WHERE id = ?
         `).run(role, JSON.stringify(permissions), id);
       }
+      logActivity(req, 'STAFF', 'update', `Compte utilisateur modifié : ${id} (${role})`, 'system', 'System');
       res.json({ status: "success" });
     } catch (error: any) {
       res.status(500).json({ status: "error", message: error.message });
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  app.delete("/api/users/:id", authMiddleware, requireAdmin, async (req, res) => {
     const { id } = req.params;
+    if (id === 'admin' || id.toLowerCase() === 'gamra') {
+      return res.status(400).json({ status: "error", message: "Impossible de supprimer le compte administrateur principal." });
+    }
     try {
       await db.prepare('DELETE FROM users WHERE id = ?').run(id);
       logActivity(req, 'STAFF', 'delete', `Compte utilisateur supprimé : ${id}`, 'system', 'System');
@@ -947,12 +1020,9 @@ async function startServer() {
           message: "Impossible d'archiver un produit ayant encore du stock (> 0). La quantité doit être 0." 
         });
       }
-      const reqActorId = (req.headers['x-actor-id'] as string) || '';
-      if (reqActorId && reqActorId !== 'admin') {
-        const u = await db.prepare('SELECT role FROM users WHERE id = ?').get(reqActorId) as any;
-        if (u && u.role !== 'admin' && u.role !== 'manager' && oldProduct && Number(qty) !== Number(oldProduct.qty)) {
-          finalQty = oldProduct.qty;
-        }
+      const caller = (req as any).user;
+      if (caller && !isAdminUser(req) && caller.role !== 'manager' && oldProduct && Number(qty) !== Number(oldProduct.qty)) {
+        finalQty = oldProduct.qty;
       }
 
       await db.prepare(`
@@ -1057,31 +1127,11 @@ async function startServer() {
         return res.status(404).json({ status: "error", message: "Produit introuvable" });
       }
 
-      // Security Check: Only Admin (gamra) is allowed to delete products
-      let callerId = (req.headers['x-actor-id'] as string) || '';
-      let callerName = (req.headers['x-actor-name'] as string) || '';
-      if (callerName) {
-        try { callerName = decodeURIComponent(callerName); } catch {}
-      }
-      if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
-        try {
-          const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
-          callerId = decoded?.userId;
-          callerName = decoded?.username;
-        } catch {}
-      }
+      // Security Check: Only Admin (gamra) or user with deleteProducts permission is allowed to delete products
+      const caller = (req as any).user;
+      const canDeleteProduct = isAdminUser(req) || Boolean(caller?.permissions?.deleteProducts);
 
-      let isGamraAdmin = false;
-      if (callerId === 'admin' || callerName?.toLowerCase() === 'gamra' || callerId?.toLowerCase() === 'gamra') {
-        isGamraAdmin = true;
-      } else if (callerId) {
-        const caller = await db.prepare('SELECT id, username, role FROM users WHERE id = ? OR username = ?').get(callerId, callerId) as any;
-        if (caller && (caller.role === 'admin' || caller.username?.toLowerCase() === 'gamra' || caller.id === 'admin')) {
-          isGamraAdmin = true;
-        }
-      }
-
-      if (!isGamraAdmin) {
+      if (!canDeleteProduct) {
         return res.status(403).json({ 
           status: "error", 
           message: "Accès refusé : Seul l'administrateur (gamra) est autorisé à supprimer des produits du système." 
@@ -2442,33 +2492,8 @@ async function startServer() {
       const { id } = req.params;
 
       // --- Security Check: Only Admin or users with explicit cancelInvoices permission ---
-      let callerId = (req.headers['x-actor-id'] as string) || '';
-      if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
-        try {
-          const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
-          callerId = decoded?.userId;
-        } catch {}
-      }
-
-      let isAuthorized = false;
-      if (callerId === 'admin') {
-        isAuthorized = true;
-      } else if (callerId) {
-        const caller = await db.prepare('SELECT role, permissions FROM users WHERE id = ? OR username = ?').get(callerId, callerId) as any;
-        if (caller) {
-          if (caller.role === 'admin') {
-            isAuthorized = true;
-          } else {
-            let perms = caller.permissions;
-            if (typeof perms === 'string') {
-              try { perms = JSON.parse(perms); } catch {}
-            }
-            if (perms && perms.cancelInvoices === true) {
-              isAuthorized = true;
-            }
-          }
-        }
-      }
+      const caller = (req as any).user;
+      const isAuthorized = isAdminUser(req) || Boolean(caller?.permissions?.cancelInvoices);
 
       if (!isAuthorized) {
         return res.status(403).json({
@@ -2652,33 +2677,101 @@ async function startServer() {
     const weeklyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('week', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('week', CURRENT_DATE)");
     const monthlyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('month', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('month', CURRENT_DATE)");
     const yearlyProfitBreakdown = await getBreakdown("WHERE s.date >= DATE_TRUNC('year', CURRENT_DATE)", "WHERE date >= DATE_TRUNC('year', CURRENT_DATE)");
+    const allTimeProfitBreakdown = await getBreakdown("", "");
 
     const dailyProfit = dailyProfitBreakdown.total;
     const weeklyProfit = weeklyProfitBreakdown.total;
     const monthlyProfit = monthlyProfitBreakdown.total;
     const yearlyProfit = yearlyProfitBreakdown.total;
+    const totalRealizedProfit = allTimeProfitBreakdown.total;
 
-    // Last 7 days sales trend
-    const last7DaysData = await db.prepare(`
-      SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(total) as amount
+    // Daily Cash Flow (Trésorerie / Caisse du Jour)
+    const cashSalesTodayRow = await db.prepare(`
+      SELECT 
+        COALESCE(SUM(total), 0) as sales_today,
+        COALESCE(SUM(
+          CASE 
+            WHEN payment_method = 'cash' THEN total 
+            WHEN payment_method = 'mixte' THEN COALESCE(cash_amount, 0) 
+            ELSE 0 
+          END
+        ), 0) as cash_sales_today
       FROM sales
-      WHERE date >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY TO_CHAR(date, 'YYYY-MM-DD')
+      WHERE date >= CURRENT_DATE
+    `).get() as any;
+
+    const custPaymentsTodayRow = await db.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM payments
+      WHERE date >= CURRENT_DATE AND (payment_method = 'cash' OR payment_method IS NULL)
+    `).get() as any;
+
+    const suppPaymentsTodayRow = await db.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM supplier_history
+      WHERE date >= CURRENT_DATE AND type = 'PAYMENT' AND (payment_method = 'cash' OR payment_method IS NULL)
+    `).get() as any;
+
+    const cashReturnsTodayRow = await db.prepare(`
+      SELECT COALESCE(SUM(total_refund), 0) as total
+      FROM customer_returns
+      WHERE date >= CURRENT_DATE AND action != 'debt'
+    `).get() as any;
+
+    const salesToday = Number(cashSalesTodayRow?.sales_today) || 0;
+    const cashSalesToday = Number(cashSalesTodayRow?.cash_sales_today) || 0;
+    const customerPaymentsToday = Number(custPaymentsTodayRow?.total) || 0;
+    const supplierPaymentsToday = Number(suppPaymentsTodayRow?.total) || 0;
+    const cashReturnsToday = Number(cashReturnsTodayRow?.total) || 0;
+    const netCashToday = cashSalesToday + customerPaymentsToday - supplierPaymentsToday - cashReturnsToday;
+
+    const dailyCashFlow = {
+      salesToday,
+      cashSalesToday,
+      customerPaymentsToday,
+      supplierPaymentsToday,
+      cashReturnsToday,
+      netCashToday
+    };
+
+    // Last 30 days sales & profit trend
+    const last30DaysData = await db.prepare(`
+      SELECT TO_CHAR(s.date, 'YYYY-MM-DD') as date, 
+             COALESCE(SUM(s.total), 0) as amount,
+             COALESCE(SUM(s.discount), 0) as discount
+      FROM sales s
+      WHERE s.date >= CURRENT_DATE - INTERVAL '29 days'
+      GROUP BY TO_CHAR(s.date, 'YYYY-MM-DD')
       ORDER BY date ASC
     `).all() as any[];
+
+    const last30DaysProfitData = await db.prepare(`
+      SELECT TO_CHAR(s.date, 'YYYY-MM-DD') as date,
+             COALESCE(SUM((si.price - COALESCE(si.cost_price, p.cost_price, si.price)) * si.qty), 0) as gross_profit
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      LEFT JOIN products p ON si.product_id = p.id
+      WHERE s.date >= CURRENT_DATE - INTERVAL '29 days'
+      GROUP BY TO_CHAR(s.date, 'YYYY-MM-DD')
+    `).all() as any[];
     
-    // Create an array with all 7 days (even if amount is 0)
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
+    const last30Days: any[] = [];
+    for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const found = last7DaysData.find((row) => row.date === dateStr);
-      last7Days.push({
+      const found = last30DaysData.find((row) => row.date === dateStr);
+      const foundProf = last30DaysProfitData.find((row) => row.date === dateStr);
+      const grossProf = Number(foundProf?.gross_profit) || 0;
+      const disc = Number(found?.discount) || 0;
+      last30Days.push({
         date: `${d.getDate()}/${d.getMonth() + 1}`,
-        amount: found ? found.amount : 0
+        amount: found ? Number(found.amount) : 0,
+        profit: Math.max(0, Math.round((grossProf - disc) * 100) / 100)
       });
     }
+
+    const last7Days = last30Days.slice(-7);
 
     // Previous 7 days total (for week-over-week comparison)
     const prev7DaysRow = await db.prepare(`
@@ -2689,7 +2782,16 @@ async function startServer() {
     `).get() as any;
     const prev7DaysTotal = prev7DaysRow?.total || 0;
 
-    // Top Selling Products
+    // Previous 30 days total
+    const prev30DaysRow = await db.prepare(`
+      SELECT COALESCE(SUM(total), 0) as total
+      FROM sales
+      WHERE date >= CURRENT_DATE - INTERVAL '59 days'
+        AND date < CURRENT_DATE - INTERVAL '29 days'
+    `).get() as any;
+    const prev30DaysTotal = prev30DaysRow?.total || 0;
+
+    // Top Selling Products (All time, 7 days, 30 days)
     const topProductsList = await db.prepare(`
       SELECT p.id, p.name, SUM(si.qty) as qty,
              COALESCE(SUM(si.qty * si.price), 0) as total_revenue,
@@ -2697,6 +2799,34 @@ async function startServer() {
              MAX(p.price) as price
       FROM sale_items si
       JOIN products p ON si.product_id = p.id
+      GROUP BY p.id, p.name
+      ORDER BY qty DESC
+      LIMIT 5
+    `).all();
+
+    const topProducts7Days = await db.prepare(`
+      SELECT p.id, p.name, SUM(si.qty) as qty,
+             COALESCE(SUM(si.qty * si.price), 0) as total_revenue,
+             ROUND(CAST(COALESCE(SUM(si.qty * si.price), 0) / NULLIF(SUM(si.qty), 0) AS numeric), 2) as avg_price,
+             MAX(p.price) as price
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      JOIN products p ON si.product_id = p.id
+      WHERE s.date >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY p.id, p.name
+      ORDER BY qty DESC
+      LIMIT 5
+    `).all();
+
+    const topProducts30Days = await db.prepare(`
+      SELECT p.id, p.name, SUM(si.qty) as qty,
+             COALESCE(SUM(si.qty * si.price), 0) as total_revenue,
+             ROUND(CAST(COALESCE(SUM(si.qty * si.price), 0) / NULLIF(SUM(si.qty), 0) AS numeric), 2) as avg_price,
+             MAX(p.price) as price
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id
+      JOIN products p ON si.product_id = p.id
+      WHERE s.date >= CURRENT_DATE - INTERVAL '29 days'
       GROUP BY p.id, p.name
       ORDER BY qty DESC
       LIMIT 5
@@ -2755,15 +2885,21 @@ async function startServer() {
       weeklyProfit,
       monthlyProfit,
       yearlyProfit,
+      totalRealizedProfit,
+      dailyCashFlow,
       dailyProfitBreakdown,
       weeklyProfitBreakdown,
       monthlyProfitBreakdown,
       yearlyProfitBreakdown,
       paymentMethodsBreakdown,
       last7Days: last7Days,
+      last30Days: last30Days,
       topProductsList,
+      topProducts7Days,
+      topProducts30Days,
       dormantStockList,
       prev7DaysTotal,
+      prev30DaysTotal,
       totalDamagesLoss,
       damagesCount,
       damagesTotalQty
@@ -2775,7 +2911,13 @@ async function startServer() {
   });
 
   // --- Communications API (Preserved) ---
-  app.post("/api/send-email", async (req, res) => {
+  const commLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: { status: "error", message: "Too many communication requests, please try again later." }
+  });
+
+  app.post("/api/send-email", authMiddleware, commLimiter, async (req, res) => {
     const { to, subject, body, filename, fileBase64 } = req.body;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
@@ -2794,7 +2936,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/send-whatsapp", async (req, res) => {
+  app.post("/api/send-whatsapp", authMiddleware, commLimiter, async (req, res) => {
     const { to, body, mediaUrl } = req.body;
     const sid = process.env.TWILIO_ACCOUNT_SID;
     const token = process.env.TWILIO_AUTH_TOKEN;
@@ -2810,19 +2952,11 @@ async function startServer() {
     }
   });
 
-  app.get("/api/activity", async (req, res) => {
+  app.get("/api/activity", authMiddleware, async (req, res) => {
     const { userId } = req.query;
 
-    // Caller identity check
-    let callerId = req.headers['x-actor-id'] as string;
-    let callerName = req.headers['x-actor-name'] ? decodeURIComponent(req.headers['x-actor-name'] as string) : '';
-    if (!callerId && req.headers.authorization?.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(req.headers.authorization.split(' ')[1], JWT_SECRET) as any;
-        callerId = decoded?.userId;
-      } catch {}
-    }
-    const isGamraCaller = callerId?.toLowerCase() === 'admin' || callerId?.toLowerCase() === 'gamra' || callerName?.toLowerCase().includes('gamra');
+    // Verified caller identity check from JWT middleware
+    const isGamraCaller = isAdminUser(req);
 
     const conditions: string[] = [];
     const params: any[] = [];
@@ -2868,7 +3002,7 @@ async function startServer() {
   });
 
   // --- Settings API ---
-  app.get("/api/settings", async (req, res) => {
+  app.get("/api/settings", authMiddleware, async (req, res) => {
     try {
       const settings = await db.prepare('SELECT * FROM settings WHERE id = ?').get('main');
       res.json(toCamel(settings || {}));
@@ -2877,7 +3011,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/settings", async (req, res) => {
+  app.post("/api/settings", authMiddleware, requireAdmin, async (req, res) => {
     const { shopName, shopAddress, shopPhone } = req.body;
     try {
       await db.prepare(`
@@ -2894,7 +3028,7 @@ async function startServer() {
   });
 
   // --- Backup & Recovery API ---
-  app.get("/api/auth/google/url", async (req, res) => {
+  app.get("/api/auth/google/url", authMiddleware, requireAdmin, async (req, res) => {
     try {
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -2934,6 +3068,7 @@ async function startServer() {
       await db.prepare('DELETE FROM google_auth WHERE id = ?').run('main');
       await db.prepare('INSERT INTO google_auth (id, tokens) VALUES (?, ?)').run('main', encryptToken(JSON.stringify(tokens)));
 
+      const targetOrigin = process.env.APP_URL ? JSON.stringify(process.env.APP_URL) : 'window.location.origin';
       res.send(`
         <html>
           <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0f4f8;">
@@ -2942,7 +3077,7 @@ async function startServer() {
               <p>Votre compte Google Drive est maintenant lié. Vous pouvez fermer cette fenêtre.</p>
               <script>
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS' }, '*');
+                  window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS' }, ${targetOrigin});
                   setTimeout(() => window.close(), 2000);
                 }
               </script>
@@ -2955,7 +3090,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/backup/drive/status", async (req, res) => {
+  app.get("/api/backup/drive/status", authMiddleware, async (req, res) => {
     try {
       const auth = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
       res.json({ connected: !!auth });
@@ -2964,7 +3099,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/backup/drive/upload", async (req, res) => {
+  app.post("/api/backup/drive/upload", authMiddleware, requireAdmin, async (req, res) => {
     try {
       const authData = (await db.prepare('SELECT tokens FROM google_auth WHERE id = ?').get('main')) as any;
       if (!authData) return res.status(401).json({ status: "error", message: "Google Drive non connecté" });
@@ -3033,7 +3168,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/backup/export", authMiddleware, async (req, res) => {
+  app.get("/api/backup/export", authMiddleware, requireAdmin, async (req, res) => {
     try {
       const tables = [
         'users', 'categories', 'products', 'customers', 
@@ -3051,7 +3186,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/backup/import", authMiddleware, async (req, res) => {
+  app.post("/api/backup/import", authMiddleware, requireAdmin, async (req, res) => {
     const { data } = req.body;
     if (!data) return res.status(400).json({ status: "error", message: "No data provided" });
 
@@ -3080,13 +3215,16 @@ async function startServer() {
 
       // Re-insert data in reverse order (parents first)
       const insertOrder = [...tables].reverse();
+      const safeColumnRegex = /^[a-zA-Z0-9_]+$/;
       for (const table of insertOrder) {
         const rows = data[table] || [];
         if (rows.length === 0) continue;
 
-        const columns = Object.keys(rows[0]);
+        const columns = Object.keys(rows[0]).filter(col => safeColumnRegex.test(col));
+        if (columns.length === 0) continue;
+        const quotedColumns = columns.map(col => `"${col}"`).join(',');
         const placeholders = columns.map(() => '?').join(',');
-        const stmt = await db.prepare(`INSERT INTO ${table} (${columns.join(',')}) VALUES (${placeholders})`);
+        const stmt = await db.prepare(`INSERT INTO ${table} (${quotedColumns}) VALUES (${placeholders})`);
         
         for (const row of rows) {
           const values = columns.map(col => row[col]);

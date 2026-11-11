@@ -7,6 +7,7 @@
   --color-text-main: var(--text-main);
   --color-text-secondary: var(--text-secondary);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-border-subtle: var(--border-subtle);
   --color-danger: #ef4444;
   --color-success: #10b981;
@@ -24,6 +25,7 @@
   --text-main: #0f172a;
   --text-secondary: #64748b;
   --accent: #059669; /* Emerald 600 - Agri Green */
+  --accent-hover: #047857; /* Emerald 700 */
   --border-subtle: #e2e8f0;
   --card: #ffffff;
 }
@@ -34,7 +36,8 @@
   --text-main: #f8fafc;
   --text-secondary: #94a3b8;
   --accent: #10b981; /* Emerald 500 */
-  --border-subtle: #1e293b;
+  --accent-hover: #059669; /* Emerald 600 */
+  --border-subtle: #334155; /* Slate 700 - Distinct border against #1e293b card */
   --card: #1e293b;
 }
 
@@ -108,6 +111,11 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px var(--color-accent) !important;
   border-color: transparent !important;
   transition: all 0.2s ease-in-out;
+}
+
+select option {
+  background-color: var(--card);
+  color: var(--text-main);
 }
 
 /* Interactive Hover States */

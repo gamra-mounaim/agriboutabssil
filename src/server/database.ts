@@ -616,7 +616,7 @@ export async function initDb() {
   }
 
   // Bootstrap admin definitively
-  const adminHash = '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f'; // SHA-256 for 'yassir2019'
+  const adminHash = process.env.DEFAULT_ADMIN_HASH || '87a6e581ddbffa6c0760a83a4359078a3f885f6b4124738a364c9bb93393048f';
   const admin = await db.prepare('SELECT id FROM users WHERE username = $1').get('gamra');
   
   const adminPerms = JSON.stringify({ 

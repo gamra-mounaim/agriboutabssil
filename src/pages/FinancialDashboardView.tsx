@@ -14,14 +14,15 @@ import {
   generateHistoryReportPDF,
   generateTransactionReceiptPDF,
   generateStockReportPDF,
-  generateDamagesReportPDF
+  generateDamagesReportPDF,
+  generateFinancialDashboardPDF
 } from '../services/invoiceService';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReChartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine } from 'recharts';
 
 // Destructure common icons to avoid TS errors
 const { Search, Archive, ArrowRightLeft, Hash, User, CalendarClock, FolderOpen, Eye, CheckCircle, Sparkles, UserCog, Store, ChevronRight, ShieldAlert, Cloud, Plus, Edit2, Trash2, CheckCircle2, XCircle, AlertTriangle, Printer, FileText, ChevronDown, ChevronUp, Image: ImageIcon, Camera, RefreshCw, X, ShoppingCart, DollarSign, ArrowUpRight, ArrowDownRight, Package, Users, Wallet, TrendingUp, Calendar, Activity, CreditCard, LayoutGrid, Download, ShieldCheck, AlertCircle, Save, Undo, History, UserPlus, Lock, Key, LogOut, Settings: SettingsIcon, MapPin, Phone, Mail, Link, Globe, TrendingDown, UserCheck, Tag, BarChart3 } = LucideIcons;
 
-export default function FinancialDashboardView({ permissions, currency }: { permissions: any, currency?: string }) {
+export default function FinancialDashboardView({ permissions, currency, onNavigate, onInspectProduct }: { permissions: any, currency?: string, onNavigate?: (view: any) => void, onInspectProduct?: (product: any) => void }) {
   const { products, categories, customers, suppliers, sales, payments, checks, stats, settings, setMessage, fetchData: onRefresh } = useStore();
   const { language, user } = useAuthStore();
 
@@ -123,8 +124,23 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     }
   };
 
+  const [trendPeriod, setTrendPeriod] = useState<'7d' | '30d' | 'all'>('7d');
+  const totalRealizedProfit = stats?.totalRealizedProfit ?? yearlyProfit;
+  const dailyCashFlow = stats?.dailyCashFlow || {
+    salesToday: 0,
+    cashSalesToday: 0,
+    customerPaymentsToday: 0,
+    supplierPaymentsToday: 0,
+    cashReturnsToday: 0,
+    netCashToday: 0,
+  };
+
   const lowStock = products.filter(p => !p.isArchived && p.qty <= (p.minStock ?? settings?.lowStockThreshold ?? 5));
-  const topProductsList = stats?.topProductsList || [];
+  const topProductsList = useMemo(() => {
+    if (trendPeriod === '7d' && stats?.topProducts7Days?.length) return stats.topProducts7Days;
+    if (trendPeriod === '30d' && stats?.topProducts30Days?.length) return stats.topProducts30Days;
+    return stats?.topProductsList || [];
+  }, [trendPeriod, stats]);
   const dormantStockList = stats?.dormantStockList || [];
   const topDebtorsList = useMemo(() => {
     return [...(customers || [])].filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt).slice(0, 5);
@@ -157,12 +173,30 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
     return diffDays <= 3;
   }).sort((a, b) => new Date((a.dueDate || a.due_date)!).getTime() - new Date((b.dueDate || b.due_date)!).getTime());
 
-  // Trend Data (Last 7 Days)
-  const trendData = stats?.last7Days || [];
-  const totalTrend7 = trendData.reduce((acc: number, d: any) => acc + d.amount, 0);
+  // Upcoming Checks (due within 3 days or overdue)
+  const upcomingChecks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return (checks || []).filter((ch: any) => {
+      const status = ch.checkStatus || ch.status;
+      if (status !== 'PENDING') return false;
+      const rawDue = ch.checkDueDate || ch.dueDate || ch.due_date;
+      if (!rawDue) return false;
+      const dueDate = new Date(rawDue);
+      if (isNaN(dueDate.getTime())) return false;
+      dueDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 3;
+    }).sort((a: any, b: any) => new Date(a.checkDueDate || a.dueDate || a.due_date).getTime() - new Date(b.checkDueDate || b.dueDate || b.due_date).getTime());
+  }, [checks]);
+
+  // Trend Data (7 Days vs 30 Days)
+  const trendData = trendPeriod === '30d' ? (stats?.last30Days || stats?.last7Days || []) : (stats?.last7Days || []);
+  const totalTrend7 = trendData.reduce((acc: number, d: any) => acc + (Number(d.amount) || 0), 0);
+  const totalTrendProfit = trendData.reduce((acc: number, d: any) => acc + (Number(d.profit) || 0), 0);
   const avgTrend = trendData.length > 0 ? Math.round(totalTrend7 / trendData.length) : 0;
-  const prev7DaysTotal = stats?.prev7DaysTotal || 0;
-  const pctChange = prev7DaysTotal > 0 ? ((totalTrend7 - prev7DaysTotal) / prev7DaysTotal) * 100 : null;
+  const prevPeriodTotal = trendPeriod === '30d' ? (stats?.prev30DaysTotal || 0) : (stats?.prev7DaysTotal || 0);
+  const pctChange = prevPeriodTotal > 0 ? ((totalTrend7 - prevPeriodTotal) / prevPeriodTotal) * 100 : null;
 
   const categoryValueData = useMemo(() => {
     return (categories || []).map(cat => {
@@ -251,7 +285,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           </h3>
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
-              3
+              {paymentMethodsList.length}
             </span>
           </div>
         </div>
@@ -463,16 +497,16 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                   <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorSalesRestricted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
                     <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} width={72} />
                     <ReChartsTooltip
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
-                      itemStyle={{ color: '#6366f1' }}
+                      contentStyle={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text-main)', borderRadius: '16px', border: '1px solid var(--color-border-subtle)', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                      itemStyle={{ color: '#10b981' }}
                       formatter={(value: number) => [
                         `${formatNumber(value)} ${t.currency}`,
                         language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales'
@@ -497,12 +531,12 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     <Area
                       type="monotone"
                       dataKey="amount"
-                      stroke="#6366f1"
+                      stroke="#10b981"
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorSalesRestricted)"
-                      activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#6366f1' }}
-                      dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                      activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#10b981' }}
+                      dot={{ r: 3, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -517,7 +551,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                 {t.stockAlerts}
               </h3>
               <div className="flex items-center gap-2 min-w-0">
-                <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">
+                <span className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-xs font-bold text-danger">
                   {lowStock.length}
                 </span>
               </div>
@@ -630,9 +664,59 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             </button>
           )}
 
+          {/* Period Filter Toggle (7d / 30d / Global) */}
+          <div className="flex items-center bg-bg-base border border-border-subtle p-1 rounded-2xl shadow-xs">
+            <button
+              onClick={() => setTrendPeriod('7d')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all",
+                trendPeriod === '7d' ? "bg-accent text-white shadow-sm" : "text-text-secondary hover:text-text-main"
+              )}
+            >
+              {language === 'ar' ? '7 أيام' : '7 Jours'}
+            </button>
+            <button
+              onClick={() => setTrendPeriod('30d')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all",
+                trendPeriod === '30d' ? "bg-accent text-white shadow-sm" : "text-text-secondary hover:text-text-main"
+              )}
+            >
+              {language === 'ar' ? '30 يوم' : '30 Jours'}
+            </button>
+            <button
+              onClick={() => setTrendPeriod('all')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all",
+                trendPeriod === 'all' ? "bg-accent text-white shadow-sm" : "text-text-secondary hover:text-text-main"
+              )}
+            >
+              {language === 'ar' ? 'الكل' : 'Global'}
+            </button>
+          </div>
+
           {/* Global Statement / Financial Print */}
           <button
-            onClick={() => window.print()}
+            onClick={() => generateFinancialDashboardPDF({
+              totalRevenue,
+              totalRealizedProfit,
+              expectedProfit: netProfit,
+              inventoryValue: inventoryAssetValue,
+              customerDebt: totalCustomerDebt,
+              supplierDebt: totalSupplierDebt,
+              pendingChecksTotal,
+              pendingChecksCount: pendingChecks.length,
+              damagesLoss: totalDamagesLoss,
+              dailyProfit,
+              weeklyProfit,
+              monthlyProfit,
+              yearlyProfit,
+              dailyCashFlow,
+              topProducts: topProductsList,
+              topDebtors: topDebtorsList,
+              language,
+              settings
+            })}
             className="px-4 py-2.5 rounded-2xl bg-accent text-white hover:bg-accent/90 transition-all text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md shadow-accent/20 active:scale-95"
           >
             <Printer className="w-4 h-4 stroke-[2.5]" />
@@ -645,7 +729,8 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-500/10 border border-red-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-red-500 overflow-hidden relative shadow-sm"
+          className="bg-red-500/10 border border-red-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-red-500 overflow-hidden relative shadow-sm cursor-pointer hover:border-red-500/40 transition-all"
+          onClick={() => onNavigate?.('customers')}
         >
           <div className="bg-red-500 p-2 rounded-xl text-white">
             <AlertCircle className="w-5 h-5" />
@@ -677,7 +762,8 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-amber-600 overflow-hidden relative shadow-sm"
+          className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-amber-600 overflow-hidden relative shadow-sm cursor-pointer hover:border-amber-500/40 transition-all"
+          onClick={() => onNavigate?.('suppliers')}
         >
           <div className="bg-amber-500 p-2 rounded-xl text-white">
             <AlertCircle className="w-5 h-5" />
@@ -705,7 +791,41 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         </motion.div>
       )}
 
-            {/* ── TOP STATS: ROW 1 (STRATEGIC PILLARS) & ROW 2 (OPERATIONS & LIQUIDITY) ── */}
+      {permissions.financialsDebts && upcomingChecks.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => onNavigate?.('checks')}
+          className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-3xl flex flex-wrap items-center gap-4 text-indigo-600 dark:text-indigo-400 overflow-hidden relative shadow-sm cursor-pointer hover:border-indigo-500/40 transition-all"
+        >
+          <div className="bg-indigo-500 p-2 rounded-xl text-white">
+            <CreditCard className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] mb-0.5">
+              {language === 'ar' ? 'شيكات مستحقة قريباً أو متأخرة (خلال 3 أيام)' : 'Échéancier des Chèques (≤ 3 jours ou échus)'}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {upcomingChecks.map((ch: any) => {
+                const cDueDate = ch.checkDueDate || ch.dueDate || ch.due_date;
+                const isOverdue = new Date(cDueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+                return (
+                  <div key={ch.id} className={cn(
+                    "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-2",
+                    isOverdue ? "bg-indigo-600 text-white border-indigo-700" : "bg-card border-border-subtle text-text-main"
+                  )}>
+                    <span>{ch.partyName || ch.customerName || (language === 'ar' ? 'شيك' : 'Chèque')}</span>
+                    <span dir="ltr" className="font-mono font-black">{formatNumber(ch.total || ch.amount)} {t.currency}</span>
+                    <span className="opacity-70">{String(cDueDate).split('T')[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── TOP STATS: ROW 1 (STRATEGIC PILLARS) & ROW 2 (OPERATIONS & LIQUIDITY) ── */}
       <div className="space-y-5">
         
         {/* Row 1: High Level Revenue, Profit, Stock & Customer Debts (4 columns) */}
@@ -713,7 +833,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
           
           {/* Card 1: Chiffre d'Affaires Global (Ventes Totales) */}
           {permissions.financialsSales && (
-            <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white p-5 sm:p-6 rounded-3xl border border-emerald-500/20 shadow-xl shadow-emerald-950/20 flex flex-col justify-between min-h-[175px] relative overflow-hidden group">
+            <div onClick={() => onNavigate?.('history')} className="cursor-pointer hover:-translate-y-1 transition-all bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950 text-white p-5 sm:p-6 rounded-3xl border border-emerald-500/20 shadow-xl shadow-emerald-950/20 flex flex-col justify-between min-h-[175px] relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -translate-y-12 translate-x-12 pointer-events-none" />
               
               <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
@@ -741,7 +861,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                   {settings?.shop_name || 'AGRI BOUTABSSIL'}
                 </span>
                 <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
-                  {sales.length} {language === 'ar' ? 'فاتورة' : 'ventes'}
+                  {stats?.transactions ?? sales.length} {language === 'ar' ? 'فاتورة' : 'ventes'}
                 </span>
               </div>
             </div>
@@ -752,10 +872,10 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
             <StatCard 
               title={t.expectedProfit} 
               value={formatNumber(netProfit)} 
-              subtext={language === 'ar' ? 'هامش الربح المتوقع' : 'Marge nette prévisionnelle'}
+              subtext={language === 'ar' ? `الربح المحقق الفعلي: ${formatNumber(totalRealizedProfit)} ${t.currency}` : `Bénéfice réalisé: ${formatNumber(totalRealizedProfit)} ${t.currency}`}
               color="text-emerald-600 dark:text-emerald-400"
               icon={TrendingUp}
-              badgeText={totalRevenue > 0 ? `${((netProfit / totalRevenue) * 100).toFixed(1)}%` : undefined}
+              badgeText={inventoryAssetValue > 0 ? `+${((netProfit / inventoryAssetValue) * 100).toFixed(1)}%` : undefined}
               badgeColor="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
             />
           )}
@@ -770,6 +890,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               icon={Package}
               badgeText={`${products.length} ${language === 'ar' ? 'مادة' : 'articles'}`}
               badgeColor="bg-blue-500/10 text-blue-600 border border-blue-500/20"
+              onClick={() => onNavigate?.('inventory')}
             />
           )}
 
@@ -783,6 +904,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               icon={Users}
               badgeText={`${debtorCustomersCount} ${language === 'ar' ? 'مدين' : 'débiteurs'}`}
               badgeColor="bg-amber-500/10 text-amber-600 border border-amber-500/20"
+              onClick={() => onNavigate?.('customers')}
             />
           )}
 
@@ -802,19 +924,23 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               danger={totalSupplierDebt > 0}
               badgeText={`${suppliers.filter(s => s.debt > 0).length} ${language === 'ar' ? 'مورد' : 'fournisseurs'}`}
               badgeColor="bg-rose-500/10 text-rose-600 border border-rose-500/20"
+              onClick={() => onNavigate?.('suppliers')}
             />
           )}
 
           {/* Card 6: Chèques Clients en Portefeuille */}
-          <StatCard 
-            title={language === 'ar' ? 'شيكات في الانتظار' : 'Chèques en Portefeuille'} 
-            value={formatNumber(pendingChecksTotal)} 
-            subtext={language === 'ar' ? 'شيكات زبائن قيد التحصيل' : 'Règlements chèques à encaisser'}
-            color="text-indigo-600 dark:text-indigo-400"
-            icon={CreditCard}
-            badgeText={`${pendingChecks.length} ${language === 'ar' ? 'شيك' : 'chèques'}`}
-            badgeColor="bg-indigo-500/10 text-indigo-600 border border-indigo-500/20"
-          />
+          {permissions.financialsDebts && (
+            <StatCard 
+              title={language === 'ar' ? 'شيكات في الانتظار' : 'Chèques en Portefeuille'} 
+              value={formatNumber(pendingChecksTotal)} 
+              subtext={language === 'ar' ? 'شيكات زبائن قيد التحصيل' : 'Règlements chèques à encaisser'}
+              color="text-indigo-600 dark:text-indigo-400"
+              icon={CreditCard}
+              badgeText={`${pendingChecks.length} ${language === 'ar' ? 'شيك' : 'chèques'}`}
+              badgeColor="bg-indigo-500/10 text-indigo-600 border border-indigo-500/20"
+              onClick={() => onNavigate?.('checks')}
+            />
+          )}
 
           {/* Card 7: Clients Endettés */}
           {permissions.financialsDebts && (
@@ -825,6 +951,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
               color="text-text-main"
               icon={UserCheck}
               showCurrency={false}
+              onClick={() => onNavigate?.('customers')}
               badgeText={upcomingDebts.length > 0 ? `${upcomingDebts.length} ${language === 'ar' ? 'متأخر' : 'retard'}` : undefined}
               badgeColor={upcomingDebts.length > 0 ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" : undefined}
             />
@@ -856,6 +983,55 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
         </div>
 
       </div>
+
+      {/* ── DAILY CASH FLOW / TRÉSORERIE DU JOUR ── */}
+      {permissions.financialsSales && (
+        <div className="bg-card p-5 sm:p-6 rounded-3xl border border-border-subtle shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Wallet className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wider text-text-secondary">
+                {language === 'ar' ? 'حركة الصندوق اليومية (السيولة الصافية اليوم)' : 'Trésorerie du Jour (Caisse Nette Aujourd\'hui)'}
+              </div>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span dir="ltr" className={cn("text-2xl sm:text-3xl font-black font-mono tracking-tight", dailyCashFlow.netCashToday >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                  {dailyCashFlow.netCashToday >= 0 ? `+${formatNumber(dailyCashFlow.netCashToday)}` : formatNumber(dailyCashFlow.netCashToday)}
+                </span>
+                <span className="text-xs font-black text-text-secondary uppercase font-mono">{t.currency}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto">
+            <div className="px-3.5 py-2 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400">
+                {language === 'ar' ? 'مبيعات نقدية' : 'Ventes Espèces'}
+              </span>
+              <span dir="ltr" className="text-xs font-black font-mono text-emerald-700 dark:text-emerald-300">
+                +{formatNumber(dailyCashFlow.cashSalesToday)} {t.currency}
+              </span>
+            </div>
+            <div className="px-3.5 py-2 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400">
+                {language === 'ar' ? 'تحصيل ديون الزبائن' : 'Règlements Clients'}
+              </span>
+              <span dir="ltr" className="text-xs font-black font-mono text-blue-700 dark:text-blue-300">
+                +{formatNumber(dailyCashFlow.customerPaymentsToday)} {t.currency}
+              </span>
+            </div>
+            <div className="px-3.5 py-2 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black uppercase text-rose-700 dark:text-rose-400">
+                {language === 'ar' ? 'أداءات الموردين والمرتجعات' : 'Sorties Fourn. & Retours'}
+              </span>
+              <span dir="ltr" className="text-xs font-black font-mono text-rose-700 dark:text-rose-300">
+                -{formatNumber((dailyCashFlow.supplierPaymentsToday || 0) + (dailyCashFlow.cashReturnsToday || 0))} {t.currency}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {permissions.financialsProfits && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -963,7 +1139,9 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     <div className="flex items-center justify-between mb-6">
                        <h3 className="text-xs font-black uppercase tracking-widest text-text-main flex items-center gap-2">
                          <TrendingUp className="w-5 h-5 text-accent" />
-                         {t.salesTrend7Days}
+                         {trendPeriod === '30d'
+                           ? (language === 'ar' ? 'تطور المبيعات والأرباح (آخر 30 يوم)' : 'Évolution Ventes & Bénéfices (30 Jours)')
+                           : t.salesTrend7Days}
                        </h3>
                        <div className="flex items-center gap-2 min-w-0">
                          {pctChange !== null && (
@@ -976,12 +1154,21 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                                : <ArrowDownRight className="w-3.5 h-3.5" />}
                              {Math.abs(pctChange).toFixed(1)}%
                              <span className="opacity-60 font-medium">
-                               {language === 'ar' ? 'vs أسبوع' : language === 'fr' ? 'vs sem. préc.' : 'vs last wk'}
+                               {trendPeriod === '30d'
+                                 ? (language === 'ar' ? 'vs شهر' : 'vs 30j préc.')
+                                 : (language === 'ar' ? 'vs أسبوع' : language === 'fr' ? 'vs sem. préc.' : 'vs last wk')}
                              </span>
                            </div>
                          )}
-                         <div className="text-lg font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
-                           {formatNumber(totalTrend7)} {t.currency}
+                         <div className="flex items-center gap-2">
+                           {permissions.financialsProfits && totalTrendProfit > 0 && (
+                             <div className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full">
+                               {language === 'ar' ? 'ربح:' : 'Profit:'} {formatNumber(totalTrendProfit)} {t.currency}
+                             </div>
+                           )}
+                           <div className="text-lg font-black text-accent bg-accent/10 px-4 py-1.5 rounded-full">
+                             {formatNumber(totalTrend7)} {t.currency}
+                           </div>
                          </div>
                        </div>
                     </div>
@@ -996,19 +1183,25 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                           <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                             <defs>
                               <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
                             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} dy={10} />
                             <YAxis hide={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => formatNumber(val)} width={72} />
                             <ReChartsTooltip
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
-                              itemStyle={{ color: '#6366f1' }}
-                              formatter={(value: number) => [
+                              contentStyle={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text-main)', borderRadius: '16px', border: '1px solid var(--color-border-subtle)', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '13px', fontWeight: 'bold' }}
+                              itemStyle={{ color: '#10b981' }}
+                              formatter={(value: number, name: string) => [
                                 `${formatNumber(value)} ${t.currency}`,
-                                language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales'
+                                name === 'profit'
+                                  ? (language === 'ar' ? 'الربح الصافي' : language === 'fr' ? 'Bénéfice Net' : 'Net Profit')
+                                  : (language === 'ar' ? 'المبيعات' : language === 'fr' ? 'Ventes' : 'Sales')
                               ]}
                             />
                             {avgTrend > 0 && (
@@ -1030,13 +1223,25 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                             <Area
                               type="monotone"
                               dataKey="amount"
-                              stroke="#6366f1"
+                              stroke="#10b981"
                               strokeWidth={3}
                               fillOpacity={1}
                               fill="url(#colorSales)"
-                              activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#6366f1' }}
-                              dot={{ r: 3, fill: '#fff', stroke: '#6366f1', strokeWidth: 2 }}
+                              activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff', fill: '#10b981' }}
+                              dot={{ r: 3, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }}
                             />
+                            {permissions.financialsProfits && (
+                              <Area
+                                type="monotone"
+                                dataKey="profit"
+                                stroke="#f59e0b"
+                                strokeWidth={2.5}
+                                fillOpacity={1}
+                                fill="url(#colorProfit)"
+                                activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff', fill: '#f59e0b' }}
+                                dot={{ r: 2.5, fill: '#fff', stroke: '#f59e0b', strokeWidth: 2 }}
+                              />
+                            )}
                           </AreaChart>
                         </ResponsiveContainer>
                       )}
@@ -1075,7 +1280,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                            </Pie>
                            <ReChartsTooltip 
                              formatter={(value: number) => [`${formatNumber(value)} ${t.currency}`, language === 'ar' ? 'القيمة' : language === 'fr' ? 'Valeur' : 'Value']}
-                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                             contentStyle={{ backgroundColor: 'var(--color-card)', color: 'var(--color-text-main)', borderRadius: '16px', border: '1px solid var(--color-border-subtle)', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
                              itemStyle={{ fontWeight: 'bold', color: 'var(--color-text-main)' }}
                            />
                            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
@@ -1094,7 +1299,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     <div className="flex items-center justify-between mb-8">
                       <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary">{t.stockAlerts}</h3>
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
+                        <span className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-xs font-bold text-danger">{lowStock.length}</span>
                         <button 
                           onClick={() => {
                             const criticalItems = products.filter(p => p.qty <= (p.minStock ?? 5));
@@ -1115,7 +1320,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                     <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2 scrollbar-thin flex flex-col">
                       {lowStock.length > 0 ? (
                         lowStock.map(p => (
-                          <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/10 hover:bg-bg-base/50 transition-all">
+                          <div key={p.id} onClick={() => onInspectProduct?.(p)} className="cursor-pointer flex items-center justify-between py-2 px-3 bg-bg-base/30 rounded-xl border border-transparent hover:border-accent/20 hover:bg-bg-base/60 transition-all">
                             <div className="flex items-center gap-2 min-w-0">
                               <div className="w-8 h-8 rounded-lg bg-card border border-border-subtle flex items-center justify-center text-accent shrink-0">
                                 <Package className="w-4 h-4" />
@@ -1157,7 +1362,7 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       </div>
                     ) : (
                       topProductsList.map((tp: any, idx: number) => (
-                        <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-accent/20 transition-all">
+                        <div key={tp.id} onClick={() => onInspectProduct?.(tp)} className="cursor-pointer flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-accent/30 transition-all">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-black text-sm">
                               #{idx + 1}
@@ -1190,18 +1395,36 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       </div>
                     ) : (
                       topDebtorsList.map((c: any, idx: number) => (
-                        <div key={c.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-red-500/20 transition-all">
+                        <div key={c.id} onClick={() => onNavigate?.('customers')} className="cursor-pointer flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-red-500/30 transition-all">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center font-black text-sm">
+                            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-500 flex items-center justify-center font-black text-sm">
                               #{idx + 1}
                             </div>
                             <div>
                               <div className="flex-1 min-w-0 overflow-hidden"><div className="text-sm font-bold text-text-main truncate" dir="auto">{c.name}</div><div className="text-xs text-text-secondary font-medium tracking-tight uppercase truncate">{c.phone || '-'}</div></div>
                             </div>
                           </div>
-                          <div className="text-right shrink-0 whitespace-nowrap ml-2">
-                             <div className="text-lg font-black text-red-600">{formatNumber(c.debt)}</div>
-                             <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+                          <div className="flex items-center gap-2 shrink-0 whitespace-nowrap ml-2">
+                            {c.phone && (
+                              <a
+                                href={`https://wa.me/${String(c.phone).replace(/[^0-9]/g, '').replace(/^0/, '212')}?text=${encodeURIComponent(
+                                  language === 'ar'
+                                    ? `السلام عليكم ${c.name}، تذكير ودي بخصوص رصيد الحساب المتبقي (${formatNumber(c.debt)} ${t.currency}) لدى ${settings?.shop_name || 'AGRI BOUTABSSIL'}. شكراً لتعاملكم معنا.`
+                                    : `Bonjour ${c.name}, rappel concernant votre solde en attente de ${formatNumber(c.debt)} ${t.currency} chez ${settings?.shop_name || 'AGRI BOUTABSSIL'}. Merci.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20"
+                                title={language === 'ar' ? 'تذكير عبر واتساب' : 'Rappel WhatsApp'}
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            <div className="text-right">
+                              <div className="text-lg font-black text-red-600">{formatNumber(c.debt)}</div>
+                              <div className="text-[9px] font-bold text-text-secondary uppercase">{t.currency}</div>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -1223,9 +1446,9 @@ export default function FinancialDashboardView({ permissions, currency }: { perm
                       </div>
                     ) : (
                       dormantStockList.map((tp: any, idx: number) => (
-                        <div key={tp.id} className="flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-amber-500/20 transition-all">
+                        <div key={tp.id} onClick={() => onInspectProduct?.(tp)} className="cursor-pointer flex items-center justify-between p-3 bg-bg-base/50 border border-transparent rounded-2xl hover:border-amber-500/30 transition-all">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black text-sm">
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-sm">
                               #{idx + 1}
                             </div>
                             <div>
